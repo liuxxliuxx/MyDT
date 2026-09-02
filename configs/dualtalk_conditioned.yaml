@@ -1,0 +1,25 @@
+SEED: 6666
+DEVICE: cuda
+DATA:
+  ROOT: datasets
+  DUALTALK_ROOT: datasets/dualtalk
+  NUM_WORKERS: 8
+TRAIN:
+  OUTPUT_ROOT: runs
+  EXPERIMENT_NAME: fold5
+  SEQUENCE_BATCH_SIZE: 4
+  EPOCHS: 100
+  LR: 0.0001
+  OBSERVATION_CHECKPOINT: runs/phase_a_observation/fold5/observation_encoder.pt
+  PHASE_B_CHECKPOINT: runs/phase_b_coupling/fold5/phase_b_best.pt
+DUALTALK:
+  BASELINE_CHECKPOINT: checkpoints/dualtalk_baseline.pth
+  PHASE_B_CHECKPOINT: runs/phase_b_coupling/fold5/phase_b_best.pt
+  AUDIO_MODEL: facebook/wav2vec2-base-960h
+  FEATURE_DIM: 256
+  BLENDSHAPE_DIM: 56
+  FILM_SCALE: 0.1
+  FREEZE_STATE_EPOCHS: 10
+  JOINT_FINETUNE_LR_SCALE: 0.1
+  FPS: 25
+  CHUNK_FRAMES: 200

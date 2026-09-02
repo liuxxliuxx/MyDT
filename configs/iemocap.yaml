@@ -1,0 +1,15 @@
+SEED: 6666
+DEVICE: cuda
+DATA:
+  ROOT: datasets
+  IEMOCAP_RAW_ROOT: datasets/iemocap/raw
+  IEMOCAP_FEATURE_ROOT: artifacts/features/iemocap
+PREPROCESS:
+  AUDIO_MODEL: facebook/wav2vec2-base-960h
+  TEXT_MODEL: roberta-base
+  DEVICE: cuda:0
+  BATCH_SIZE: 16
+  OPENFACE_BIN: FeatureExtraction
+  FFMPEG_BIN: ffmpeg
+  CONFIDENCE_THRESHOLD: 0.8
+  SKIP_OPENFACE: false

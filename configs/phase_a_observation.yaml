@@ -1,0 +1,17 @@
+SEED: 6666
+DEVICE: cuda
+DATA:
+  ROOT: datasets
+  EMOTIONTALK_ROOT: datasets/emotiontalk/processed
+  IEMOCAP_FEATURE_ROOT: artifacts/features/iemocap
+  IEMOCAP_FOLD: 5
+  NUM_WORKERS: 8
+TRAIN:
+  OUTPUT_ROOT: runs
+  EXPERIMENT_NAME: fold5
+  BATCH_SIZE: 128
+  EPOCHS: 50
+  LR: 0.0003
+  WEIGHT_DECAY: 0.0001
+  AMP: true
+  EMA_DECAY: 0.996

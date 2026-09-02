@@ -1,0 +1,32 @@
+SEED: 6666
+DEVICE: cuda
+DATA:
+  ROOT: datasets
+  EMOTIONTALK_ROOT: datasets/emotiontalk/processed
+  IEMOCAP_FEATURE_ROOT: artifacts/features/iemocap
+  IEMOCAP_FOLD: 5
+  WINDOW_LENGTH: 33
+  WINDOW_STRIDE: 4
+  NUM_WORKERS: 8
+TRAIN:
+  OUTPUT_ROOT: runs
+  EXPERIMENT_NAME: fold5
+  SEQUENCE_BATCH_SIZE: 8
+  EPOCHS: 50
+  LR: 0.0003
+  FINETUNE_OBSERVATION: true
+  STATE_LR_SCALE: 0.1
+  OBSERVATION_CHECKPOINT: runs/phase_a_observation/fold5/observation_encoder.pt
+  EMA_TEACHER_CHECKPOINT: runs/phase_a_observation/fold5/ema_teacher.pt
+  EMOTION_HEADS_CHECKPOINT: runs/phase_a_observation/fold5/emotion_heads.pt
+  PHASE_A_CHECKPOINT: runs/phase_a_dynamics/fold5/phase_a_best.pt
+DYNAMICS:
+  HORIZONS: [1, 2, 4, 8, 16, 32]
+  ENABLE_PARTNER: true
+  CORRECTION_MODE: teacher_forced
+  RANDOM_ROLE_SWAP: true
+COUNTERFACTUAL:
+  TOP_K: 8
+  INTENSITY_TOLERANCE: 0.2
+  TURN_TOLERANCE: 0.15
+  MAX_ACTION_COSINE: 0.8
