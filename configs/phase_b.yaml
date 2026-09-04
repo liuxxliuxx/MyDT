@@ -19,18 +19,20 @@ TRAIN:
   OBSERVATION_CHECKPOINT: runs/phase_a_observation/fold5/observation_encoder.pt
   EMA_TEACHER_CHECKPOINT: runs/phase_a_observation/fold5/ema_teacher.pt
   EMOTION_HEADS_CHECKPOINT: runs/phase_a_observation/fold5/emotion_heads.pt
-  PHASE_A_CHECKPOINT: runs/phase_a_dynamics/fold5/phase_a_best.pt
+  PHASE_A_CHECKPOINT: runs/phase_a_dynamics/fold5_joint/phase_a_best.pt
 DYNAMICS:
   HORIZONS: [1, 2, 4, 8, 16, 32]
   ENABLE_PARTNER: true
   CORRECTION_MODE: teacher_forced
-  ROLLOUT_MODE: conditional
+  ROLLOUT_MODE: joint
   OPEN_LOOP_DT: 1.0
   RANDOM_ROLE_SWAP: true
   # First train event/action/coupling with a fixed affect space, then release
   # the affect branch at 0.05x LR while anchoring it to the EMA observer.
   FREEZE_AFFECT_EPOCHS: 5
   AFFECT_LR_SCALE: 0.05
+LOSS:
+  OPEN_LOOP_TRAJECTORY: 0.5
 COUNTERFACTUAL:
   TOP_K: 8
   INTENSITY_TOLERANCE: 0.2
