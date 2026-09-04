@@ -11,7 +11,10 @@ import torch.nn.functional as F
 from torch.cuda.amp import GradScaler, autocast
 
 from emotion_ssm.config import parse_config_args
-from emotion_ssm.data import DualTalkChunkDataset
+from emotion_ssm.data import (
+    DualTalkDialogueDataset,
+    collate_dualtalk_dialogues,
+)
 from emotion_ssm.models import (
     AudioOnlyStateObserver,
     BlendshapeAffectProjector,
@@ -19,7 +22,6 @@ from emotion_ssm.models import (
     DyadicEmotionSSM,
     EmotionConditionedDualTalk,
     ObservationEncoder,
-    expression_state_consistency,
 )
 from emotion_ssm.train.common import (
     append_metrics,
@@ -74,27 +76,62 @@ class ConditionedTrainingSystem(nn.Module):
         if frozen:
             self.conditioner.eval()
 
+    def set_baseline_frozen(self, frozen: bool) -> None:
+        """Train FiLM first, then expose only the baseline synthesis head."""
+        self.generator.baseline.requires_grad_(False)
+        self.generator.film.requires_grad_(True)
+        if not frozen:
+            self.generator.baseline.synthesis_module.requires_grad_(True)
+
     def train(self, mode: bool = True):
         super().train(mode)
         if self.state_frozen:
             self.conditioner.eval()
         return self
 
-    def forward(self, batch: Mapping[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    @staticmethod
+    def _merge_state(previous, candidate, valid_mask: torch.Tensor):
+        """Keep the previous state for padded dialogue positions."""
+        if previous is None:
+            return candidate
+        state_mask = valid_mask[:, None, None]
+        relation_mask = valid_mask[:, None]
+        return type(candidate)(
+            z=torch.where(state_mask, candidate.z, previous.z),
+            relation=torch.where(relation_mask, candidate.relation, previous.relation),
+            speaker_ids=previous.speaker_ids,
+        )
+
+    def _condition_chunk(self, batch: Mapping[str, torch.Tensor], state=None):
         audio_target = batch["target_audio"]
         audio_partner = batch["partner_audio"]
+        conditioner_kwargs = {} if state is None else {"state": state}
         if self.state_frozen:
             with torch.no_grad():
-                context, _, evidence = self.conditioner(
-                    audio_target, audio_partner, batch["dt"]
+                context, next_state, evidence = self.conditioner(
+                    audio_target, audio_partner, batch["dt"], **conditioner_kwargs
                 )
             context = context.detach()
-            target_aff = evidence["target_aff"].detach()
+            target_aff = evidence.get("target_state_aff", evidence["target_aff"]).detach()
         else:
-            context, _, evidence = self.conditioner(
-                audio_target, audio_partner, batch["dt"]
+            context, next_state, evidence = self.conditioner(
+                audio_target, audio_partner, batch["dt"], **conditioner_kwargs
             )
-            target_aff = evidence["target_aff"]
+            target_aff = evidence.get("target_state_aff", evidence["target_aff"])
+        return context, next_state, target_aff
+
+    @staticmethod
+    def _per_sample_mse(prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        return (prediction - target).square().flatten(1).mean(dim=1)
+
+    def _chunk_losses(
+        self,
+        batch: Mapping[str, torch.Tensor],
+        context: torch.Tensor,
+        target_aff: torch.Tensor,
+    ) -> Dict[str, torch.Tensor]:
+        audio_target = batch["target_audio"]
+        audio_partner = batch["partner_audio"]
         generated = self.generator(
             audio_target,
             audio_partner,
@@ -106,23 +143,116 @@ class ConditionedTrainingSystem(nn.Module):
         length = min(generated.shape[1], target.shape[1])
         generated = generated[:, :length]
         target = target[:, :length]
-        expression = F.mse_loss(generated[:, :, :50], target[:, :, :50])
-        jaw = F.mse_loss(generated[:, :, 50:53], target[:, :, 50:53])
-        neck = F.mse_loss(generated[:, :, 53:56], target[:, :, 53:56])
-        generated_velocity = generated[:, 1:] - generated[:, :-1]
-        target_velocity = target[:, 1:] - target[:, :-1]
-        velocity = F.mse_loss(generated_velocity, target_velocity)
-        state_consistency = expression_state_consistency(
-            self.projector, generated, target_aff
+        expression = self._per_sample_mse(generated[:, :, :50], target[:, :, :50])
+        jaw = self._per_sample_mse(generated[:, :, 50:53], target[:, :, 50:53])
+        neck = self._per_sample_mse(generated[:, :, 53:56], target[:, :, 53:56])
+        if length > 1:
+            velocity = self._per_sample_mse(
+                generated[:, 1:] - generated[:, :-1],
+                target[:, 1:] - target[:, :-1],
+            )
+        else:
+            velocity = generated.new_zeros(generated.shape[0])
+        generated_aff = self.projector(generated)
+        state_consistency = 1.0 - F.cosine_similarity(
+            generated_aff, target_aff, dim=-1
         )
-        total = expression + jaw + neck + velocity + self.state_loss_weight * state_consistency
+        return {
+            "expression": expression,
+            "jaw": jaw,
+            "neck": neck,
+            "velocity": velocity,
+            "state_consistency": state_consistency,
+        }
+
+    def forward_sequence(
+        self,
+        batch: Mapping[str, torch.Tensor],
+        bptt_chunks: int = 1,
+    ) -> Dict[str, torch.Tensor]:
+        """Generate an ordered dialogue while retaining only causal state.
+
+        The collator pads just the chunk axis. Padded chunks may still pass
+        through the batched modules for shape consistency, but their loss and
+        their state update are both masked out.
+        """
+        if bptt_chunks < 1:
+            raise ValueError("bptt_chunks must be at least one")
+        chunk_mask = batch["chunk_mask"].bool()
+        if chunk_mask.ndim != 2:
+            raise ValueError("chunk_mask must have shape [batch, chunks]")
+        batch_size, chunk_count = chunk_mask.shape
+        if batch["target_audio"].shape[:2] != (batch_size, chunk_count):
+            raise ValueError("target_audio and chunk_mask disagree on dialogue axes")
+
+        sums = None
+        valid_count = chunk_mask.sum().to(dtype=batch["target_audio"].dtype)
+        state = None
+        for chunk_index in range(chunk_count):
+            valid = chunk_mask[:, chunk_index]
+            chunk = {
+                name: value[:, chunk_index]
+                for name, value in batch.items()
+                if name in {
+                    "target_audio",
+                    "partner_audio",
+                    "target_blendshape",
+                    "partner_blendshape",
+                    "dt",
+                }
+            }
+            context, candidate_state, target_aff = self._condition_chunk(chunk, state)
+            state = self._merge_state(state, candidate_state, valid)
+            losses = self._chunk_losses(chunk, context, target_aff)
+            if sums is None:
+                sums = {name: value.new_zeros(()) for name, value in losses.items()}
+            weight = valid.to(dtype=next(iter(losses.values())).dtype)
+            for name, value in losses.items():
+                sums[name] = sums[name] + (value * weight).sum()
+            if (chunk_index + 1) % bptt_chunks == 0:
+                state = state.detach()
+
+        if sums is None:
+            zero = batch["target_audio"].sum() * 0.0
+            sums = {
+                name: zero
+                for name in ("expression", "jaw", "neck", "velocity", "state_consistency")
+            }
+        divisor = valid_count.clamp_min(1.0)
+        means = {name: value / divisor for name, value in sums.items()}
+        total = (
+            means["expression"]
+            + means["jaw"]
+            + means["neck"]
+            + means["velocity"]
+            + self.state_loss_weight * means["state_consistency"]
+        )
         return {
             "total": total,
-            "expression": expression.detach(),
-            "jaw": jaw.detach(),
-            "neck": neck.detach(),
-            "velocity": velocity.detach(),
-            "state_consistency": state_consistency.detach(),
+            **{name: value.detach() for name, value in means.items()},
+        }
+
+    def forward(
+        self,
+        batch: Mapping[str, torch.Tensor],
+        bptt_chunks: int = 1,
+    ) -> Dict[str, torch.Tensor]:
+        """Single-chunk compatibility entry point used by old callers/tests."""
+        if batch["target_audio"].ndim == 3:
+            return self.forward_sequence(batch, bptt_chunks)
+        context, _, target_aff = self._condition_chunk(batch)
+        losses = self._chunk_losses(batch, context, target_aff)
+        means = {name: value.mean() for name, value in losses.items()}
+        total = (
+            means["expression"]
+            + means["jaw"]
+            + means["neck"]
+            + means["velocity"]
+            + self.state_loss_weight * means["state_consistency"]
+        )
+        return {
+            "total": total,
+            **{name: value.detach() for name, value in means.items()},
         }
 
 
@@ -166,14 +296,20 @@ def _build_system(cfg, device: torch.device) -> ConditionedTrainingSystem:
 
 
 @torch.no_grad()
-def validate(system, loader, context, max_batches: int = 0) -> Dict[str, float]:
+def validate(
+    system,
+    loader,
+    context,
+    bptt_chunks: int,
+    max_batches: int = 0,
+) -> Dict[str, float]:
     system.eval()
     totals: Dict[str, float] = {}
     batches = 0
     for index, raw_batch in enumerate(loader):
         if max_batches and index >= max_batches:
             break
-        losses = system(move_to_device(raw_batch, context.device))
+        losses = system(move_to_device(raw_batch, context.device), bptt_chunks)
         for name, value in losses.items():
             totals[name] = totals.get(name, 0.0) + float(value)
         batches += 1
@@ -189,12 +325,12 @@ def main() -> None:
     run_dir = create_run_directory(cfg, "dualtalk_conditioned")
     if context.is_main:
         (run_dir / "config.yaml").write_text(cfg.dump(), encoding="utf-8")
-    train_dataset = DualTalkChunkDataset(
+    train_dataset = DualTalkDialogueDataset(
         Path(cfg.DATA.DUALTALK_ROOT) / "train",
         cfg.DUALTALK.CHUNK_FRAMES,
         cfg.DUALTALK.FPS,
     )
-    val_dataset = DualTalkChunkDataset(
+    val_dataset = DualTalkDialogueDataset(
         Path(cfg.DATA.DUALTALK_ROOT) / "test",
         cfg.DUALTALK.CHUNK_FRAMES,
         cfg.DUALTALK.FPS,
@@ -206,6 +342,7 @@ def main() -> None:
         True,
         cfg.DATA.NUM_WORKERS,
         cfg.DATA.PIN_MEMORY,
+        collate_fn=collate_dualtalk_dialogues,
     )
     val_loader, _ = make_loader(
         val_dataset,
@@ -214,13 +351,21 @@ def main() -> None:
         False,
         cfg.DATA.NUM_WORKERS,
         cfg.DATA.PIN_MEMORY,
+        collate_fn=collate_dualtalk_dialogues,
     )
     system = _build_system(cfg, context.device)
-    generator_parameters = list(system.generator.parameters()) + list(system.projector.parameters())
+    film_and_projector_parameters = list(system.generator.film.parameters()) + list(
+        system.projector.parameters()
+    )
+    synthesis_parameters = list(system.generator.baseline.synthesis_module.parameters())
     state_parameters = list(system.conditioner.parameters())
     optimizer = torch.optim.AdamW(
         [
-            {"params": generator_parameters, "lr": cfg.TRAIN.LR},
+            {"params": film_and_projector_parameters, "lr": cfg.TRAIN.LR},
+            {
+                "params": synthesis_parameters,
+                "lr": cfg.TRAIN.LR * cfg.DUALTALK.SYNTHESIS_FINETUNE_LR_SCALE,
+            },
             {
                 "params": state_parameters,
                 "lr": cfg.TRAIN.LR * cfg.DUALTALK.JOINT_FINETUNE_LR_SCALE,
@@ -230,6 +375,7 @@ def main() -> None:
     )
     system = maybe_ddp(system, context)
     unwrap_model(system).set_state_frozen(True)
+    unwrap_model(system).set_baseline_frozen(True)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=max(cfg.TRAIN.EPOCHS, 1)
     )
@@ -258,6 +404,9 @@ def main() -> None:
         if train_sampler is not None:
             train_sampler.set_epoch(epoch)
         unwrap_model(system).set_state_frozen(epoch < cfg.DUALTALK.FREEZE_STATE_EPOCHS)
+        unwrap_model(system).set_baseline_frozen(
+            epoch < cfg.DUALTALK.FREEZE_BASELINE_EPOCHS
+        )
         system.train()
         totals: Dict[str, float] = {}
         batches = 0
@@ -267,7 +416,7 @@ def main() -> None:
                 break
             batch = move_to_device(raw_batch, context.device)
             with autocast(enabled=cfg.TRAIN.AMP and context.device.type == "cuda"):
-                losses = system(batch)
+                losses = system(batch, cfg.DUALTALK.STATE_BPTT_CHUNKS)
                 loss = losses["total"] / cfg.TRAIN.GRAD_ACCUMULATION
             scaler.scale(loss).backward()
             should_step = (
@@ -295,6 +444,7 @@ def main() -> None:
             system,
             val_loader,
             context,
+            cfg.DUALTALK.STATE_BPTT_CHUNKS,
             cfg.TRAIN.DRY_RUN_VAL_BATCHES if cfg.TRAIN.DRY_RUN else 0,
         )
         metrics = {"epoch": epoch + 1, **totals, **val_metrics}

@@ -14,7 +14,11 @@ from torch.cuda.amp import autocast
 from torch.utils.data import DataLoader
 
 from emotion_ssm.config import load_config
-from emotion_ssm.data import DualTalkChunkDataset
+from emotion_ssm.data import (
+    DualTalkChunkDataset,
+    DualTalkDialogueDataset,
+    collate_dualtalk_dialogues,
+)
 from emotion_ssm.models import EmotionConditionedDualTalk
 from emotion_ssm.train.dualtalk import _build_system
 from emotion_ssm.utils.paths import ensure_output_directory
@@ -149,14 +153,45 @@ def _dialogue_name(sample: Mapping[str, object]) -> str:
     return name
 
 
-def _random_partner_permutation(dataset: DualTalkChunkDataset) -> torch.Tensor:
+def _random_partner_permutation(dataset: DualTalkDialogueDataset) -> torch.Tensor:
     """Build a deterministic cyclic permutation with no same-dialogue partners."""
-    names = [_dialogue_name(sample) for sample in dataset.samples]
+    names = [_dialogue_name(dialogue[0]) for dialogue in dataset.dialogues]
     count = len(names)
     for shift in range(max(count // 2, 1), count):
         if all(names[index] != names[(index + shift) % count] for index in range(count)):
             return (torch.arange(count) + shift) % count
     raise ValueError("Could not construct a different-dialogue partner permutation")
+
+
+def _random_partner_inputs(
+    dataset: DualTalkDialogueDataset,
+    permutation: torch.Tensor,
+    dialogue_offset: int,
+    batch_size: int,
+    chunk_index: int,
+    device: torch.device,
+):
+    """Return a different dialogue's partner stream for every batch row.
+
+    Dialogue durations need not match.  The shorter replacement is held at its
+    final chunk for the remaining source chunks, so every source utterance
+    still receives an out-of-dialogue partner instead of silently reverting to
+    its real partner.
+    """
+    replacements = []
+    for row in range(batch_size):
+        source_index = dialogue_offset + row
+        replacement_index = int(permutation[source_index])
+        dialogue = dataset.dialogues[replacement_index]
+        replacements.append(dialogue[min(chunk_index, len(dialogue) - 1)])
+    partner_audio = torch.stack([item["partner_audio"] for item in replacements])
+    partner_blendshape = torch.stack(
+        [item["partner_blendshape"] for item in replacements]
+    )
+    return (
+        partner_audio.to(device, non_blocking=True),
+        partner_blendshape.to(device, non_blocking=True),
+    )
 
 
 def _evaluate_conditioned(
@@ -168,7 +203,7 @@ def _evaluate_conditioned(
     totals = ReconstructionTotals()
     consistency_sum = 0.0
     consistency_count = 0
-    sample_offset = 0
+    dialogue_offset = 0
     random_indices = (
         _random_partner_permutation(loader.dataset)
         if ablation == "random_partner"
@@ -179,39 +214,60 @@ def _evaluate_conditioned(
             if max_batches and index >= max_batches:
                 break
             batch = _move_batch(raw_batch, device)
-            state_partner_audio = batch["partner_audio"]
-            if random_indices is not None:
-                batch_indices = random_indices[
-                    sample_offset : sample_offset + len(batch["target_audio"])
-                ]
-                state_partner_audio = torch.stack(
-                    [
-                        loader.dataset.samples[int(item)]["partner_audio"]
-                        for item in batch_indices
-                    ]
-                ).to(device, non_blocking=True)
-            with autocast(enabled=device.type == "cuda"):
-                context, _, evidence = system.conditioner(
-                    batch["target_audio"],
-                    state_partner_audio,
-                    batch["dt"],
-                    enable_partner=ablation != "self_only",
-                )
-                generated = system.generator(
-                    batch["target_audio"],
-                    batch["partner_audio"],
-                    batch["partner_blendshape"],
-                    context,
-                    enable_film=ablation != "film_off",
-                )
-                projected = system.projector(generated)
-                consistency = 1.0 - F.cosine_similarity(
-                    projected, evidence["target_aff"], dim=-1
-                )
-            totals.update(generated, batch["target_blendshape"])
-            consistency_sum += float(consistency.float().sum())
-            consistency_count += consistency.numel()
-            sample_offset += len(batch["target_audio"])
+            state = None
+            chunk_mask = batch["chunk_mask"].bool()
+            for chunk_index in range(chunk_mask.shape[1]):
+                valid = chunk_mask[:, chunk_index]
+                chunk = {
+                    name: value[:, chunk_index]
+                    for name, value in batch.items()
+                    if name
+                    in {
+                        "target_audio",
+                        "partner_audio",
+                        "target_blendshape",
+                        "partner_blendshape",
+                        "dt",
+                    }
+                }
+                state_partner_audio = chunk["partner_audio"]
+                if random_indices is not None:
+                    state_partner_audio, random_partner_blendshape = _random_partner_inputs(
+                        loader.dataset,
+                        random_indices,
+                        dialogue_offset,
+                        len(chunk["target_audio"]),
+                        chunk_index,
+                        device,
+                    )
+                    # The ablation must replace the partner on both the
+                    # generation and state paths.
+                    chunk["partner_audio"] = state_partner_audio
+                    chunk["partner_blendshape"] = random_partner_blendshape
+                with autocast(enabled=device.type == "cuda"):
+                    context, candidate_state, evidence = system.conditioner(
+                        chunk["target_audio"],
+                        state_partner_audio,
+                        chunk["dt"],
+                        state=state,
+                        enable_partner=ablation != "self_only",
+                    )
+                    state = system._merge_state(state, candidate_state, valid)
+                    generated = system.generator(
+                        chunk["target_audio"],
+                        chunk["partner_audio"],
+                        chunk["partner_blendshape"],
+                        context,
+                        enable_film=ablation != "film_off",
+                    )
+                    projected = system.projector(generated)
+                    consistency = 1.0 - F.cosine_similarity(
+                        projected, evidence["target_state_aff"], dim=-1
+                    )
+                totals.update(generated[valid], chunk["target_blendshape"][valid])
+                consistency_sum += float(consistency[valid].float().sum())
+                consistency_count += int(valid.sum())
+            dialogue_offset += len(batch["target_audio"])
             if (index + 1) % 50 == 0:
                 print(json.dumps({"batches": index + 1, "chunks": totals.chunks}))
     metrics = totals.metrics()
@@ -255,18 +311,34 @@ def main() -> None:
     torch.manual_seed(cfg.SEED)
     torch.cuda.manual_seed_all(cfg.SEED)
     device = torch.device("cuda:0")
-    dataset = DualTalkChunkDataset(
+    chunk_dataset = DualTalkChunkDataset(
         Path(cfg.DATA.DUALTALK_ROOT) / args.split,
         cfg.DUALTALK.CHUNK_FRAMES,
         cfg.DUALTALK.FPS,
     )
-    loader = DataLoader(
-        dataset,
-        batch_size=cfg.TRAIN.SEQUENCE_BATCH_SIZE,
-        shuffle=False,
-        num_workers=0,
-        pin_memory=cfg.DATA.PIN_MEMORY,
-    )
+    if args.model == "baseline":
+        dataset = chunk_dataset
+        loader = DataLoader(
+            dataset,
+            batch_size=cfg.TRAIN.SEQUENCE_BATCH_SIZE,
+            shuffle=False,
+            num_workers=0,
+            pin_memory=cfg.DATA.PIN_MEMORY,
+        )
+    else:
+        dataset = DualTalkDialogueDataset(
+            Path(cfg.DATA.DUALTALK_ROOT) / args.split,
+            cfg.DUALTALK.CHUNK_FRAMES,
+            cfg.DUALTALK.FPS,
+        )
+        loader = DataLoader(
+            dataset,
+            batch_size=cfg.TRAIN.SEQUENCE_BATCH_SIZE,
+            shuffle=False,
+            num_workers=0,
+            pin_memory=cfg.DATA.PIN_MEMORY,
+            collate_fn=collate_dualtalk_dialogues,
+        )
     started = time.time()
     if args.model == "baseline":
         totals, metadata = _evaluate_baseline(
@@ -283,7 +355,8 @@ def main() -> None:
         "ablation": "official" if args.model == "baseline" else args.ablation,
         "checkpoint": str(args.checkpoint.resolve()),
         "split": args.split,
-        "dataset_chunks": len(dataset),
+        "dataset_chunks": len(chunk_dataset),
+        "dataset_dialogues": len(dataset) if args.model == "conditioned" else None,
         "evaluated_chunks": totals.chunks,
         "batch_size": cfg.TRAIN.SEQUENCE_BATCH_SIZE,
         "max_batches": args.max_batches,

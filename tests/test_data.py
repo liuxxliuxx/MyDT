@@ -9,9 +9,11 @@ from scipy.io import wavfile
 from emotion_ssm.data import (
     DialogueWindowDataset,
     DualTalkChunkDataset,
+    DualTalkDialogueDataset,
     FeatureDialogueStore,
     SpeakerVocabulary,
     UnifiedUtteranceDataset,
+    collate_dualtalk_dialogues,
 )
 from emotion_ssm.preprocess.iemocap import (
     EMOTION_MAP,
@@ -136,6 +138,38 @@ def test_dualtalk_wav_npz_fixture(tmp_path: Path):
     dataset = DualTalkChunkDataset(tmp_path, chunk_frames=5, fps=25)
     assert len(dataset) == 2
     assert dataset[0]["target_blendshape"].shape == (5, 56)
+
+
+def test_dualtalk_dialogue_dataset_preserves_chunk_order_and_padding(tmp_path: Path):
+    sample_rate = 16000
+    frames = 10
+    for role in ("speaker1", "speaker2"):
+        stem = f"ordered_{role}"
+        np.savez(
+            tmp_path / f"{stem}.npz",
+            exp=np.zeros((frames, 50), dtype=np.float32),
+            pose=np.zeros((frames, 6), dtype=np.float32),
+        )
+        wavfile.write(
+            tmp_path / f"{stem}.wav",
+            sample_rate,
+            np.zeros(sample_rate * 2 // 5, dtype=np.int16),
+        )
+
+    dataset = DualTalkDialogueDataset(tmp_path, chunk_frames=5, fps=25)
+    assert len(dataset) == 2  # One ordered stream for each target direction.
+    item = dataset[0]
+    assert item["chunk_indices"].tolist() == [0, 1]
+    assert item["target_audio"].shape[:2] == (2, sample_rate // 5)
+
+    short_item = {
+        name: (value[:1] if torch.is_tensor(value) else value)
+        for name, value in item.items()
+    }
+    batch = collate_dualtalk_dialogues([item, short_item])
+    assert batch["chunk_mask"].tolist() == [[True, True], [True, False]]
+    assert batch["chunk_indices"][1, 1].item() == -1
+    assert torch.count_nonzero(batch["target_audio"][1, 1]).item() == 0
 
 
 def test_output_guard_rejects_dataset_directory(tmp_path: Path):

@@ -114,7 +114,7 @@ class AudioOnlyStateObserver(nn.Module):
         self.backbone.feature_extractor._freeze_parameters()
         self.observation_encoder = observation_encoder
 
-    def forward(self, waveform: Tensor, dataset_id: int = 1) -> EventObservation:
+    def forward(self, waveform: Tensor, dataset_id: int = 2) -> EventObservation:
         attention_mask = torch.ones_like(waveform, dtype=torch.long)
         hidden = self.backbone(
             waveform, attention_mask=attention_mask
@@ -165,31 +165,71 @@ class DyadicAudioConditioner(nn.Module):
             state = self.state_model.initialize(speaker_ids)
         target_observation = self.audio_observer(audio_target)
         partner_observation = self.audio_observer(audio_partner)
-        half_dt = dt.reshape(-1).to(audio_target.dtype) * 0.5
-        target_step = self.state_model.step(
-            state,
-            target_observation,
-            torch.zeros(batch_size, dtype=torch.long, device=audio_target.device),
-            half_dt,
-            enable_partner=enable_partner,
-            correct=correct,
-        )
-        partner_step = self.state_model.step(
-            target_step.next_prior,
-            partner_observation,
-            torch.ones(batch_size, dtype=torch.long, device=audio_target.device),
-            half_dt,
-            enable_partner=enable_partner,
-            correct=correct,
-        )
-        final_state = partner_step.next_prior
+        if hasattr(self.state_model, "step_parallel"):
+            output = self.state_model.step_parallel(
+                state,
+                (target_observation, partner_observation),
+                dt.reshape(-1).to(audio_target.dtype),
+                enable_partner=enable_partner,
+                correct=correct,
+            )
+            final_state = output.next_prior
+        else:
+            # Compatibility path for tiny external test doubles.
+            half_dt = dt.reshape(-1).to(audio_target.dtype) * 0.5
+            target_step = self.state_model.step(
+                state, target_observation,
+                torch.zeros(batch_size, dtype=torch.long, device=audio_target.device),
+                half_dt, enable_partner=enable_partner, correct=correct,
+            )
+            partner_step = self.state_model.step(
+                target_step.next_prior, partner_observation,
+                torch.ones(batch_size, dtype=torch.long, device=audio_target.device),
+                half_dt, enable_partner=enable_partner, correct=correct,
+            )
+            final_state = partner_step.next_prior
         context = torch.cat(
             [final_state.z[:, 0], final_state.z[:, 1], final_state.relation], dim=-1
         )
         return context, final_state, {
             "target_aff": target_observation.aff,
             "partner_aff": partner_observation.aff,
+            "target_state_aff": self.state_model.state_to_aff(final_state.z[:, 0]),
+            "partner_state_aff": self.state_model.state_to_aff(final_state.z[:, 1]),
         }
+
+    def rollout_chunks(
+        self,
+        chunks,
+        state: Optional[DyadicState] = None,
+        correct: bool = True,
+        enable_partner: bool = True,
+    ):
+        """Process ordered chunks while carrying state across chunk boundaries.
+
+        ``chunks`` contains mappings with ``target_audio``, ``partner_audio`` and
+        ``dt``. The returned ``states[i]`` is the state immediately after chunk
+        ``i`` and can be persisted for a later call.
+        """
+        contexts = []
+        states = []
+        current = state
+        for chunk in chunks:
+            context, current, _ = self(
+                chunk["target_audio"],
+                chunk["partner_audio"],
+                chunk["dt"],
+                state=current,
+                correct=correct,
+                enable_partner=enable_partner,
+            )
+            contexts.append(context)
+            states.append(current)
+        if contexts:
+            context_values = torch.stack(contexts, dim=1)
+        else:
+            context_values = None
+        return context_values, states, current
 
 
 class BlendshapeAffectProjector(nn.Module):

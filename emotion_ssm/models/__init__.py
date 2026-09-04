@@ -6,6 +6,7 @@ from .observation import (
     AffectDecoder,
     ObservationEncoder,
     ObservationSupervisionHeads,
+    TemporalAUEncoder,
     build_ema_teacher,
     update_ema,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "EmotionConditionedDualTalk",
     "ObservationEncoder",
     "ObservationSupervisionHeads",
+    "TemporalAUEncoder",
     "SUBSET_MASKS",
     "SUBSET_NAMES",
     "StateFiLM",

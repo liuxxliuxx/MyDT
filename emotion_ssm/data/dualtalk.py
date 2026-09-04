@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Sequence
 
 import librosa
 import numpy as np
@@ -101,3 +101,88 @@ class DualTalkChunkDataset(Dataset):
 
     def __getitem__(self, index: int) -> Dict[str, object]:
         return self.samples[index]
+
+
+class DualTalkDialogueDataset(DualTalkChunkDataset):
+    """Return every consecutive chunk for one directed DualTalk dialogue.
+
+    A sequence is keyed by the target stream name, therefore the two output
+    directions of a conversation remain separate state trajectories.  Chunks
+    are sorted and checked here instead of relying on a shuffled DataLoader to
+    happen to emit adjacent chunks in temporal order.
+    """
+
+    def __init__(
+        self,
+        root: Path,
+        chunk_frames: int = 200,
+        fps: int = 25,
+        include_both_directions: bool = True,
+    ) -> None:
+        super().__init__(root, chunk_frames, fps, include_both_directions)
+        groups: Dict[str, List[Dict[str, object]]] = {}
+        for sample in self.samples:
+            groups.setdefault(str(sample["name"]), []).append(sample)
+        self.dialogues: List[List[Dict[str, object]]] = []
+        for name in sorted(groups):
+            chunks = sorted(groups[name], key=lambda item: int(item["chunk"]))
+            indices = [int(item["chunk"]) for item in chunks]
+            if indices != list(range(len(chunks))):
+                raise ValueError(f"DualTalk chunks for {name} are not consecutive")
+            self.dialogues.append(chunks)
+
+    def __len__(self) -> int:
+        return len(self.dialogues)
+
+    def __getitem__(self, index: int) -> Dict[str, object]:
+        chunks = self.dialogues[index]
+        tensor_fields = (
+            "target_audio",
+            "partner_audio",
+            "target_blendshape",
+            "partner_blendshape",
+            "dt",
+        )
+        item = {
+            name: torch.stack([chunk[name] for chunk in chunks])
+            for name in tensor_fields
+        }
+        item.update(
+            {
+                "name": str(chunks[0]["name"]),
+                "chunk_indices": torch.tensor(
+                    [int(chunk["chunk"]) for chunk in chunks], dtype=torch.long
+                ),
+            }
+        )
+        return item
+
+
+def collate_dualtalk_dialogues(samples: Sequence[Dict[str, object]]) -> Dict[str, object]:
+    """Pad only the chunk axis while preserving every per-chunk tensor value."""
+    if not samples:
+        raise ValueError("Cannot collate an empty DualTalk dialogue batch")
+    length = max(int(sample["dt"].shape[0]) for sample in samples)
+    tensor_fields = (
+        "target_audio",
+        "partner_audio",
+        "target_blendshape",
+        "partner_blendshape",
+        "dt",
+        "chunk_indices",
+    )
+    output: Dict[str, object] = {}
+    for name in tensor_fields:
+        values = [sample[name] for sample in samples]
+        shape = (len(samples), length) + tuple(values[0].shape[1:])
+        fill = -1 if name == "chunk_indices" else 0
+        padded = torch.full(shape, fill, dtype=values[0].dtype)
+        for row, value in enumerate(values):
+            padded[row, : value.shape[0]] = value
+        output[name] = padded
+    mask = torch.zeros(len(samples), length, dtype=torch.bool)
+    for row, sample in enumerate(samples):
+        mask[row, : sample["dt"].shape[0]] = True
+    output["chunk_mask"] = mask
+    output["name"] = [str(sample["name"]) for sample in samples]
+    return output

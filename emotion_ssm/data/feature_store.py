@@ -8,9 +8,11 @@ from torch import Tensor
 
 from .common import (
     EMOTION_NAMES,
+    FACE_MAX_FRAMES,
     DialogueRecord,
     SpeakerVocabulary,
     load_pt,
+    pack_face_sequence,
     pool_face_sequence,
     read_json,
     validate_record,
@@ -280,6 +282,8 @@ class FeatureDialogueStore:
         )
 
         face_vectors = []
+        face_masks = []
+        face_confidences = []
         face_reliability = []
         face_mean = None
         face_std = None
@@ -299,12 +303,29 @@ class FeatureDialogueStore:
         ):
             if face_mean is not None:
                 au = (au.float() - face_mean) / face_std
+            # Keep the frame axis. TemporalAUEncoder uses this mask to ignore
+            # padded/failed OpenFace frames while retaining order information.
+            au = torch.nan_to_num(au.float())
+            confidence = confidence.float().flatten()
+            valid = valid.bool().flatten()
+            if len(confidence) != len(au) or len(valid) != len(au):
+                raise ValueError(f"{dialogue_id}: AU frame metadata length mismatch")
             vector, reliability = pool_face_sequence(au, confidence, valid)
-            face_vectors.append(vector)
+            face_vectors.append(au)
+            face_masks.append(valid)
+            face_confidences.append(confidence.clamp(0.0, 1.0))
             face_reliability.append(reliability)
         if len(face_vectors) != len(utterances):
             raise ValueError(f"{dialogue_id}: face sequence count differs from labels")
-        face = torch.stack(face_vectors)
+        packed = [
+            pack_face_sequence(au, confidence, valid, FACE_MAX_FRAMES)
+            for au, valid, confidence in zip(
+                face_vectors, face_masks, face_confidences
+            )
+        ]
+        face = torch.stack([value[0] for value in packed], dim=0)
+        face_confidence = torch.stack([value[1] for value in packed], dim=0)
+        face_frame_mask = torch.stack([value[2] for value in packed], dim=0)
 
         modality_mask = torch.ones(len(utterances), 3, dtype=torch.bool)
         reliability = torch.ones(len(utterances), 3, dtype=torch.float32)
@@ -369,8 +390,12 @@ class FeatureDialogueStore:
                 )
             role_values.append(role)
             role_to_speaker.setdefault(role, speaker_id)
-        if set(role_to_speaker) != {0, 1}:
-            raise ValueError(f"{dialogue_id}: expected two dialogue roles")
+        # Some EmotionTalk clips contain only one active speaker. Keep the
+        # dyadic schema by representing the silent partner as an unseen role.
+        for missing_role in (0, 1):
+            role_to_speaker.setdefault(
+                missing_role, f"{dialogue_id}:__missing_role_{missing_role}"
+            )
         speaker_ids = torch.tensor(
             [
                 speaker_vocab.encode(self._speaker_key(role_to_speaker[0])),
@@ -404,6 +429,8 @@ class FeatureDialogueStore:
             dataset_id=self.dataset_id,
             audio=audio,
             face=face,
+            face_frame_mask=face_frame_mask,
+            face_confidence=face_confidence,
             text=text,
             modality_mask=modality_mask,
             reliability=reliability,

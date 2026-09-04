@@ -20,6 +20,38 @@ EMOTION_NAMES = (
     "surprise",
 )
 
+# Bounds the temporal AU batch shape.  Long sequences are sampled across their
+# entire duration, so a late facial change is not silently discarded.
+FACE_MAX_FRAMES = 128
+
+
+def pack_face_sequence(
+    au: Tensor, confidence: Tensor, valid: Tensor, max_frames: int = FACE_MAX_FRAMES
+) -> Tuple[Tensor, Tensor, Tensor]:
+    au = torch.as_tensor(au).float()
+    if au.ndim == 1:
+        au = au[None]
+    if au.ndim != 2 or au.shape[-1] != 35:
+        raise ValueError(f"Expected AU sequence [frames, 35], got {tuple(au.shape)}")
+    confidence = torch.nan_to_num(
+        torch.as_tensor(confidence).float().flatten(), nan=0.0, posinf=0.0, neginf=0.0
+    )
+    valid = torch.as_tensor(valid).bool().flatten()
+    if len(confidence) != len(au) or len(valid) != len(au):
+        raise ValueError("AU, confidence and valid lengths do not match")
+    valid = valid & torch.isfinite(au).all(dim=-1)
+    if len(au) > max_frames:
+        indices = torch.linspace(0, len(au) - 1, max_frames).round().long()
+        au, confidence, valid = au[indices], confidence[indices], valid[indices]
+    output = torch.zeros(max_frames, 35, dtype=torch.float32)
+    output_confidence = torch.zeros(max_frames, dtype=torch.float32)
+    output_valid = torch.zeros(max_frames, dtype=torch.bool)
+    length = len(au)
+    output[:length] = torch.nan_to_num(au)
+    output_confidence[:length] = confidence.clamp(0.0, 1.0)
+    output_valid[:length] = valid
+    return output, output_confidence, output_valid
+
 
 def load_pt(path: Path):
     kwargs = {"map_location": "cpu"}
@@ -38,12 +70,18 @@ def pool_face_sequence(au: Tensor, confidence: Tensor, valid: Tensor) -> Tuple[T
         raise ValueError(f"Expected face AU [frames, 35], got {tuple(au.shape)}")
     if len(au) != len(confidence) or len(au) != len(valid):
         raise ValueError("AU, confidence and frame-valid lengths do not match")
-    weight = confidence.float().clamp_min(0.0) * valid.bool().float()
+    confidence = torch.nan_to_num(
+        confidence.float(), nan=0.0, posinf=0.0, neginf=0.0
+    )
+    weight = confidence.clamp(0.0, 1.0) * valid.bool().float()
     denominator = weight.sum()
     if denominator.item() <= 0:
         return torch.zeros(35, dtype=torch.float32), 0.0
     pooled = (au.float() * weight[:, None]).sum(dim=0) / denominator
-    reliability = float((confidence.float() * valid.float()).sum() / valid.sum().clamp_min(1))
+    reliability = float(
+        (confidence.clamp(0.0, 1.0) * valid.float()).sum()
+        / valid.sum().clamp_min(1)
+    )
     return pooled, max(0.0, min(reliability, 1.0))
 
 
@@ -77,6 +115,8 @@ class DialogueRecord:
     dataset_id: int
     audio: Tensor
     face: Tensor
+    face_frame_mask: Tensor
+    face_confidence: Tensor
     text: Tensor
     modality_mask: Tensor
     reliability: Tensor
@@ -101,6 +141,8 @@ def validate_record(record: DialogueRecord) -> None:
     tensors = {
         "audio": record.audio,
         "face": record.face,
+        "face_frame_mask": record.face_frame_mask,
+        "face_confidence": record.face_confidence,
         "text": record.text,
         "modality_mask": record.modality_mask,
         "reliability": record.reliability,
@@ -121,6 +163,13 @@ def validate_record(record: DialogueRecord) -> None:
         raise ValueError(f"{record.dialogue_id}: audio/text feature dimension must be 768")
     if record.face.shape[-1] != 35:
         raise ValueError(f"{record.dialogue_id}: face feature dimension must be 35")
+    if record.face.ndim not in (2, 3):
+        raise ValueError(f"{record.dialogue_id}: face must be [N,35] or [N,T,35]")
+    if record.face.ndim == 3:
+        if record.face_frame_mask.shape != record.face.shape[:2]:
+            raise ValueError(f"{record.dialogue_id}: face_frame_mask shape mismatch")
+        if record.face_confidence.shape != record.face.shape[:2]:
+            raise ValueError(f"{record.dialogue_id}: face_confidence shape mismatch")
     for name in ("audio", "face", "text", "intensity", "vad"):
         if not torch.isfinite(tensors[name]).all():
             raise ValueError(f"{record.dialogue_id}: {name} contains NaN or Inf")

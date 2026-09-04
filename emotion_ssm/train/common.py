@@ -77,6 +77,7 @@ def make_loader(
     train: bool,
     num_workers: int,
     pin_memory: bool,
+    collate_fn=None,
 ) -> Tuple[DataLoader, object]:
     sampler = None
     if context.enabled:
@@ -96,6 +97,7 @@ def make_loader(
         pin_memory=pin_memory and context.device.type == "cuda",
         drop_last=train,
         persistent_workers=num_workers > 0,
+        collate_fn=collate_fn,
     )
     return loader, sampler
 

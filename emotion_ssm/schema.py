@@ -12,7 +12,8 @@ class ObservationOutput:
     """Outputs for K modality subsets.
 
     aff/event/action: [B, K, D], reliability: [B, K, 3],
-    valid_subsets: [B, K].
+    valid_subsets: [B, K]. ``modality_aff`` contains the three per-modality
+    embeddings before subset aggregation when the encoder exposes them.
     """
 
     aff: Tensor
@@ -22,6 +23,14 @@ class ObservationOutput:
     valid_subsets: Tensor
     hidden: Tensor
     reliability_logits: Optional[Tensor] = None
+    # Per-modality affect embeddings in the shared emotion space [B, 3, D].
+    modality_aff: Optional[Tensor] = None
+    # Reliability/presence weights used to aggregate each requested subset [B, K, 3].
+    subset_weights: Optional[Tensor] = None
+    # Student-only predictor outputs used for EMA self-supervision.  Downstream
+    # dynamics always consume ``aff``/``modality_aff``, never these values.
+    ssl_aff: Optional[Tensor] = None
+    modality_ssl_aff: Optional[Tensor] = None
 
     def select(self, subset_index: int) -> "EventObservation":
         return EventObservation(

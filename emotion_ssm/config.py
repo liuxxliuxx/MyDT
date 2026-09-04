@@ -49,9 +49,13 @@ def get_cfg_defaults() -> CN:
     cfg.MODEL.RELATION_DIM = 64
     cfg.MODEL.INFLUENCE_DIM = 128
     cfg.MODEL.INFLUENCE_CHANNELS = 32
-    cfg.MODEL.NUM_DOMAINS = 2
+    # EmotionTalk, IEMOCAP and DualTalk audio-only conditioning use separate
+    # adapters while sharing the affect space.
+    cfg.MODEL.NUM_DOMAINS = 3
     cfg.MODEL.NUM_LAYERS = 2
     cfg.MODEL.NUM_HEADS = 4
+    cfg.MODEL.AU_NUM_LAYERS = 3
+    cfg.MODEL.AU_NUM_HEADS = 4
     cfg.MODEL.DROPOUT = 0.1
     cfg.MODEL.NUM_TIMESCALES = 8
     cfg.MODEL.TAU_MIN = 0.5
@@ -68,6 +72,7 @@ def get_cfg_defaults() -> CN:
     cfg.LOSS.SPEAKER = 0.05
     cfg.LOSS.DOMAIN = 0.05
     cfg.LOSS.DECORRELATION = 0.01
+    cfg.LOSS.VICREG = 0.01
     cfg.LOSS.NEXT_STATE = 1.0
     cfg.LOSS.TRAJECTORY = 0.5
     cfg.LOSS.CORRECTION = 0.05
@@ -126,11 +131,15 @@ def get_cfg_defaults() -> CN:
     cfg.DUALTALK.BLENDSHAPE_DIM = 56
     cfg.DUALTALK.FILM_SCALE = 0.1
     cfg.DUALTALK.FREEZE_STATE_EPOCHS = 10
+    cfg.DUALTALK.FREEZE_BASELINE_EPOCHS = 10
     cfg.DUALTALK.FPS = 25
     cfg.DUALTALK.CHUNK_FRAMES = 200
     cfg.DUALTALK.AUDIO_MODEL = "facebook/wav2vec2-base-960h"
     cfg.DUALTALK.LOCAL_FILES_ONLY = False
     cfg.DUALTALK.JOINT_FINETUNE_LR_SCALE = 0.1
+    cfg.DUALTALK.SYNTHESIS_FINETUNE_LR_SCALE = 0.1
+    # Keep causal state across adjacent chunks while bounding activation memory.
+    cfg.DUALTALK.STATE_BPTT_CHUNKS = 1
     cfg.DUALTALK.RENDER_COMMAND = ""
 
     return cfg

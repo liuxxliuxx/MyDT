@@ -123,8 +123,8 @@ class DyadicEmotionSSM(nn.Module):
             tau_max,
             speaker_delta_scale,
         )
-        self.self_input = nn.Sequential(
-            nn.Linear(observation_dim * 2, state_dim),
+        self.event_to_delta = nn.Sequential(
+            nn.Linear(observation_dim, state_dim),
             nn.GELU(),
             nn.Linear(state_dim, state_dim),
         )
@@ -145,10 +145,18 @@ class DyadicEmotionSSM(nn.Module):
         self.relation_cell = nn.GRUCell(
             state_dim * 2 + observation_dim * 2, relation_dim
         )
-        self.state_to_aff = nn.Linear(state_dim, observation_dim)
-        self.residual_to_state = nn.Sequential(
-            nn.Linear(observation_dim, state_dim),
-            nn.Tanh(),
+        # The default 128-D state and affect observation therefore share exact
+        # coordinates.  Keep learned projections only for small compatibility
+        # models that intentionally use different dimensions.
+        self.state_to_aff = (
+            nn.Identity()
+            if state_dim == observation_dim
+            else nn.Linear(state_dim, observation_dim)
+        )
+        self.residual_to_state = (
+            nn.Identity()
+            if state_dim == observation_dim
+            else nn.Sequential(nn.Linear(observation_dim, state_dim), nn.Tanh())
         )
         self.correction_gate = nn.Sequential(
             nn.Linear(state_dim + observation_dim + 6, state_dim),
@@ -180,7 +188,23 @@ class DyadicEmotionSSM(nn.Module):
         )
         return DyadicState(z=baseline, relation=relation, speaker_ids=speaker_ids)
 
-    def _correct(
+    @staticmethod
+    def _normalize_dt(dt: Tensor, batch_size: int, device, dtype) -> Tensor:
+        """Normalize scalar/[B]/[B,1] intervals to a finite [B] tensor."""
+        value = torch.as_tensor(dt, device=device, dtype=dtype)
+        if value.ndim == 0:
+            value = value.expand(batch_size)
+        elif value.ndim == 2 and value.shape[-1] == 1:
+            value = value[:, 0]
+        elif value.ndim != 1:
+            raise ValueError(f"dt must be scalar, [B] or [B,1], got {tuple(value.shape)}")
+        if value.shape[0] != batch_size:
+            raise ValueError(
+                f"dt batch dimension must be {batch_size}, got {value.shape[0]}"
+            )
+        return torch.nan_to_num(value, nan=0.0, posinf=0.0, neginf=0.0)
+
+    def correct(
         self,
         state: DyadicState,
         observation: EventObservation,
@@ -217,6 +241,10 @@ class DyadicEmotionSSM(nn.Module):
             gate,
         )
 
+    # Kept for checkpoints and downstream callers that used the private helper.
+    def _correct(self, state, observation, active_role, enabled):
+        return self.correct(state, observation, active_role, enabled)
+
     def _directional_influence(
         self,
         offset: Tensor,
@@ -228,11 +256,12 @@ class DyadicEmotionSSM(nn.Module):
         receiver_role = 1 - active_role
         sender_offset = select_role(offset, active_role)
         receiver_offset = select_role(offset, receiver_role)
+        # A and B use independent learned maps. For a mixed batch calculate both
+        # maps and select by active role so each direction remains causal.
         influence_ab, signal_ab, gate_ab = self.direction_ab(
             sender_offset, action, receiver_offset, relation
         )
-        module_ba = self.direction_ab if symmetric else self.direction_ba
-        influence_ba, signal_ba, gate_ba = module_ba(
+        influence_ba, signal_ba, gate_ba = (self.direction_ab if symmetric else self.direction_ba)(
             sender_offset, action, receiver_offset, relation
         )
         choose_ba = active_role.bool()[:, None]
@@ -240,6 +269,70 @@ class DyadicEmotionSSM(nn.Module):
         signal = torch.where(choose_ba, signal_ba, signal_ab)
         gate = torch.where(choose_ba, gate_ba, gate_ab)
         return influence, signal, gate
+
+    def transition(
+        self,
+        state: DyadicState,
+        observation: EventObservation,
+        active_role: Tensor,
+        dt: Tensor,
+        enable_partner: bool = True,
+        fixed_relation: bool = False,
+        symmetric_coupling: bool = False,
+        disable_long_timescales: bool = False,
+    ) -> StepOutput:
+        """Advance a prior state without reading affect evidence.
+
+        Affect is deliberately consumed only by :meth:`correct`; this makes an
+        open-loop rollout invariant to edits of future affect observations.
+        """
+        baseline, tau = self.personal(state.speaker_ids)
+        dt = self._normalize_dt(dt, state.z.shape[0], state.z.device, state.z.dtype)
+        if disable_long_timescales:
+            tau = tau.clamp_max(tau.median(dim=-1, keepdim=True).values)
+        offset = state.z - baseline
+        # Inject the current event and partner action before decay.  The new
+        # evidence therefore contributes for the complete interval ``dt``.
+        active_offset = select_role(offset, active_role)
+        stimulus = self.event_to_delta(observation.event)
+        next_offset = replace_role(offset, active_role, active_offset + stimulus)
+        influence = torch.zeros_like(stimulus)
+        signal = torch.zeros_like(stimulus)
+        influence_gate = torch.zeros(
+            len(stimulus), self.direction_ab.q.out_features,
+            device=stimulus.device, dtype=stimulus.dtype,
+        )
+        if enable_partner:
+            influence, signal, influence_gate = self._directional_influence(
+                next_offset, state.relation, observation.action, active_role, symmetric_coupling
+            )
+            receiver_role = 1 - active_role
+            receiver_offset = select_role(next_offset, receiver_role)
+            next_offset = replace_role(next_offset, receiver_role, receiver_offset + influence)
+        decay = torch.exp(-dt[:, None, None].clamp_min(0.0) / tau.clamp_min(1e-6))
+        next_offset = next_offset * decay
+        relation = state.relation
+        if not fixed_relation:
+            zero_action = torch.zeros_like(observation.action)
+            action_a = torch.where((active_role == 0)[:, None], observation.action, zero_action)
+            action_b = torch.where((active_role == 1)[:, None], observation.action, zero_action)
+            relation_input = torch.cat([next_offset[:, 0], next_offset[:, 1], action_a, action_b], dim=-1)
+            relation = self.relation_cell(relation_input, relation)
+        next_prior = DyadicState(baseline + next_offset, relation, state.speaker_ids)
+        return StepOutput(
+            posterior=state,
+            next_prior=next_prior,
+            correction_gate=torch.zeros_like(stimulus),
+            influence=influence,
+            baseline=baseline,
+            tau=tau,
+            auxiliary={
+                "stimulus": stimulus,
+                "sender_signal": signal,
+                "influence_gate": influence_gate,
+                "decay": decay,
+            },
+        )
 
     def step(
         self,
@@ -253,77 +346,129 @@ class DyadicEmotionSSM(nn.Module):
         symmetric_coupling: bool = False,
         disable_long_timescales: bool = False,
     ) -> StepOutput:
-        posterior, correction_gate = self._correct(
+        posterior, correction_gate = self.correct(
             state, observation, active_role, correct
         )
-        baseline, tau = self.personal(state.speaker_ids)
+        output = self.transition(
+            posterior, observation, active_role, dt, enable_partner,
+            fixed_relation, symmetric_coupling, disable_long_timescales,
+        )
+        output.posterior = posterior
+        output.correction_gate = correction_gate
+        return output
+
+    def step_parallel(
+        self,
+        state: DyadicState,
+        observations: Sequence[EventObservation],
+        dt: Tensor,
+        enable_partner: bool = True,
+        correct: bool = True,
+        fixed_relation: bool = False,
+        symmetric_coupling: bool = False,
+        disable_long_timescales: bool = False,
+    ) -> StepOutput:
+        """Update both roles simultaneously from one common pre-chunk state.
+
+        Both self stimuli and both directional influences are evaluated from
+        the same corrected state.  This avoids introducing an artificial A
+        then B ordering when a DualTalk chunk contains both audio streams.
+        """
+        if len(observations) != 2:
+            raise ValueError("step_parallel expects observations for roles A and B")
+        batch = state.z.shape[0]
+        roles = [
+            torch.zeros(batch, dtype=torch.long, device=state.z.device),
+            torch.ones(batch, dtype=torch.long, device=state.z.device),
+        ]
+        corrected = []
+        gates = []
+        for observation, role in zip(observations, roles):
+            posterior, gate = self.correct(state, observation, role, correct)
+            corrected.append(posterior)
+            gates.append(gate)
+        corrected_state = DyadicState(
+            z=torch.stack([corrected[0].z[:, 0], corrected[1].z[:, 1]], dim=1),
+            relation=state.relation,
+            speaker_ids=state.speaker_ids,
+        )
+        baseline, tau = self.personal(corrected_state.speaker_ids)
+        dt = self._normalize_dt(
+            dt, corrected_state.z.shape[0], corrected_state.z.device, corrected_state.z.dtype
+        )
         if disable_long_timescales:
             tau = tau.clamp_max(tau.median(dim=-1, keepdim=True).values)
 
-        offset = posterior.z - baseline
-        decay = torch.exp(-dt[:, None, None].clamp_min(0.0) / tau.clamp_min(1e-6))
-        next_offset = offset * decay
-        active_offset = select_role(next_offset, active_role)
-        stimulus = self.self_input(
-            torch.cat([observation.aff, observation.event], dim=-1)
-        )
-        next_offset = replace_role(
-            next_offset, active_role, active_offset + stimulus
+        offset = corrected_state.z - baseline
+        stimulus_a = self.event_to_delta(observations[0].event)
+        stimulus_b = self.event_to_delta(observations[1].event)
+        self_offset = torch.stack(
+            [offset[:, 0] + stimulus_a, offset[:, 1] + stimulus_b], dim=1
         )
 
-        influence = torch.zeros_like(stimulus)
-        signal = torch.zeros_like(stimulus)
-        influence_gate = torch.zeros(
-            len(stimulus),
+        influence_to_a = torch.zeros_like(stimulus_a)
+        influence_to_b = torch.zeros_like(stimulus_b)
+        signal_ab = torch.zeros_like(stimulus_a)
+        signal_ba = torch.zeros_like(stimulus_b)
+        gate_ab = torch.zeros(
+            batch,
             self.direction_ab.q.out_features,
-            device=stimulus.device,
-            dtype=stimulus.dtype,
+            device=stimulus_a.device,
+            dtype=stimulus_a.dtype,
         )
+        gate_ba = gate_ab.clone()
         if enable_partner:
-            influence, signal, influence_gate = self._directional_influence(
-                next_offset,
-                posterior.relation,
-                observation.action,
-                active_role,
-                symmetric_coupling,
+            direction_ba = self.direction_ab if symmetric_coupling else self.direction_ba
+            influence_to_b, signal_ab, gate_ab = self.direction_ab(
+                self_offset[:, 0],
+                observations[0].action,
+                self_offset[:, 1],
+                corrected_state.relation,
             )
-            receiver_role = 1 - active_role
-            receiver_offset = select_role(next_offset, receiver_role)
-            next_offset = replace_role(
-                next_offset, receiver_role, receiver_offset + influence
+            influence_to_a, signal_ba, gate_ba = direction_ba(
+                self_offset[:, 1],
+                observations[1].action,
+                self_offset[:, 0],
+                corrected_state.relation,
             )
 
-        relation = posterior.relation
-        if not fixed_relation:
-            zero_action = torch.zeros_like(observation.action)
-            action_a = torch.where(
-                (active_role == 0)[:, None], observation.action, zero_action
-            )
-            action_b = torch.where(
-                (active_role == 1)[:, None], observation.action, zero_action
-            )
-            relation_input = torch.cat(
-                [next_offset[:, 0], next_offset[:, 1], action_a, action_b], dim=-1
-            )
-            relation = self.relation_cell(relation_input, relation)
-
-        next_prior = DyadicState(
-            z=baseline + next_offset,
-            relation=relation,
-            speaker_ids=state.speaker_ids,
+        next_offset = torch.stack(
+            [self_offset[:, 0] + influence_to_a, self_offset[:, 1] + influence_to_b],
+            dim=1,
         )
+        decay = torch.exp(-dt[:, None, None].clamp_min(0.0) / tau.clamp_min(1e-6))
+        next_offset = next_offset * decay
+        if fixed_relation:
+            relation = corrected_state.relation
+        else:
+            relation_input = torch.cat(
+                [
+                    next_offset[:, 0],
+                    next_offset[:, 1],
+                    observations[0].action,
+                    observations[1].action,
+                ],
+                dim=-1,
+            )
+            relation = self.relation_cell(relation_input, corrected_state.relation)
+        merged = DyadicState(baseline + next_offset, relation, state.speaker_ids)
+        influence = (influence_to_a + influence_to_b) * 0.5
         return StepOutput(
-            posterior=posterior,
-            next_prior=next_prior,
-            correction_gate=correction_gate,
+            posterior=corrected_state,
+            next_prior=merged,
+            correction_gate=torch.stack(gates, dim=1).mean(dim=1),
             influence=influence,
             baseline=baseline,
             tau=tau,
             auxiliary={
-                "stimulus": stimulus,
-                "sender_signal": signal,
-                "influence_gate": influence_gate,
                 "decay": decay,
+                "parallel": torch.ones(batch, device=state.z.device),
+                "influence_ab": influence_to_b,
+                "influence_ba": influence_to_a,
+                "sender_signal_ab": signal_ab,
+                "sender_signal_ba": signal_ba,
+                "influence_gate_ab": gate_ab,
+                "influence_gate_ba": gate_ba,
             },
         )
 
@@ -366,15 +511,22 @@ class DyadicEmotionSSM(nn.Module):
                 symmetric_coupling=symmetric_coupling,
                 disable_long_timescales=disable_long_timescales,
             )
-            posterior_relation_values.append(output.posterior.relation)
             valid = valid_mask[:, turn, None, None]
+            posterior = DyadicState(
+                z=torch.where(valid, output.posterior.z, current.z),
+                relation=torch.where(
+                    valid_mask[:, turn, None], output.posterior.relation, current.relation
+                ),
+                speaker_ids=current.speaker_ids,
+            )
+            posterior_relation_values.append(posterior.relation)
             next_z = torch.where(valid, output.next_prior.z, current.z)
             valid_relation = valid_mask[:, turn, None]
             next_relation = torch.where(
                 valid_relation, output.next_prior.relation, current.relation
             )
             current = DyadicState(next_z, next_relation, current.speaker_ids)
-            posterior_values.append(output.posterior.z)
+            posterior_values.append(posterior.z)
             prior_values.append(current.z)
             relation_values.append(current.relation)
             influence_values.append(output.influence)

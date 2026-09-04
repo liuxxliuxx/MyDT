@@ -54,10 +54,16 @@ def flatten_sequence_batch(batch: Mapping[str, Tensor]) -> Dict[str, Tensor]:
     """Convert [B,L,...] observation fields to the encoder's [B*L,...] API."""
     batch_size, length = batch["audio"].shape[:2]
     fields = ("audio", "face", "text", "modality_mask", "reliability", "dataset_id")
-    return {
+    output = {
         name: batch[name].reshape((batch_size * length,) + batch[name].shape[2:])
         for name in fields
     }
+    for name in ("face_frame_mask", "face_confidence"):
+        if name in batch:
+            output[name] = batch[name].reshape(
+                (batch_size * length,) + batch[name].shape[2:]
+            )
+    return output
 
 
 def swap_dialogue_roles(batch: Mapping[str, Tensor], probability: float = 0.5) -> Dict[str, Tensor]:
@@ -109,6 +115,61 @@ def _flatten_event_range(event: EventObservation, start: int, stop: int) -> Even
             None if event.modality_mask is None else flatten(event.modality_mask)
         ),
     )
+
+
+def _flatten_event_windows(
+    event: EventObservation, starts: int, horizon: int
+) -> EventObservation:
+    """Flatten windows ``event[b, s:s+h]`` in ``(b, s)`` order.
+
+    A horizon rollout has one initial state for every valid start position.
+    Slicing ``event[:, offset:offset + starts]`` mixes different starts; this
+    helper keeps each simulated trajectory on its own chronological window.
+    """
+
+    def window(value: Tensor) -> Tensor:
+        # [B, starts, D, horizon] -> [B, starts, horizon, D]
+        values = value[:, : starts + horizon - 1].unfold(1, horizon, 1)
+        values = values.permute(0, 1, 3, 2).contiguous()
+        return values.reshape(-1, values.shape[-1])
+
+    return EventObservation(
+        aff=window(event.aff),
+        event=window(event.event),
+        action=window(event.action),
+        reliability=window(event.reliability),
+        modality_mask=(
+            None if event.modality_mask is None else window(event.modality_mask)
+        ),
+    )
+
+
+def _flatten_windows(value: Tensor, starts: int, horizon: int) -> Tensor:
+    """Flatten ``value[:, s:s+h]`` using the same order as event windows."""
+    values = value[:, : starts + horizon - 1].unfold(1, horizon, 1)
+    if value.ndim == 2:
+        # ``unfold`` returns [B, starts, horizon] for scalar-per-turn fields.
+        # The last dimension is the window length, not the original sequence
+        # length.  Keeping it explicit prevents role/dt/padding windows from
+        # being reshaped with the wrong stride.
+        return values.contiguous().reshape(-1, horizon)
+    values = values.permute(0, 1, 3, 2).contiguous()
+    return values.reshape(-1, values.shape[-1])
+
+
+def _flatten_window_targets(value: Tensor, starts: int, horizon: int) -> Tensor:
+    """Return the target at ``s + horizon`` for every rollout start.
+
+    Initial state ``posterior_z[:, s]`` is advanced with events
+    ``s:s+horizon``.  The resulting state is therefore supervised against the
+    final position of the corresponding ``s:s+horizon+1`` target window.
+    """
+    if value.ndim == 2:
+        windows = value[:, : starts + horizon].unfold(1, horizon + 1, 1)
+        return windows[:, :, -1].contiguous().reshape(-1)
+    windows = value[:, : starts + horizon].unfold(1, horizon + 1, 1)
+    windows = windows.permute(0, 1, 3, 2).contiguous()
+    return windows[:, :, -1].reshape(-1, windows.shape[-1])
 
 
 def _where_state(mask: Tensor, new: DyadicState, old: DyadicState) -> DyadicState:
@@ -234,10 +295,27 @@ class DynamicsTrainingBundle(nn.Module):
             .expand(-1, starts, -1)
             .reshape(batch_size * starts, 2),
         )
+        windowed = _flatten_event_windows(event, starts, horizon)
+        role_windows = _flatten_windows(batch["active_role"], starts, horizon)
+        dt_windows = _flatten_windows(batch["dt_to_next"], starts, horizon)
+        valid_windows = _flatten_windows(batch["valid_mask"], starts, horizon)
+
+        def at_offset(value: Optional[Tensor], offset: int) -> Optional[Tensor]:
+            if value is None:
+                return None
+            width = value.shape[-1]
+            return value.reshape(batch_size * starts, horizon, width)[:, offset]
+
         for offset in range(horizon):
-            observation = _flatten_event_range(event, offset, offset + starts)
-            role = batch["active_role"][:, offset : offset + starts].reshape(-1)
-            dt = batch["dt_to_next"][:, offset : offset + starts].reshape(-1)
+            observation = EventObservation(
+                aff=at_offset(windowed.aff, offset),
+                event=at_offset(windowed.event, offset),
+                action=at_offset(windowed.action, offset),
+                reliability=at_offset(windowed.reliability, offset),
+                modality_mask=at_offset(windowed.modality_mask, offset),
+            )
+            role = role_windows.reshape(batch_size * starts, horizon)[:, offset]
+            dt = dt_windows.reshape(batch_size * starts, horizon)[:, offset]
             output = self.state_model.step(
                 state,
                 observation,
@@ -249,21 +327,31 @@ class DynamicsTrainingBundle(nn.Module):
                 symmetric_coupling=self.symmetric_coupling,
                 disable_long_timescales=self.disable_long_timescales,
             )
-            valid_step = batch["valid_mask"][:, offset : offset + starts].reshape(-1)
+            valid_step = valid_windows.reshape(batch_size * starts, horizon)[:, offset]
             state = _where_state(valid_step, output.next_prior, state)
 
-        target_role = batch["active_role"][:, horizon:].reshape(-1)
+        target_role = _flatten_window_targets(
+            batch["active_role"], starts, horizon
+        )
         predicted_state = select_role(state.z, target_role)
         prediction = self._decode_state(predicted_state)
-        target_valid = (
-            batch["valid_mask"][:, :starts] & batch["valid_mask"][:, horizon:]
-        ).reshape(-1)
+        initial_valid = _flatten_window_targets(
+            batch["valid_mask"], starts, 0
+        ).bool()
+        future_valid = _flatten_window_targets(
+            batch["valid_mask"], starts, horizon
+        ).bool()
+        target_valid = initial_valid & future_valid
         target = {
-            "aff": target_aff[:, horizon:].reshape(-1, target_aff.shape[-1]),
-            "emotion": batch["emotion"][:, horizon:].reshape(-1),
-            "intensity": batch["intensity"][:, horizon:].reshape(-1),
-            "vad": batch["vad"][:, horizon:].reshape(-1, 3),
-            "vad_mask": batch["vad_mask"][:, horizon:].reshape(-1, 3),
+            "aff": _flatten_window_targets(target_aff, starts, horizon),
+            "emotion": _flatten_window_targets(batch["emotion"], starts, horizon),
+            "intensity": _flatten_window_targets(
+                batch["intensity"], starts, horizon
+            ),
+            "vad": _flatten_window_targets(batch["vad"], starts, horizon),
+            "vad_mask": _flatten_window_targets(
+                batch["vad_mask"], starts, horizon
+            ).bool(),
         }
         losses = state_prediction_losses(
             prediction,
@@ -338,55 +426,79 @@ class DynamicsTrainingBundle(nn.Module):
             zero = zero_loss(posterior_z)
             return zero, zero.detach()
 
-        real = self.state_model.step(
-            state,
-            observation,
-            batch["active_role"][sample_index, turn_index],
-            batch["dt_to_next"][sample_index, turn_index],
-            enable_partner=True,
-            correct=False,
-            fixed_relation=self.fixed_relation,
-            symmetric_coupling=self.symmetric_coupling,
-            disable_long_timescales=self.disable_long_timescales,
-        )
-        real_aff = self.state_model.state_to_aff(select_role(real.next_prior.z, receiver_role))
         response_target = target_aff[sample_index, future_index]
-        real_distance = 1.0 - F.cosine_similarity(real_aff, response_target, dim=-1)
-
         count, candidates = matches.indices.shape
-        safe_indices = matches.indices.clamp_min(0)
-        candidate_actions = observation.action[safe_indices]
-        repeat_state = DyadicState(
-            z=state.z[:, None].expand(-1, candidates, -1, -1).reshape(count * candidates, 2, -1),
-            relation=state.relation[:, None].expand(-1, candidates, -1).reshape(count * candidates, -1),
-            speaker_ids=state.speaker_ids[:, None].expand(-1, candidates, -1).reshape(count * candidates, 2),
-        )
-        repeated_observation = EventObservation(
-            aff=observation.aff[:, None].expand(-1, candidates, -1).reshape(count * candidates, -1),
-            event=observation.event[:, None].expand(-1, candidates, -1).reshape(count * candidates, -1),
-            action=candidate_actions.reshape(count * candidates, -1),
-            reliability=observation.reliability[:, None].expand(-1, candidates, -1).reshape(count * candidates, -1),
-            modality_mask=None,
-        )
-        candidate_output = self.state_model.step(
-            repeat_state,
-            repeated_observation,
-            batch["active_role"][sample_index, turn_index][:, None]
-            .expand(-1, candidates)
-            .reshape(-1),
-            batch["dt_to_next"][sample_index, turn_index][:, None]
-            .expand(-1, candidates)
-            .reshape(-1),
-            enable_partner=True,
-            correct=False,
-            fixed_relation=self.fixed_relation,
-            symmetric_coupling=self.symmetric_coupling,
-            disable_long_timescales=self.disable_long_timescales,
-        )
-        candidate_role = receiver_role[:, None].expand(-1, candidates).reshape(-1)
-        candidate_aff = self.state_model.state_to_aff(
-            select_role(candidate_output.next_prior.z, candidate_role)
-        ).reshape(count, candidates, -1)
+
+        def advance(
+            initial: DyadicState,
+            sample: int,
+            start: int,
+            stop: int,
+            replacement_action: Optional[Tensor] = None,
+        ) -> DyadicState:
+            """Simulate until the receiver's next turn without future evidence."""
+            current = initial
+            for turn in range(start, stop):
+                action = event.action[sample : sample + 1, turn]
+                if turn == start and replacement_action is not None:
+                    action = replacement_action[None]
+                step_observation = EventObservation(
+                    aff=event.aff[sample : sample + 1, turn],
+                    event=event.event[sample : sample + 1, turn],
+                    action=action,
+                    reliability=event.reliability[sample : sample + 1, turn],
+                    modality_mask=None,
+                )
+                current = self.state_model.step(
+                    current,
+                    step_observation,
+                    batch["active_role"][sample : sample + 1, turn],
+                    batch["dt_to_next"][sample : sample + 1, turn],
+                    enable_partner=True,
+                    correct=False,
+                    fixed_relation=self.fixed_relation,
+                    symmetric_coupling=self.symmetric_coupling,
+                    disable_long_timescales=self.disable_long_timescales,
+                ).next_prior
+            return current
+
+        real_aff_values = []
+        candidate_aff_values = []
+        for anchor in range(count):
+            sample = int(sample_index[anchor])
+            start = int(turn_index[anchor])
+            stop = int(future_index[anchor])
+            initial = DyadicState(
+                z=state.z[anchor : anchor + 1],
+                relation=state.relation[anchor : anchor + 1],
+                speaker_ids=state.speaker_ids[anchor : anchor + 1],
+            )
+            real_state = advance(initial, sample, start, stop)
+            real_aff_values.append(
+                self.state_model.state_to_aff(
+                    select_role(real_state.z, receiver_role[anchor : anchor + 1])
+                )[0]
+            )
+            row_values = []
+            for candidate in range(candidates):
+                if not bool(matches.valid[anchor, candidate]):
+                    row_values.append(torch.zeros_like(response_target[anchor]))
+                    continue
+                candidate_anchor = int(matches.indices[anchor, candidate])
+                replacement = observation.action[candidate_anchor]
+                candidate_state = advance(
+                    initial, sample, start, stop, replacement_action=replacement
+                )
+                row_values.append(
+                    self.state_model.state_to_aff(
+                        select_role(candidate_state.z, receiver_role[anchor : anchor + 1])
+                    )[0]
+                )
+            candidate_aff_values.append(torch.stack(row_values, dim=0))
+
+        real_aff = torch.stack(real_aff_values, dim=0)
+        candidate_aff = torch.stack(candidate_aff_values, dim=0)
+        real_distance = 1.0 - F.cosine_similarity(real_aff, response_target, dim=-1)
         candidate_distance = 1.0 - F.cosine_similarity(
             candidate_aff,
             response_target[:, None].expand_as(candidate_aff),

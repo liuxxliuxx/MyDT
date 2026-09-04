@@ -13,6 +13,8 @@ from .feature_store import FeatureDialogueStore
 UTTERANCE_FIELDS = (
     "audio",
     "face",
+    "face_frame_mask",
+    "face_confidence",
     "text",
     "modality_mask",
     "reliability",
@@ -26,6 +28,34 @@ UTTERANCE_FIELDS = (
     "end_time",
     "dt_to_next",
 )
+
+
+def _pad_record_faces(records: List[DialogueRecord]) -> None:
+    """Make AU frame dimensions stackable across dialogues in one split."""
+    if not records:
+        return
+    max_frames = max(
+        record.face.shape[1] if record.face.ndim == 3 else 1 for record in records
+    )
+    for record in records:
+        if record.face.ndim == 2:
+            record.face = record.face[:, None, :]
+            record.face_frame_mask = torch.ones(
+                len(record), 1, dtype=torch.bool, device=record.face.device
+            )
+            record.face_confidence = torch.ones(
+                len(record), 1, dtype=torch.float32, device=record.face.device
+            )
+        current = record.face.shape[1]
+        if current == max_frames:
+            continue
+        face = torch.zeros(len(record), max_frames, record.face.shape[-1], dtype=record.face.dtype)
+        mask = torch.zeros(len(record), max_frames, dtype=torch.bool)
+        confidence = torch.zeros(len(record), max_frames, dtype=record.face_confidence.dtype)
+        face[:, :current] = record.face
+        mask[:, :current] = record.face_frame_mask
+        confidence[:, :current] = record.face_confidence
+        record.face, record.face_frame_mask, record.face_confidence = face, mask, confidence
 
 
 class UnifiedUtteranceDataset(Dataset):
@@ -43,6 +73,7 @@ class UnifiedUtteranceDataset(Dataset):
                 record = store.load_dialogue(dialogue_id, speaker_vocab)
                 self.records.append(record)
                 self.index.extend((record_index, i) for i in range(len(record)))
+        _pad_record_faces(self.records)
 
     def __len__(self) -> int:
         return len(self.index)
@@ -97,6 +128,7 @@ class DialogueWindowDataset(Dataset):
                 if not starts or starts[-1] != final_start:
                     starts.append(final_start)
                 self.index.extend((record_index, start) for start in starts)
+        _pad_record_faces(self.records)
 
     def __len__(self) -> int:
         return len(self.index)

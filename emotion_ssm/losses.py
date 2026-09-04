@@ -72,6 +72,20 @@ def decorrelation_loss(first: Tensor, second: Tensor, valid: Tensor) -> Tensor:
     return covariance.square().mean()
 
 
+def vicreg_loss(value: Tensor, valid: Tensor, target_std: float = 1.0) -> Tensor:
+    """Prevent latent collapse without requiring negatives or large batches."""
+    selected = value.reshape(-1, value.shape[-1])[valid.reshape(-1).bool()]
+    if len(selected) < 2:
+        return zero_loss(value)
+    centered = selected - selected.mean(0)
+    std = torch.sqrt(centered.var(0, unbiased=False) + 1e-4)
+    variance = F.relu(target_std - std).mean()
+    covariance = centered.transpose(0, 1) @ centered / max(len(selected) - 1, 1)
+    off_diag = covariance - torch.diag(torch.diagonal(covariance))
+    covariance_penalty = off_diag.square().mean()
+    return variance + covariance_penalty
+
+
 def observation_losses(
     student: ObservationOutput,
     teacher: ObservationOutput,
@@ -82,24 +96,26 @@ def observation_losses(
     subset_masks: Tensor = SUBSET_MASKS,
 ) -> Dict[str, Tensor]:
     target_aff = teacher.aff[:, :1].expand_as(student.aff)
-    target_event = teacher.event[:, :1].expand_as(student.event)
-    target_action = teacher.action[:, :1].expand_as(student.action)
     valid = student.valid_subsets
 
     consistency = zero_loss(student.aff)
+    modal_consistency = zero_loss(student.aff)
     smooth = zero_loss(student.aff)
-    for student_value, target_value in (
-        (student.aff, target_aff),
-        (student.event, target_event),
-        (student.action, target_action),
-    ):
-        cosine = 1.0 - F.cosine_similarity(student_value, target_value, dim=-1)
-        consistency = consistency + masked_mean(cosine, valid)
-        smooth = smooth + masked_mean(
-            F.smooth_l1_loss(student_value, target_value, reduction="none"), valid
+    predicted_aff = student.ssl_aff if student.ssl_aff is not None else student.aff
+    cosine = 1.0 - F.cosine_similarity(predicted_aff, target_aff, dim=-1)
+    consistency = masked_mean(cosine, valid)
+    smooth = masked_mean(
+        F.smooth_l1_loss(predicted_aff, target_aff, reduction="none"), valid
+    )
+    if student.modality_ssl_aff is not None:
+        modal_target = teacher.aff[:, :1].expand(
+            -1, student.modality_ssl_aff.shape[1], -1
         )
-    consistency /= 3.0
-    smooth /= 3.0
+        modal_valid = batch["modality_mask"].bool()
+        modal_cosine = 1.0 - F.cosine_similarity(
+            student.modality_ssl_aff, modal_target, dim=-1
+        )
+        modal_consistency = masked_mean(modal_cosine, modal_valid)
 
     num_subsets = student.aff.shape[1]
     emotion_target = batch["emotion"][:, None].expand(-1, num_subsets)
@@ -112,11 +128,15 @@ def observation_losses(
     vad_target = batch["vad"][:, None, :].expand(-1, num_subsets, -1)
     vad_mask = batch["vad_mask"][:, None, :].expand_as(vad_target)
     vad_mask = vad_mask & valid[:, :, None]
-    vad_mse = masked_mse(predictions["vad"], vad_target, vad_mask)
-    vad_ccc = concordance_correlation_coefficient(
-        predictions["vad"], vad_target, vad_mask
-    )
-    vad = vad_mse + (1.0 - vad_ccc)
+    if vad_mask.any():
+        vad_mse = masked_mse(predictions["vad"], vad_target, vad_mask)
+        vad_ccc = concordance_correlation_coefficient(
+            predictions["vad"], vad_target, vad_mask
+        )
+        vad = vad_mse + (1.0 - vad_ccc)
+    else:
+        vad_ccc = zero_loss(predictions["vad"])
+        vad = vad_ccc
 
     speaker_target = batch["speaker"][:, None].expand(-1, num_subsets)
     speaker = masked_cross_entropy(
@@ -129,7 +149,14 @@ def observation_losses(
 
     actual = batch["modality_mask"][:, None, :]
     requested = subset_masks.to(actual.device)[None, :, :]
-    reliability_target = (actual & requested).float()
+    quality = batch.get("reliability")
+    if quality is None:
+        quality = torch.ones_like(actual, dtype=student.aff.dtype)
+    # Confidence is a soft target.  A present but unreliable modality should
+    # not be treated the same as a perfectly observed modality.
+    reliability_target = quality[:, None, :].to(student.aff.dtype) * (
+        actual & requested
+    ).float()
     reliability_logits = student.reliability_logits
     if reliability_logits is None:
         # Compatibility for externally constructed ObservationOutput values.
@@ -149,9 +176,10 @@ def observation_losses(
         + decorrelation_loss(student.aff, student.action, valid)
         + decorrelation_loss(student.event, student.action, valid)
     ) / 3.0
+    vicreg = vicreg_loss(student.aff, valid)
 
     total = (
-        cfg.LOSS.UNIFY * consistency
+        cfg.LOSS.UNIFY * (consistency + 0.5 * modal_consistency)
         + cfg.LOSS.SMOOTH_L1 * smooth
         + cfg.LOSS.EMOTION * emotion
         + cfg.LOSS.INTENSITY * intensity
@@ -160,10 +188,12 @@ def observation_losses(
         + cfg.LOSS.SPEAKER * speaker
         + cfg.LOSS.DOMAIN * domain
         + cfg.LOSS.DECORRELATION * decorrelation
+        + getattr(cfg.LOSS, "VICREG", cfg.LOSS.DECORRELATION) * vicreg
     )
     return {
         "total": total,
         "consistency": consistency,
+        "modal_consistency": modal_consistency,
         "smooth_l1": smooth,
         "emotion": emotion,
         "intensity": intensity,
@@ -173,6 +203,7 @@ def observation_losses(
         "domain": domain,
         "reliability": reliability,
         "decorrelation": decorrelation,
+        "vicreg": vicreg,
     }
 
 
