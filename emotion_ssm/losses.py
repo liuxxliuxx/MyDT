@@ -94,6 +94,7 @@ def observation_losses(
     class_weights: Tensor,
     cfg,
     subset_masks: Tensor = SUBSET_MASKS,
+    supervised: bool = True,
 ) -> Dict[str, Tensor]:
     target_aff = teacher.aff[:, :1].expand_as(student.aff)
     valid = student.valid_subsets
@@ -176,18 +177,25 @@ def observation_losses(
         + decorrelation_loss(student.aff, student.action, valid)
         + decorrelation_loss(student.event, student.action, valid)
     ) / 3.0
-    vicreg = vicreg_loss(student.aff, valid)
+    if student.raw_aff is not None:
+        vicreg = vicreg_loss(student.raw_aff, valid, target_std=1.0)
+    else:
+        # Backward-compatible fallback for externally constructed outputs.
+        target_std = float(student.aff.shape[-1]) ** -0.5
+        vicreg = vicreg_loss(student.aff, valid, target_std=target_std)
+
+    supervised_scale = 1.0 if supervised else 0.0
 
     total = (
         cfg.LOSS.UNIFY * (consistency + 0.5 * modal_consistency)
         + cfg.LOSS.SMOOTH_L1 * smooth
-        + cfg.LOSS.EMOTION * emotion
-        + cfg.LOSS.INTENSITY * intensity
-        + cfg.LOSS.VAD * vad
-        + cfg.LOSS.RELIABILITY * reliability
-        + cfg.LOSS.SPEAKER * speaker
-        + cfg.LOSS.DOMAIN * domain
-        + cfg.LOSS.DECORRELATION * decorrelation
+        + supervised_scale * cfg.LOSS.EMOTION * emotion
+        + supervised_scale * cfg.LOSS.INTENSITY * intensity
+        + supervised_scale * cfg.LOSS.VAD * vad
+        + supervised_scale * cfg.LOSS.RELIABILITY * reliability
+        + supervised_scale * cfg.LOSS.SPEAKER * speaker
+        + supervised_scale * cfg.LOSS.DOMAIN * domain
+        + supervised_scale * cfg.LOSS.DECORRELATION * decorrelation
         + getattr(cfg.LOSS, "VICREG", cfg.LOSS.DECORRELATION) * vicreg
     )
     return {

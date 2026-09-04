@@ -31,6 +31,10 @@ class ObservationOutput:
     # dynamics always consume ``aff``/``modality_aff``, never these values.
     ssl_aff: Optional[Tensor] = None
     modality_ssl_aff: Optional[Tensor] = None
+    # Unnormalised affect coordinates are retained for variance/covariance
+    # regularisation. Cosine objectives and dynamics continue to consume aff.
+    raw_aff: Optional[Tensor] = None
+    raw_modality_aff: Optional[Tensor] = None
 
     def select(self, subset_index: int) -> "EventObservation":
         return EventObservation(

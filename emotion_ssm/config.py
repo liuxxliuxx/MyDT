@@ -98,6 +98,7 @@ def get_cfg_defaults() -> CN:
     cfg.TRAIN.GRAD_ACCUMULATION = 1
     cfg.TRAIN.EMA_DECAY = 0.996
     cfg.TRAIN.GRL_WARMUP_EPOCHS = 10.0
+    cfg.TRAIN.SSL_ONLY_EPOCHS = 10
     cfg.TRAIN.AMP = True
     cfg.TRAIN.LOG_INTERVAL = 20
     cfg.TRAIN.SAVE_EVERY = 1
@@ -111,9 +112,19 @@ def get_cfg_defaults() -> CN:
     cfg.TRAIN.DRY_RUN_TRAIN_BATCHES = 2
     cfg.TRAIN.DRY_RUN_VAL_BATCHES = 1
 
+    cfg.TRAIN.AUGMENT = CN()
+    cfg.TRAIN.AUGMENT.ENABLED = True
+    cfg.TRAIN.AUGMENT.AUDIO_NOISE_STD = 0.01
+    cfg.TRAIN.AUGMENT.AUDIO_MASK_RATIO = 0.10
+    cfg.TRAIN.AUGMENT.FACE_MASK_RATIO = 0.15
+    cfg.TRAIN.AUGMENT.TEXT_DROPOUT = 0.10
+    cfg.TRAIN.AUGMENT.MODALITY_DROPOUT = 0.15
+    cfg.TRAIN.AUGMENT.RELIABILITY_JITTER = 0.10
+
     cfg.DYNAMICS = CN()
     cfg.DYNAMICS.HORIZONS = [1, 2, 4, 8, 16, 32]
     cfg.DYNAMICS.CORRECTION_MODE = "teacher_forced"
+    cfg.DYNAMICS.ROLLOUT_MODE = "conditional"
     cfg.DYNAMICS.ENABLE_PARTNER = True
     cfg.DYNAMICS.FIXED_RELATION = False
     cfg.DYNAMICS.SYMMETRIC_COUPLING = False
@@ -144,7 +155,10 @@ def get_cfg_defaults() -> CN:
     cfg.DUALTALK.JOINT_FINETUNE_LR_SCALE = 0.1
     cfg.DUALTALK.SYNTHESIS_FINETUNE_LR_SCALE = 0.1
     # Keep causal state across adjacent chunks while bounding activation memory.
-    cfg.DUALTALK.STATE_BPTT_CHUNKS = 1
+    cfg.DUALTALK.STATE_BPTT_CHUNKS = 4
+    cfg.DUALTALK.ADAPTER_INIT_SOURCE = 0
+    cfg.DUALTALK.ADAPTER_DOMAIN_ID = 2
+    cfg.DUALTALK.SPEECH_RMS_THRESHOLD = 1e-4
     cfg.DUALTALK.RENDER_COMMAND = ""
 
     return cfg

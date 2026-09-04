@@ -155,6 +155,8 @@ def test_dualtalk_wav_npz_fixture(tmp_path: Path):
     dataset = DualTalkChunkDataset(tmp_path, chunk_frames=5, fps=25)
     assert len(dataset) == 2
     assert dataset[0]["target_blendshape"].shape == (5, 56)
+    assert not dataset[0]["target_speech_active"]
+    assert not dataset[0]["partner_speech_active"]
 
 
 def test_dualtalk_dialogue_dataset_preserves_chunk_order_and_padding(tmp_path: Path):

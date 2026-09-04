@@ -23,7 +23,10 @@ DUALTALK:
   FREEZE_BASELINE_EPOCHS: 10
   JOINT_FINETUNE_LR_SCALE: 0.1
   SYNTHESIS_FINETUNE_LR_SCALE: 0.1
-  # State values carry across adjacent chunks; detach every chunk by default.
-  STATE_BPTT_CHUNKS: 1
+  # State values carry across adjacent chunks; truncate credit assignment every 4 chunks.
+  STATE_BPTT_CHUNKS: 4
+  ADAPTER_INIT_SOURCE: 0
+  ADAPTER_DOMAIN_ID: 2
+  SPEECH_RMS_THRESHOLD: 0.0001
   FPS: 25
   CHUNK_FRAMES: 200

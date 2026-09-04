@@ -23,6 +23,15 @@ def normalize_waveform(waveform: np.ndarray) -> Tensor:
     return (value - value.mean()) / value.std().clamp_min(1e-6)
 
 
+def speech_is_active(waveform: np.ndarray, rms_threshold: float) -> bool:
+    """Energy VAD on the unnormalised chunk, before silence loses its scale."""
+    if waveform.size == 0:
+        return False
+    finite = np.nan_to_num(waveform.astype(np.float32, copy=False))
+    rms = float(np.sqrt(np.mean(np.square(finite), dtype=np.float64)))
+    return rms >= float(rms_threshold)
+
+
 class DualTalkChunkDataset(Dataset):
     """Read paired DualTalk WAV/FLAME files and expose fixed 200-frame chunks."""
 
@@ -32,6 +41,7 @@ class DualTalkChunkDataset(Dataset):
         chunk_frames: int = 200,
         fps: int = 25,
         include_both_directions: bool = True,
+        speech_rms_threshold: float = 1e-4,
     ) -> None:
         self.root = Path(root)
         self.chunk_frames = chunk_frames
@@ -74,15 +84,19 @@ class DualTalkChunkDataset(Dataset):
             for chunk in range(num_chunks):
                 frame_start = chunk * chunk_frames
                 audio_start = chunk * audio_samples
+                target_chunk = target_audio[audio_start : audio_start + audio_samples]
+                partner_chunk = partner_audio[audio_start : audio_start + audio_samples]
                 self.samples.append(
                     {
                         "name": target_npz.stem,
                         "chunk": chunk,
-                        "target_audio": normalize_waveform(
-                            target_audio[audio_start : audio_start + audio_samples]
+                        "target_audio": normalize_waveform(target_chunk),
+                        "partner_audio": normalize_waveform(partner_chunk),
+                        "target_speech_active": torch.tensor(
+                            speech_is_active(target_chunk, speech_rms_threshold)
                         ),
-                        "partner_audio": normalize_waveform(
-                            partner_audio[audio_start : audio_start + audio_samples]
+                        "partner_speech_active": torch.tensor(
+                            speech_is_active(partner_chunk, speech_rms_threshold)
                         ),
                         "target_blendshape": torch.from_numpy(
                             target_bs[frame_start : frame_start + chunk_frames]
@@ -118,8 +132,11 @@ class DualTalkDialogueDataset(DualTalkChunkDataset):
         chunk_frames: int = 200,
         fps: int = 25,
         include_both_directions: bool = True,
+        speech_rms_threshold: float = 1e-4,
     ) -> None:
-        super().__init__(root, chunk_frames, fps, include_both_directions)
+        super().__init__(
+            root, chunk_frames, fps, include_both_directions, speech_rms_threshold
+        )
         groups: Dict[str, List[Dict[str, object]]] = {}
         for sample in self.samples:
             groups.setdefault(str(sample["name"]), []).append(sample)
@@ -142,6 +159,8 @@ class DualTalkDialogueDataset(DualTalkChunkDataset):
             "target_blendshape",
             "partner_blendshape",
             "dt",
+            "target_speech_active",
+            "partner_speech_active",
         )
         item = {
             name: torch.stack([chunk[name] for chunk in chunks])
@@ -169,6 +188,8 @@ def collate_dualtalk_dialogues(samples: Sequence[Dict[str, object]]) -> Dict[str
         "target_blendshape",
         "partner_blendshape",
         "dt",
+        "target_speech_active",
+        "partner_speech_active",
         "chunk_indices",
     )
     output: Dict[str, object] = {}

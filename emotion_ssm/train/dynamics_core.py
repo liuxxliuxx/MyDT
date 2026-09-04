@@ -196,6 +196,9 @@ class DynamicsTrainingBundle(nn.Module):
         self.decoder = decoder
         self.horizons = tuple(int(value) for value in cfg.DYNAMICS.HORIZONS)
         self.correction_mode = str(cfg.DYNAMICS.CORRECTION_MODE)
+        self.rollout_mode = str(cfg.DYNAMICS.ROLLOUT_MODE)
+        if self.rollout_mode not in {"conditional", "open_loop"}:
+            raise ValueError("DYNAMICS.ROLLOUT_MODE must be conditional or open_loop")
         self.fixed_relation = bool(cfg.DYNAMICS.FIXED_RELATION)
         self.symmetric_coupling = bool(cfg.DYNAMICS.SYMMETRIC_COUPLING)
         self.disable_long_timescales = bool(cfg.DYNAMICS.DISABLE_LONG_TIMESCALES)
@@ -321,7 +324,11 @@ class DynamicsTrainingBundle(nn.Module):
         target_aff: Tensor,
         class_weights: Tensor,
         enable_partner: bool,
+        rollout_mode: Optional[str] = None,
     ) -> Tuple[Dict[str, Tensor], Tensor]:
+        rollout_mode = self.rollout_mode if rollout_mode is None else rollout_mode
+        if rollout_mode not in {"conditional", "open_loop"}:
+            raise ValueError("rollout_mode must be conditional or open_loop")
         batch_size, length = batch["valid_mask"].shape
         starts = length - horizon
         if starts <= 0:
@@ -346,11 +353,23 @@ class DynamicsTrainingBundle(nn.Module):
             return value.reshape(batch_size * starts, horizon, width)[:, offset]
 
         for offset in range(horizon):
+            affect = at_offset(windowed.aff, offset)
+            semantic_event = at_offset(windowed.event, offset)
+            action = at_offset(windowed.action, offset)
+            reliability = at_offset(windowed.reliability, offset)
+            # The first transition uses information available at the rollout
+            # origin. Later open-loop transitions are a no-event/no-action
+            # baseline and therefore cannot inspect future observations.
+            if rollout_mode == "open_loop" and offset > 0:
+                affect = torch.zeros_like(affect)
+                semantic_event = torch.zeros_like(semantic_event)
+                action = torch.zeros_like(action)
+                reliability = torch.zeros_like(reliability)
             observation = EventObservation(
-                aff=at_offset(windowed.aff, offset),
-                event=at_offset(windowed.event, offset),
-                action=at_offset(windowed.action, offset),
-                reliability=at_offset(windowed.reliability, offset),
+                aff=affect,
+                event=semantic_event,
+                action=action,
+                reliability=reliability,
                 modality_mask=at_offset(windowed.modality_mask, offset),
             )
             role = role_windows.reshape(batch_size * starts, horizon)[:, offset]

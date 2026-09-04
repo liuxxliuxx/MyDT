@@ -59,6 +59,17 @@ class DomainProjector(nn.Module):
         gather_index = domain[:, None, None].expand(-1, 1, candidates.shape[-1])
         return candidates.gather(1, gather_index).squeeze(1)
 
+    def copy_adapter(self, source: int, destination: int) -> None:
+        if source == destination:
+            return
+        if not (0 <= source < len(self.adapters)) or not (
+            0 <= destination < len(self.adapters)
+        ):
+            raise ValueError("adapter index is outside the configured domain range")
+        self.adapters[destination].load_state_dict(
+            copy.deepcopy(self.adapters[source].state_dict())
+        )
+
 
 class TemporalAUEncoder(nn.Module):
     """Encode AU frames with positional information and mask-safe pooling."""
@@ -163,7 +174,9 @@ class TemporalAUEncoder(nn.Module):
         empty = ~safe_mask.any(dim=1)
         if empty.any():
             safe_mask[empty, 0] = True
-        clean = torch.nan_to_num(face) * confidence[..., None]
+        # Confidence enters the attention logits below. Multiplying the input
+        # as well would apply it twice and over-suppress medium-confidence AUs.
+        clean = torch.nan_to_num(face)
         if empty.any():
             clean = clean.clone()
             clean[empty, 0] = 0
@@ -295,12 +308,8 @@ class ObservationEncoder(nn.Module):
         face_token = self.face_adapter(face_token, domain)
         projected = torch.stack([audio_token, face_token, text_token], dim=1)
 
-        # Per-modality affect lives in a shared 128-D space.  Normalize before
-        # aggregation so reliability changes the evidence mixture, not its
-        # scale.
-        modality_aff = F.normalize(
-            self.shared_affect_projector(projected), dim=-1
-        )
+        raw_modality_aff = self.shared_affect_projector(projected)
+        modality_aff = F.normalize(raw_modality_aff, dim=-1)
         batch_size = len(audio)
         num_subsets = len(subset_masks)
         present = actual_mask[:, None, :] & subset_masks[None, :, :]
@@ -316,10 +325,11 @@ class ObservationEncoder(nn.Module):
         subset_weights = subset_weights / subset_weights.sum(
             dim=-1, keepdim=True
         ).clamp_min(1e-6)
-        aff = torch.einsum("bkm,bmd->bkd", subset_weights, modality_aff)
-        aff = F.normalize(aff, dim=-1) * valid_subsets[..., None].to(aff.dtype)
-        ssl_aff = self.ssl_predictor(aff)
-        modality_ssl_aff = self.ssl_predictor(modality_aff)
+        raw_aff = torch.einsum("bkm,bmd->bkd", subset_weights, raw_modality_aff)
+        raw_aff = raw_aff * valid_subsets[..., None].to(raw_aff.dtype)
+        aff = F.normalize(raw_aff, dim=-1) * valid_subsets[..., None].to(raw_aff.dtype)
+        ssl_aff = F.normalize(self.ssl_predictor(aff), dim=-1)
+        modality_ssl_aff = F.normalize(self.ssl_predictor(modality_aff), dim=-1)
 
         flat_present = present.reshape(batch_size * num_subsets, 3)
         projected_for_fusion = projected + self.modality_embedding
@@ -359,7 +369,14 @@ class ObservationEncoder(nn.Module):
             subset_weights=subset_weights,
             ssl_aff=ssl_aff,
             modality_ssl_aff=modality_ssl_aff,
+            raw_aff=raw_aff,
+            raw_modality_aff=raw_modality_aff,
         )
+
+    def copy_domain_adapters(self, source: int, destination: int) -> None:
+        """Seed an unseen domain from a trained domain without sharing weights."""
+        for projector in (self.audio_adapter, self.face_adapter, self.text_adapter):
+            projector.copy_adapter(source, destination)
 
 
 class _GradientReversal(torch.autograd.Function):

@@ -40,6 +40,75 @@ from emotion_ssm.utils.checkpoint import (
 from emotion_ssm.utils.distributed import init_distributed, unwrap_model
 
 
+def _mask_feature_spans(value: torch.Tensor, ratio: float) -> torch.Tensor:
+    """Mask one contiguous feature span per sample in an offline embedding."""
+    if ratio <= 0.0:
+        return value
+    width = value.shape[-1]
+    span = min(max(int(round(width * ratio)), 1), width)
+    output = value.clone()
+    starts = torch.randint(0, width - span + 1, (len(value),), device=value.device)
+    for row, start in enumerate(starts.tolist()):
+        output[row, start : start + span] = 0
+    return output
+
+
+def augment_student_batch(batch: Mapping[str, torch.Tensor], cfg) -> Dict[str, torch.Tensor]:
+    """Create a noisy student view while leaving the EMA teacher batch clean."""
+    output = dict(batch)
+    options = cfg.TRAIN.AUGMENT
+    if not options.ENABLED:
+        return output
+
+    audio = batch["audio"]
+    output["audio"] = _mask_feature_spans(audio, options.AUDIO_MASK_RATIO)
+    if options.AUDIO_NOISE_STD > 0:
+        output["audio"] = output["audio"] + torch.randn_like(audio) * float(
+            options.AUDIO_NOISE_STD
+        )
+
+    text = batch["text"]
+    if options.TEXT_DROPOUT > 0:
+        keep = torch.rand_like(text) >= float(options.TEXT_DROPOUT)
+        output["text"] = text * keep.to(text.dtype)
+
+    if "face_frame_mask" in batch and batch["face"].ndim == 3:
+        frame_mask = batch["face_frame_mask"].clone().bool()
+        ratio = float(options.FACE_MASK_RATIO)
+        if ratio > 0:
+            for row in range(len(frame_mask)):
+                valid_indices = frame_mask[row].nonzero(as_tuple=False).flatten()
+                if len(valid_indices) <= 1:
+                    continue
+                span = min(
+                    max(int(round(len(valid_indices) * ratio)), 1),
+                    len(valid_indices) - 1,
+                )
+                start = int(torch.randint(0, len(valid_indices) - span + 1, (), device=frame_mask.device))
+                frame_mask[row, valid_indices[start : start + span]] = False
+        output["face_frame_mask"] = frame_mask
+
+    actual = batch["modality_mask"].clone().bool()
+    drop_probability = float(options.MODALITY_DROPOUT)
+    if drop_probability > 0:
+        dropped = (torch.rand_like(actual.float()) < drop_probability) & actual
+        augmented_mask = actual & ~dropped
+        empty = ~augmented_mask.any(dim=-1)
+        for row in empty.nonzero(as_tuple=False).flatten().tolist():
+            available = actual[row].nonzero(as_tuple=False).flatten()
+            if len(available):
+                choice = available[torch.randint(len(available), (), device=actual.device)]
+                augmented_mask[row, choice] = True
+        output["modality_mask"] = augmented_mask
+
+    if "reliability" in batch and options.RELIABILITY_JITTER > 0:
+        jitter = (torch.rand_like(batch["reliability"]) * 2.0 - 1.0) * float(
+            options.RELIABILITY_JITTER
+        )
+        output["reliability"] = (batch["reliability"] + jitter).clamp(0.0, 1.0)
+    return output
+
+
 @torch.no_grad()
 def validate(bundle, loader, device, context, max_batches: int = 0) -> Dict[str, float]:
     bundle.eval()
@@ -177,13 +246,14 @@ def main() -> None:
             if cfg.TRAIN.DRY_RUN and batch_index >= cfg.TRAIN.DRY_RUN_TRAIN_BATCHES:
                 break
             batch = move_to_device(raw_batch, context.device)
+            student_batch = augment_student_batch(batch, cfg)
             progress = (epoch + batch_index / max(len(train_loader), 1)) / max(
                 cfg.TRAIN.EPOCHS, 1
             )
             strength = grl_alpha(progress, warmup_fraction)
             with autocast(enabled=cfg.TRAIN.AMP and context.device.type == "cuda"):
                 output, predictions = bundle(
-                    batch, SUBSET_MASKS.to(context.device), strength
+                    student_batch, SUBSET_MASKS.to(context.device), strength
                 )
                 with torch.no_grad():
                     teacher_output = teacher(
@@ -193,10 +263,11 @@ def main() -> None:
                     output,
                     teacher_output,
                     predictions,
-                    batch,
+                    student_batch,
                     class_weights,
                     cfg,
                     SUBSET_MASKS.to(context.device),
+                    supervised=epoch >= cfg.TRAIN.SSL_ONLY_EPOCHS,
                 )
                 scaled_loss = losses["total"] / cfg.TRAIN.GRAD_ACCUMULATION
             scaler.scale(scaled_loss).backward()
@@ -234,7 +305,14 @@ def main() -> None:
             cfg.TRAIN.DRY_RUN_VAL_BATCHES if cfg.TRAIN.DRY_RUN else 0,
         )
         score = val_metrics["mean_subset_f1"]
-        metrics = {"epoch": epoch + 1, **totals, **val_metrics}
+        metrics = {
+            "epoch": epoch + 1,
+            "training_stage": (
+                "ssl" if epoch < cfg.TRAIN.SSL_ONLY_EPOCHS else "supervised"
+            ),
+            **totals,
+            **val_metrics,
+        }
         if context.is_main:
             append_metrics(run_dir / "metrics.jsonl", metrics)
             print(json.dumps(metrics, ensure_ascii=False))

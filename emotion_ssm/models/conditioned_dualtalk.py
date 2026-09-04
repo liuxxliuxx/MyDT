@@ -102,7 +102,13 @@ class EmotionConditionedDualTalk(nn.Module):
 class AudioOnlyStateObserver(nn.Module):
     """Extract Wav2Vec2-Base features and invoke the A-only observation path."""
 
-    def __init__(self, observation_encoder, model_name: str, local_files_only: bool) -> None:
+    def __init__(
+        self,
+        observation_encoder,
+        model_name: str,
+        local_files_only: bool,
+        dataset_id: int = 2,
+    ) -> None:
         super().__init__()
         try:
             from transformers import Wav2Vec2Model
@@ -111,10 +117,21 @@ class AudioOnlyStateObserver(nn.Module):
         self.backbone = Wav2Vec2Model.from_pretrained(
             model_name, local_files_only=local_files_only
         )
-        self.backbone.feature_extractor._freeze_parameters()
+        # The acoustic backbone remains a fixed feature extractor throughout
+        # DualTalk training. Domain adaptation happens in adapter ``dataset_id``.
+        self.backbone.requires_grad_(False)
+        self.backbone.eval()
         self.observation_encoder = observation_encoder
+        self.dataset_id = int(dataset_id)
 
-    def forward(self, waveform: Tensor, dataset_id: int = 2) -> EventObservation:
+    def train(self, mode: bool = True):
+        super().train(mode)
+        self.backbone.eval()
+        return self
+
+    def forward(self, waveform: Tensor, dataset_id: Optional[int] = None) -> EventObservation:
+        if dataset_id is None:
+            dataset_id = self.dataset_id
         attention_mask = torch.ones_like(waveform, dtype=torch.long)
         hidden = self.backbone(
             waveform, attention_mask=attention_mask
@@ -163,6 +180,8 @@ class DyadicAudioConditioner(nn.Module):
         state: Optional[DyadicState] = None,
         correct: bool = True,
         enable_partner: bool = True,
+        target_speech_active: Optional[Tensor] = None,
+        partner_speech_active: Optional[Tensor] = None,
     ) -> Tuple[Tensor, DyadicState, Dict[str, Tensor]]:
         batch_size = len(audio_target)
         if state is None:
@@ -172,15 +191,54 @@ class DyadicAudioConditioner(nn.Module):
             state = self.state_model.initialize(speaker_ids)
         target_observation = self.audio_observer(audio_target)
         partner_observation = self.audio_observer(audio_partner)
+        if target_speech_active is None:
+            target_speech_active = audio_target.square().mean(dim=-1) > 1e-8
+        if partner_speech_active is None:
+            partner_speech_active = audio_partner.square().mean(dim=-1) > 1e-8
+        target_speech_active = target_speech_active.reshape(-1).bool()
+        partner_speech_active = partner_speech_active.reshape(-1).bool()
         if hasattr(self.state_model, "step_parallel"):
-            output = self.state_model.step_parallel(
+            interval = dt.reshape(-1).to(audio_target.dtype)
+            both_output = self.state_model.step_parallel(
                 state,
                 (target_observation, partner_observation),
-                dt.reshape(-1).to(audio_target.dtype),
+                interval,
                 enable_partner=enable_partner,
                 correct=correct,
             )
-            final_state = output.next_prior
+            target_output = self.state_model.step(
+                state,
+                target_observation,
+                torch.zeros(batch_size, dtype=torch.long, device=audio_target.device),
+                interval,
+                enable_partner=enable_partner,
+                correct=correct,
+            )
+            partner_output = self.state_model.step(
+                state,
+                partner_observation,
+                torch.ones(batch_size, dtype=torch.long, device=audio_target.device),
+                interval,
+                enable_partner=enable_partner,
+                correct=correct,
+            )
+            final_state = self.state_model.decay_only(state, interval)
+
+            def choose(mask: Tensor, candidate: DyadicState, current: DyadicState):
+                return DyadicState(
+                    z=torch.where(mask[:, None, None], candidate.z, current.z),
+                    relation=torch.where(
+                        mask[:, None], candidate.relation, current.relation
+                    ),
+                    speaker_ids=current.speaker_ids,
+                )
+
+            target_only = target_speech_active & ~partner_speech_active
+            partner_only = partner_speech_active & ~target_speech_active
+            both = target_speech_active & partner_speech_active
+            final_state = choose(target_only, target_output.next_prior, final_state)
+            final_state = choose(partner_only, partner_output.next_prior, final_state)
+            final_state = choose(both, both_output.next_prior, final_state)
         else:
             # Compatibility path for tiny external test doubles.
             half_dt = dt.reshape(-1).to(audio_target.dtype) * 0.5
@@ -203,6 +261,8 @@ class DyadicAudioConditioner(nn.Module):
             "partner_aff": partner_observation.aff,
             "target_state_aff": self.state_model.state_to_aff(final_state.z[:, 0]),
             "partner_state_aff": self.state_model.state_to_aff(final_state.z[:, 1]),
+            "target_speech_active": target_speech_active,
+            "partner_speech_active": partner_speech_active,
         }
 
     def rollout_chunks(
@@ -229,6 +289,8 @@ class DyadicAudioConditioner(nn.Module):
                 state=current,
                 correct=correct,
                 enable_partner=enable_partner,
+                target_speech_active=chunk.get("target_speech_active"),
+                partner_speech_active=chunk.get("partner_speech_active"),
             )
             contexts.append(context)
             states.append(current)

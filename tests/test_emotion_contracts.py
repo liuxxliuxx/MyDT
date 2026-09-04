@@ -14,6 +14,7 @@ from emotion_ssm.models.observation import (
     TemporalAUEncoder,
 )
 from emotion_ssm.train.dualtalk import ConditionedTrainingSystem
+from emotion_ssm.train.phase_a_observation import augment_student_batch
 from emotion_ssm.train.dynamics_core import DynamicsTrainingBundle, _flatten_event_windows
 from emotion_ssm.config import get_cfg_defaults
 from emotion_ssm.data.common import pack_face_sequence
@@ -179,6 +180,44 @@ def test_vicreg_penalizes_collapsed_latent_dimensions():
     assert vicreg_loss(collapsed, valid) > vicreg_loss(diverse, valid)
 
 
+def test_observer_keeps_raw_affect_for_vicreg_and_normalizes_public_affect():
+    encoder = _encoder()
+    batch = {
+        "audio": torch.randn(12, 4),
+        "face": torch.randn(12, 4, 5),
+        "face_frame_mask": torch.ones(12, 4, dtype=torch.bool),
+        "face_confidence": torch.ones(12, 4),
+        "text": torch.randn(12, 6),
+        "dataset_id": torch.zeros(12, dtype=torch.long),
+        "modality_mask": torch.ones(12, 3, dtype=torch.bool),
+        "reliability": torch.ones(12, 3),
+    }
+    with torch.no_grad():
+        output = encoder(batch)
+    assert output.raw_aff is not None
+    assert torch.allclose(output.aff.norm(dim=-1), torch.ones(12, 7), atol=1e-5)
+    assert not torch.allclose(output.raw_aff.norm(dim=-1), torch.ones(12, 7))
+
+
+def test_student_augmentation_leaves_teacher_view_untouched_and_keeps_a_modality():
+    cfg = get_cfg_defaults()
+    batch = {
+        "audio": torch.ones(8, 16),
+        "face": torch.ones(8, 10, 5),
+        "face_frame_mask": torch.ones(8, 10, dtype=torch.bool),
+        "text": torch.ones(8, 16),
+        "modality_mask": torch.ones(8, 3, dtype=torch.bool),
+        "reliability": torch.full((8, 3), 0.8),
+    }
+    original = {name: value.clone() for name, value in batch.items()}
+    torch.manual_seed(9)
+    augmented = augment_student_batch(batch, cfg)
+    assert all(torch.equal(batch[name], value) for name, value in original.items())
+    assert augmented["modality_mask"].any(dim=-1).all()
+    assert not torch.equal(augmented["audio"], batch["audio"])
+    assert (~augmented["face_frame_mask"]).any()
+
+
 def test_open_loop_does_not_read_future_affect():
     model = DyadicEmotionSSM(
         state_dim=8, observation_dim=8, relation_dim=4, influence_dim=8,
@@ -200,6 +239,62 @@ def test_open_loop_does_not_read_future_affect():
         first = model.rollout(state, events, roles, dt, correction_mode="none")
         second = model.rollout(state, changed, roles, dt, correction_mode="none")
     assert torch.equal(first["next_prior_z"], second["next_prior_z"])
+
+
+def test_open_loop_horizon_ignores_future_event_and_action_but_conditional_uses_them():
+    cfg = get_cfg_defaults()
+    cfg.defrost()
+    cfg.MODEL.STATE_DIM = 8
+    cfg.MODEL.OBSERVATION_DIM = 8
+    cfg.MODEL.RELATION_DIM = 4
+    cfg.MODEL.INFLUENCE_DIM = 8
+    cfg.MODEL.INFLUENCE_CHANNELS = 3
+    cfg.MODEL.NUM_TIMESCALES = 2
+    cfg.DYNAMICS.HORIZONS = [2]
+    cfg.freeze()
+    bundle = DynamicsTrainingBundle(
+        _encoder(),
+        DyadicEmotionSSM(
+            state_dim=8, observation_dim=8, relation_dim=4, influence_dim=8,
+            influence_channels=3, num_speakers=1, num_timescales=2,
+        ),
+        AffectDecoder(8),
+        cfg,
+    ).eval()
+    event = EventObservation(
+        aff=torch.randn(1, 3, 8),
+        event=torch.randn(1, 3, 8),
+        action=torch.randn(1, 3, 8),
+        reliability=torch.ones(1, 3, 3),
+        modality_mask=None,
+    )
+    changed = EventObservation(
+        aff=event.aff.clone(), event=event.event.clone(), action=event.action.clone(),
+        reliability=event.reliability, modality_mask=None,
+    )
+    changed.event[:, 1] += 50
+    changed.action[:, 1] -= 50
+    batch = {
+        "valid_mask": torch.ones(1, 3, dtype=torch.bool),
+        "active_role": torch.tensor([[0, 1, 0]]),
+        "dt_to_next": torch.ones(1, 3),
+        "speaker_ids": torch.full((1, 2), -1, dtype=torch.long),
+        "emotion": torch.zeros(1, 3, dtype=torch.long),
+        "intensity": torch.zeros(1, 3),
+        "vad": torch.zeros(1, 3, 3),
+        "vad_mask": torch.ones(1, 3, 3, dtype=torch.bool),
+    }
+    posterior_z = torch.randn(1, 3, 2, 8)
+    posterior_relation = torch.randn(1, 3, 4)
+    target_aff = F.normalize(torch.randn(1, 3, 8), dim=-1)
+    arguments = (2, posterior_z, posterior_relation, batch, target_aff, torch.ones(7), True)
+    with torch.no_grad():
+        open_a, _ = bundle._horizon_loss(arguments[0], event, *arguments[1:], rollout_mode="open_loop")
+        open_b, _ = bundle._horizon_loss(arguments[0], changed, *arguments[1:], rollout_mode="open_loop")
+        conditional_a, _ = bundle._horizon_loss(arguments[0], event, *arguments[1:], rollout_mode="conditional")
+        conditional_b, _ = bundle._horizon_loss(arguments[0], changed, *arguments[1:], rollout_mode="conditional")
+    assert all(torch.equal(open_a[name], open_b[name]) for name in open_a)
+    assert not torch.equal(conditional_a["affect"], conditional_b["affect"])
 
 
 def test_dt_accepts_scalar_and_column_shapes():
@@ -315,6 +410,78 @@ class _FakeObserver(torch.nn.Module):
             reliability=torch.ones(len(value), 3),
             modality_mask=torch.ones(len(value), 3, dtype=torch.bool),
         )
+
+
+def test_silent_audio_only_decays_and_cannot_inject_its_embedding():
+    model = DyadicEmotionSSM(
+        state_dim=8, observation_dim=8, relation_dim=4, influence_dim=8,
+        influence_channels=3, num_speakers=1, num_timescales=2,
+    ).eval()
+    conditioner = DyadicAudioConditioner(_FakeObserver(), model)
+    state = model.initialize(torch.full((2, 2), -1, dtype=torch.long))
+    dt = torch.ones(2)
+    silent = torch.zeros(2, dtype=torch.bool)
+    with torch.no_grad():
+        _, first, _ = conditioner(
+            torch.randn(2, 16), torch.randn(2, 16), dt, state=state,
+            target_speech_active=silent, partner_speech_active=silent,
+        )
+        _, second, _ = conditioner(
+            torch.randn(2, 16) * 100, torch.randn(2, 16) * 100, dt, state=state,
+            target_speech_active=silent, partner_speech_active=silent,
+        )
+        expected = model.decay_only(state, dt)
+    assert torch.equal(first.z, second.z)
+    assert torch.allclose(first.z, expected.z)
+    assert torch.equal(first.relation, state.relation)
+
+
+def test_domain_adapter_copy_is_independent():
+    encoder = _encoder()
+    encoder.copy_domain_adapters(0, 2)
+    source = list(encoder.audio_adapter.adapters[0].parameters())
+    destination = list(encoder.audio_adapter.adapters[2].parameters())
+    assert all(torch.equal(left, right) for left, right in zip(source, destination))
+    with torch.no_grad():
+        destination[0].add_(1.0)
+    assert not torch.equal(source[0], destination[0])
+
+
+def test_dualtalk_release_keeps_backbone_and_unrelated_observer_modules_frozen():
+    class ObserverShell(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.backbone = torch.nn.Linear(3, 3)
+            self.observation_encoder = _encoder()
+            self.dataset_id = 2
+
+    class ConditionerShell(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.state_model = torch.nn.Linear(3, 3)
+            self.audio_observer = ObserverShell()
+
+    system = ConditionedTrainingSystem(
+        torch.nn.Identity(), ConditionerShell(), torch.nn.Identity(), 0.0
+    )
+    system.set_state_frozen(False)
+    system.train()
+    observer = system.conditioner.audio_observer
+    encoder = observer.observation_encoder
+    assert all(parameter.requires_grad for parameter in system.conditioner.state_model.parameters())
+    assert not any(parameter.requires_grad for parameter in observer.backbone.parameters())
+    assert all(
+        parameter.requires_grad
+        for parameter in encoder.audio_adapter.adapters[2].parameters()
+    )
+    assert not any(
+        parameter.requires_grad
+        for parameter in encoder.audio_adapter.adapters[0].parameters()
+    )
+    assert not any(parameter.requires_grad for parameter in encoder.fusion.parameters())
+    assert not encoder.fusion.training
+    assert encoder.audio_adapter.adapters[2].training
+    assert not observer.backbone.training
 
 
 def test_conditioner_preserves_explicit_chunk_state():

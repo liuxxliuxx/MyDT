@@ -21,3 +21,4 @@ DYNAMICS:
   HORIZONS: [1, 2, 4, 8, 16, 32]
   ENABLE_PARTNER: false
   CORRECTION_MODE: teacher_forced
+  ROLLOUT_MODE: conditional

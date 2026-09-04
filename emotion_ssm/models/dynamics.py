@@ -204,6 +204,21 @@ class DyadicEmotionSSM(nn.Module):
             )
         return torch.nan_to_num(value, nan=0.0, posinf=0.0, neginf=0.0)
 
+    def decay_only(self, state: DyadicState, dt: Tensor) -> DyadicState:
+        """Advance time without correction, self stimulus or partner action."""
+        baseline, tau = self.personal(state.speaker_ids)
+        interval = self._normalize_dt(
+            dt, state.z.shape[0], state.z.device, state.z.dtype
+        )
+        decay = torch.exp(
+            -interval[:, None, None].clamp_min(0.0) / tau.clamp_min(1e-6)
+        )
+        return DyadicState(
+            z=baseline + (state.z - baseline) * decay,
+            relation=state.relation,
+            speaker_ids=state.speaker_ids,
+        )
+
     def correct(
         self,
         state: DyadicState,

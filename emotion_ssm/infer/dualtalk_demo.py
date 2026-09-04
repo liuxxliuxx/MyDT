@@ -11,7 +11,7 @@ import numpy as np
 import torch
 
 from emotion_ssm.config import load_config
-from emotion_ssm.data.dualtalk import normalize_waveform
+from emotion_ssm.data.dualtalk import normalize_waveform, speech_is_active
 from emotion_ssm.train.dualtalk import _build_system
 from emotion_ssm.train.dynamics_core import load_component_state
 from emotion_ssm.utils.paths import ensure_output_directory
@@ -49,7 +49,21 @@ def main() -> None:
     partner = normalize_waveform(partner_wave[:audio_length])[None].to(device)
     partner_bs = torch.from_numpy(partner_blendshape).float()[None].to(device)
     duration = torch.tensor([audio_length / 16000.0], device=device)
-    context, state, evidence = system.conditioner(target, partner, duration)
+    target_active = torch.tensor(
+        [speech_is_active(target_wave[:audio_length], cfg.DUALTALK.SPEECH_RMS_THRESHOLD)],
+        device=device,
+    )
+    partner_active = torch.tensor(
+        [speech_is_active(partner_wave[:audio_length], cfg.DUALTALK.SPEECH_RMS_THRESHOLD)],
+        device=device,
+    )
+    context, state, evidence = system.conditioner(
+        target,
+        partner,
+        duration,
+        target_speech_active=target_active,
+        partner_speech_active=partner_active,
+    )
     generated = system.generator(target, partner, partner_bs, context, True)[0].cpu().numpy()
 
     output_dir = ensure_output_directory(

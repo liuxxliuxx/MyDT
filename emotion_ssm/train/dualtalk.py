@@ -72,9 +72,45 @@ class ConditionedTrainingSystem(nn.Module):
 
     def set_state_frozen(self, frozen: bool) -> None:
         self.state_frozen = frozen
-        self.conditioner.requires_grad_(not frozen)
+        self.conditioner.requires_grad_(False)
+        if not frozen:
+            for module in self._state_finetune_modules():
+                module.requires_grad_(True)
+        audio_observer = getattr(self.conditioner, "audio_observer", None)
+        backbone = getattr(audio_observer, "backbone", None)
+        if backbone is not None:
+            backbone.requires_grad_(False)
+            backbone.eval()
         if frozen:
             self.conditioner.eval()
+
+    def _state_finetune_modules(self):
+        modules = []
+        state_model = getattr(self.conditioner, "state_model", None)
+        if state_model is not None:
+            modules.append(state_model)
+        audio_observer = getattr(self.conditioner, "audio_observer", None)
+        observer = getattr(audio_observer, "observation_encoder", None)
+        if observer is not None:
+            domain_id = int(getattr(audio_observer, "dataset_id", 2))
+            modules.extend(
+                [
+                    observer.audio_adapter.adapters[domain_id],
+                    observer.shared_affect_projector,
+                    observer.affect_weight,
+                ]
+            )
+        return modules
+
+    def state_finetune_parameters(self):
+        seen = set()
+        parameters = []
+        for module in self._state_finetune_modules():
+            for parameter in module.parameters():
+                if id(parameter) not in seen:
+                    seen.add(id(parameter))
+                    parameters.append(parameter)
+        return parameters
 
     def set_baseline_frozen(self, frozen: bool) -> None:
         """Train FiLM first, then expose only the baseline synthesis head."""
@@ -87,6 +123,20 @@ class ConditionedTrainingSystem(nn.Module):
         super().train(mode)
         if self.state_frozen:
             self.conditioner.eval()
+        else:
+            audio_observer = getattr(self.conditioner, "audio_observer", None)
+            observer = getattr(audio_observer, "observation_encoder", None)
+            if observer is not None:
+                # Frozen fusion/action/reliability modules must also stay in
+                # eval mode; otherwise their dropout changes the state signal.
+                observer.eval()
+                domain_id = int(getattr(audio_observer, "dataset_id", 2))
+                observer.audio_adapter.adapters[domain_id].train(mode)
+                observer.shared_affect_projector.train(mode)
+                observer.affect_weight.train(mode)
+            backbone = getattr(audio_observer, "backbone", None)
+            if backbone is not None:
+                backbone.eval()
         return self
 
     @staticmethod
@@ -106,6 +156,9 @@ class ConditionedTrainingSystem(nn.Module):
         audio_target = batch["target_audio"]
         audio_partner = batch["partner_audio"]
         conditioner_kwargs = {} if state is None else {"state": state}
+        for name in ("target_speech_active", "partner_speech_active"):
+            if name in batch:
+                conditioner_kwargs[name] = batch[name]
         if self.state_frozen:
             with torch.no_grad():
                 context, next_state, evidence = self.conditioner(
@@ -199,6 +252,8 @@ class ConditionedTrainingSystem(nn.Module):
                     "target_blendshape",
                     "partner_blendshape",
                     "dt",
+                    "target_speech_active",
+                    "partner_speech_active",
                 }
             }
             context, candidate_state, target_aff = self._condition_chunk(chunk, state)
@@ -280,11 +335,16 @@ def _build_system(cfg, device: torch.device) -> ConditionedTrainingSystem:
     observation.load_state_dict(
         load_component_state(phase_b_path, "encoder"), strict=True
     )
+    observation.copy_domain_adapters(
+        int(cfg.DUALTALK.ADAPTER_INIT_SOURCE),
+        int(cfg.DUALTALK.ADAPTER_DOMAIN_ID),
+    )
     _load_global_dynamics(state_model, phase_b_path)
     audio_observer = AudioOnlyStateObserver(
         observation,
         cfg.DUALTALK.AUDIO_MODEL,
         cfg.DUALTALK.LOCAL_FILES_ONLY,
+        cfg.DUALTALK.ADAPTER_DOMAIN_ID,
     )
     conditioner = DyadicAudioConditioner(audio_observer, state_model)
     projector = BlendshapeAffectProjector(
@@ -329,11 +389,13 @@ def main() -> None:
         Path(cfg.DATA.DUALTALK_ROOT) / "train",
         cfg.DUALTALK.CHUNK_FRAMES,
         cfg.DUALTALK.FPS,
+        speech_rms_threshold=cfg.DUALTALK.SPEECH_RMS_THRESHOLD,
     )
     val_dataset = DualTalkDialogueDataset(
         Path(cfg.DATA.DUALTALK_ROOT) / "test",
         cfg.DUALTALK.CHUNK_FRAMES,
         cfg.DUALTALK.FPS,
+        speech_rms_threshold=cfg.DUALTALK.SPEECH_RMS_THRESHOLD,
     )
     train_loader, train_sampler = make_loader(
         train_dataset,
@@ -358,6 +420,9 @@ def main() -> None:
         system.projector.parameters()
     )
     synthesis_parameters = list(system.generator.baseline.synthesis_module.parameters())
+    # Keep the historical optimizer group layout so existing training
+    # checkpoints remain resumable. Frozen parameters never receive gradients;
+    # set_state_frozen selectively releases only state_finetune_parameters().
     state_parameters = list(system.conditioner.parameters())
     optimizer = torch.optim.AdamW(
         [

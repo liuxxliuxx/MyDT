@@ -251,19 +251,27 @@ def evaluate_dynamics(
     for raw_batch in loader:
         batch = move_to_device(raw_batch, device)
         target_aff = make_teacher_aff(teacher, batch)
-        full = bundle(
-            batch,
-            target_aff,
-            class_weights,
-            enable_partner,
-            enable_partner,
-        )
-        for name, value in full.items():
-            totals[name] = totals.get(name, 0.0) + float(value)
+        original_mode = bundle.rollout_mode
+        mode_results = {}
+        for mode in ("conditional", "open_loop"):
+            bundle.rollout_mode = mode
+            mode_results[mode] = bundle(
+                batch,
+                target_aff,
+                class_weights,
+                enable_partner,
+                enable_partner,
+            )
+            for name, value in mode_results[mode].items():
+                key = f"{mode}_{name}"
+                totals[key] = totals.get(key, 0.0) + float(value)
+        bundle.rollout_mode = original_mode
         if enable_partner:
+            bundle.rollout_mode = "conditional"
             self_only = bundle(batch, target_aff, class_weights, False, False)
+            bundle.rollout_mode = original_mode
             totals["partner_gain"] = totals.get("partner_gain", 0.0) + float(
-                self_only["h1"] - full["h1"]
+                self_only["h1"] - mode_results["conditional"]["h1"]
             )
         batches += 1
     return {name: value / max(batches, 1) for name, value in totals.items()}
@@ -396,10 +404,15 @@ def main() -> None:
             cfg.DYNAMICS.ENABLE_PARTNER,
         )
         metrics.update({f"dynamics_{name}": value for name, value in dynamics.items()})
-        metrics["dynamics_corrected_teacher_forced_h1"] = dynamics.get("h1", 0.0)
+        metrics["dynamics_corrected_teacher_forced_h1"] = dynamics.get(
+            "conditional_h1", 0.0
+        )
         for horizon in cfg.DYNAMICS.HORIZONS:
+            metrics[f"dynamics_conditional_h{horizon}"] = dynamics.get(
+                f"conditional_h{horizon}", 0.0
+            )
             metrics[f"dynamics_open_loop_h{horizon}"] = dynamics.get(
-                f"h{horizon}", 0.0
+                f"open_loop_h{horizon}", 0.0
             )
         metrics["state_curves"] = state_curves(bundle.state_model)
     reference_metrics = None

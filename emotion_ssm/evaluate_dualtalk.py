@@ -188,9 +188,13 @@ def _random_partner_inputs(
     partner_blendshape = torch.stack(
         [item["partner_blendshape"] for item in replacements]
     )
+    partner_speech_active = torch.stack(
+        [item["partner_speech_active"] for item in replacements]
+    )
     return (
         partner_audio.to(device, non_blocking=True),
         partner_blendshape.to(device, non_blocking=True),
+        partner_speech_active.to(device, non_blocking=True),
     )
 
 
@@ -228,11 +232,17 @@ def _evaluate_conditioned(
                         "target_blendshape",
                         "partner_blendshape",
                         "dt",
+                        "target_speech_active",
+                        "partner_speech_active",
                     }
                 }
                 state_partner_audio = chunk["partner_audio"]
                 if random_indices is not None:
-                    state_partner_audio, random_partner_blendshape = _random_partner_inputs(
+                    (
+                        state_partner_audio,
+                        random_partner_blendshape,
+                        random_partner_speech_active,
+                    ) = _random_partner_inputs(
                         loader.dataset,
                         random_indices,
                         dialogue_offset,
@@ -244,6 +254,7 @@ def _evaluate_conditioned(
                     # generation and state paths.
                     chunk["partner_audio"] = state_partner_audio
                     chunk["partner_blendshape"] = random_partner_blendshape
+                    chunk["partner_speech_active"] = random_partner_speech_active
                 with autocast(enabled=device.type == "cuda"):
                     context, candidate_state, evidence = system.conditioner(
                         chunk["target_audio"],
@@ -251,6 +262,8 @@ def _evaluate_conditioned(
                         chunk["dt"],
                         state=state,
                         enable_partner=ablation != "self_only",
+                        target_speech_active=chunk.get("target_speech_active"),
+                        partner_speech_active=chunk.get("partner_speech_active"),
                     )
                     state = system._merge_state(state, candidate_state, valid)
                     generated = system.generator(
@@ -330,6 +343,7 @@ def main() -> None:
             Path(cfg.DATA.DUALTALK_ROOT) / args.split,
             cfg.DUALTALK.CHUNK_FRAMES,
             cfg.DUALTALK.FPS,
+            speech_rms_threshold=cfg.DUALTALK.SPEECH_RMS_THRESHOLD,
         )
         loader = DataLoader(
             dataset,
