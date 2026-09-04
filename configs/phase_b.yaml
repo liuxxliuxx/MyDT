@@ -25,6 +25,7 @@ DYNAMICS:
   ENABLE_PARTNER: true
   CORRECTION_MODE: teacher_forced
   ROLLOUT_MODE: conditional
+  OPEN_LOOP_DT: 1.0
   RANDOM_ROLE_SWAP: true
   # First train event/action/coupling with a fixed affect space, then release
   # the affect branch at 0.05x LR while anchoring it to the EMA observer.

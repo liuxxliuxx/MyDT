@@ -92,6 +92,24 @@ The data folder format is as follows:
 
 ## **Training and Testing**
 
+### Emotion-state rollout semantics
+
+The emotion-state extension reports two distinct trajectory settings:
+
+- `conditional` uses the observed future event/action sequence.
+- `open_loop` uses the event/action available at the rollout origin, then calls
+  `decay_only` with `DYNAMICS.OPEN_LOOP_DT`; it does not consume later events,
+  actions, active-role values, or time intervals.
+
+Use `configs/phase_a_dynamics.yaml`,
+`configs/phase_a_dynamics_open_loop.yaml`, or
+`configs/phase_a_dynamics_joint.yaml` to select conditional, open-loop, or
+joint training.
+The conditioned streaming configuration uses 25 frames (1 second at 25 FPS),
+and chunk `k` is generated from the state produced after chunk `k-1`.
+For the original 8-second, same-chunk offline ablation, override
+`DUALTALK.CHUNK_FRAMES 200 DUALTALK.CAUSAL_STATE_CONTEXT False`.
+
 ### Training
 
 - To train the model, run:

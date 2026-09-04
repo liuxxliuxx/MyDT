@@ -33,6 +33,12 @@ def main() -> None:
     device = torch.device(cfg.DEVICE if torch.cuda.is_available() else "cpu")
     system = _build_system(cfg, device)
     system.load_state_dict(load_component_state(args.checkpoint, "system"), strict=True)
+    system.restore_shared_observer(
+        load_component_state(
+            Path(cfg.DUALTALK.PHASE_B_CHECKPOINT or cfg.TRAIN.PHASE_B_CHECKPOINT),
+            "encoder",
+        )
+    )
     system.eval()
 
     target_wave, _ = librosa.load(str(args.target_audio), sr=16000)
@@ -44,27 +50,66 @@ def main() -> None:
     partner_blendshape = np.concatenate(
         [partner_exp, partner_pose[:, 3:], partner_pose[:, :3]], axis=-1
     )
-    audio_length = min(len(target_wave), len(partner_wave))
-    target = normalize_waveform(target_wave[:audio_length])[None].to(device)
-    partner = normalize_waveform(partner_wave[:audio_length])[None].to(device)
-    partner_bs = torch.from_numpy(partner_blendshape).float()[None].to(device)
-    duration = torch.tensor([audio_length / 16000.0], device=device)
-    target_active = torch.tensor(
-        [speech_is_active(target_wave[:audio_length], cfg.DUALTALK.SPEECH_RMS_THRESHOLD)],
-        device=device,
+    chunk_frames = int(cfg.DUALTALK.CHUNK_FRAMES)
+    chunk_samples = int(round(chunk_frames / cfg.DUALTALK.FPS * 16000))
+    num_chunks = min(
+        len(target_wave) // chunk_samples,
+        len(partner_wave) // chunk_samples,
+        len(partner_blendshape) // chunk_frames,
     )
-    partner_active = torch.tensor(
-        [speech_is_active(partner_wave[:audio_length], cfg.DUALTALK.SPEECH_RMS_THRESHOLD)],
-        device=device,
-    )
-    context, state, evidence = system.conditioner(
-        target,
-        partner,
-        duration,
-        target_speech_active=target_active,
-        partner_speech_active=partner_active,
-    )
-    generated = system.generator(target, partner, partner_bs, context, True)[0].cpu().numpy()
+    if num_chunks < 1:
+        raise ValueError("Inputs are shorter than one configured DualTalk chunk")
+
+    state = None
+    generated_chunks = []
+    contexts = []
+    state_values = []
+    relation_values = []
+    conditioning_values = []
+    activity_values = []
+    for chunk_index in range(num_chunks):
+        sample_start = chunk_index * chunk_samples
+        sample_stop = sample_start + chunk_samples
+        frame_start = chunk_index * chunk_frames
+        frame_stop = frame_start + chunk_frames
+        target_raw = target_wave[sample_start:sample_stop]
+        partner_raw = partner_wave[sample_start:sample_stop]
+        target = normalize_waveform(target_raw)[None].to(device)
+        partner = normalize_waveform(partner_raw)[None].to(device)
+        partner_bs = torch.from_numpy(
+            partner_blendshape[frame_start:frame_stop]
+        ).float()[None].to(device)
+        duration = torch.tensor([chunk_samples / 16000.0], device=device)
+        target_active = torch.tensor(
+            [speech_is_active(target_raw, cfg.DUALTALK.SPEECH_RMS_THRESHOLD)],
+            device=device,
+        )
+        partner_active = torch.tensor(
+            [speech_is_active(partner_raw, cfg.DUALTALK.SPEECH_RMS_THRESHOLD)],
+            device=device,
+        )
+        context, state, conditioning_aff = system._condition_chunk(
+            {
+                "target_audio": target,
+                "partner_audio": partner,
+                "dt": duration,
+                "target_speech_active": target_active,
+                "partner_speech_active": partner_active,
+            },
+            state,
+        )
+        generated_chunk = system.generator(
+            target, partner, partner_bs, context, True
+        )[0]
+        generated_chunks.append(generated_chunk.cpu())
+        contexts.append(context[0].cpu())
+        state_values.append(state.z[0].cpu())
+        relation_values.append(state.relation[0].cpu())
+        conditioning_values.append(conditioning_aff[0].cpu())
+        activity_values.append(
+            torch.stack([target_active[0], partner_active[0]]).cpu()
+        )
+    generated = torch.cat(generated_chunks, dim=0).numpy()
 
     output_dir = ensure_output_directory(
         args.output_dir,
@@ -86,11 +131,19 @@ def main() -> None:
     np.savez(flame_path, **flame_payload)
     torch.save(
         {
-            "context": context.cpu(),
-            "z": state.z.cpu(),
-            "relation": state.relation.cpu(),
-            "target_audio_aff": evidence["target_aff"].cpu(),
-            "partner_audio_aff": evidence["partner_aff"].cpu(),
+            "context": torch.stack(contexts),
+            "z": torch.stack(state_values),
+            "relation": torch.stack(relation_values),
+            "conditioning_aff": torch.stack(conditioning_values),
+            "speech_active": torch.stack(activity_values),
+            "chunk_frames": chunk_frames,
+            "chunk_seconds": chunk_samples / 16000.0,
+            "final_target_state_aff": system.conditioner.state_model.state_to_aff(
+                state.z[:, 0]
+            ).cpu(),
+            "final_partner_state_aff": system.conditioner.state_model.state_to_aff(
+                state.z[:, 1]
+            ).cpu(),
         },
         state_path,
     )

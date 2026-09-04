@@ -172,6 +172,18 @@ class DyadicAudioConditioner(nn.Module):
         self.audio_observer = audio_observer
         self.state_model = state_model
 
+    def initialize_state(self, reference: Tensor) -> DyadicState:
+        speaker_ids = torch.full(
+            (len(reference), 2), -1, dtype=torch.long, device=reference.device
+        )
+        return self.state_model.initialize(speaker_ids)
+
+    @staticmethod
+    def state_context(state: DyadicState) -> Tensor:
+        return torch.cat(
+            [state.z[:, 0], state.z[:, 1], state.relation], dim=-1
+        )
+
     def forward(
         self,
         audio_target: Tensor,
@@ -185,10 +197,7 @@ class DyadicAudioConditioner(nn.Module):
     ) -> Tuple[Tensor, DyadicState, Dict[str, Tensor]]:
         batch_size = len(audio_target)
         if state is None:
-            speaker_ids = torch.full(
-                (batch_size, 2), -1, dtype=torch.long, device=audio_target.device
-            )
-            state = self.state_model.initialize(speaker_ids)
+            state = self.initialize_state(audio_target)
         target_observation = self.audio_observer(audio_target)
         partner_observation = self.audio_observer(audio_partner)
         if target_speech_active is None:
@@ -253,9 +262,7 @@ class DyadicAudioConditioner(nn.Module):
                 half_dt, enable_partner=enable_partner, correct=correct,
             )
             final_state = partner_step.next_prior
-        context = torch.cat(
-            [final_state.z[:, 0], final_state.z[:, 1], final_state.relation], dim=-1
-        )
+        context = self.state_context(final_state)
         return context, final_state, {
             "target_aff": target_observation.aff,
             "partner_aff": partner_observation.aff,

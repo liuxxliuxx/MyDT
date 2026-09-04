@@ -12,6 +12,8 @@ TRAIN:
   LR: 0.0001
   OBSERVATION_CHECKPOINT: runs/phase_a_observation/fold5/observation_encoder.pt
   PHASE_B_CHECKPOINT: runs/phase_b_coupling/fold5/phase_b_best.pt
+LOSS:
+  DUALTALK_STATE_ANCHOR: 0.01
 DUALTALK:
   BASELINE_CHECKPOINT: checkpoints/dualtalk_baseline.pth
   PHASE_B_CHECKPOINT: runs/phase_b_coupling/fold5/phase_b_best.pt
@@ -28,5 +30,6 @@ DUALTALK:
   ADAPTER_INIT_SOURCE: 0
   ADAPTER_DOMAIN_ID: 2
   SPEECH_RMS_THRESHOLD: 0.0001
+  CAUSAL_STATE_CONTEXT: true
   FPS: 25
-  CHUNK_FRAMES: 200
+  CHUNK_FRAMES: 25

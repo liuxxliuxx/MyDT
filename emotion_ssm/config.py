@@ -82,6 +82,8 @@ def get_cfg_defaults() -> CN:
     cfg.LOSS.COUNTERFACTUAL = 0.2
     cfg.LOSS.COUNTERFACTUAL_MARGIN = 0.2
     cfg.LOSS.GENERATION_STATE = 0.1
+    cfg.LOSS.OPEN_LOOP_TRAJECTORY = 0.5
+    cfg.LOSS.DUALTALK_STATE_ANCHOR = 0.01
 
     cfg.TRAIN = CN()
     cfg.TRAIN.OUTPUT_ROOT = "runs"
@@ -125,6 +127,7 @@ def get_cfg_defaults() -> CN:
     cfg.DYNAMICS.HORIZONS = [1, 2, 4, 8, 16, 32]
     cfg.DYNAMICS.CORRECTION_MODE = "teacher_forced"
     cfg.DYNAMICS.ROLLOUT_MODE = "conditional"
+    cfg.DYNAMICS.OPEN_LOOP_DT = 1.0
     cfg.DYNAMICS.ENABLE_PARTNER = True
     cfg.DYNAMICS.FIXED_RELATION = False
     cfg.DYNAMICS.SYMMETRIC_COUPLING = False
@@ -159,6 +162,7 @@ def get_cfg_defaults() -> CN:
     cfg.DUALTALK.ADAPTER_INIT_SOURCE = 0
     cfg.DUALTALK.ADAPTER_DOMAIN_ID = 2
     cfg.DUALTALK.SPEECH_RMS_THRESHOLD = 1e-4
+    cfg.DUALTALK.CAUSAL_STATE_CONTEXT = True
     cfg.DUALTALK.RENDER_COMMAND = ""
 
     return cfg

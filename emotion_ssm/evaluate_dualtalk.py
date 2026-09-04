@@ -21,6 +21,7 @@ from emotion_ssm.data import (
 )
 from emotion_ssm.models import EmotionConditionedDualTalk
 from emotion_ssm.train.dualtalk import _build_system
+from emotion_ssm.train.dynamics_core import load_component_state
 from emotion_ssm.utils.paths import ensure_output_directory
 
 
@@ -203,6 +204,12 @@ def _evaluate_conditioned(
 ):
     system = _build_system(cfg, device)
     metadata = _load_conditioned_checkpoint(system, checkpoint)
+    system.restore_shared_observer(
+        load_component_state(
+            Path(cfg.DUALTALK.PHASE_B_CHECKPOINT or cfg.TRAIN.PHASE_B_CHECKPOINT),
+            "encoder",
+        )
+    )
     system.eval()
     totals = ReconstructionTotals()
     consistency_sum = 0.0
@@ -256,14 +263,10 @@ def _evaluate_conditioned(
                     chunk["partner_blendshape"] = random_partner_blendshape
                     chunk["partner_speech_active"] = random_partner_speech_active
                 with autocast(enabled=device.type == "cuda"):
-                    context, candidate_state, evidence = system.conditioner(
-                        chunk["target_audio"],
-                        state_partner_audio,
-                        chunk["dt"],
-                        state=state,
+                    context, candidate_state, target_aff = system._condition_chunk(
+                        chunk,
+                        state,
                         enable_partner=ablation != "self_only",
-                        target_speech_active=chunk.get("target_speech_active"),
-                        partner_speech_active=chunk.get("partner_speech_active"),
                     )
                     state = system._merge_state(state, candidate_state, valid)
                     generated = system.generator(
@@ -275,7 +278,7 @@ def _evaluate_conditioned(
                     )
                     projected = system.projector(generated)
                     consistency = 1.0 - F.cosine_similarity(
-                        projected, evidence["target_state_aff"], dim=-1
+                        projected, target_aff, dim=-1
                     )
                 totals.update(generated[valid], chunk["target_blendshape"][valid])
                 consistency_sum += float(consistency[valid].float().sum())

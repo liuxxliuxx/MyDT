@@ -197,8 +197,16 @@ class DynamicsTrainingBundle(nn.Module):
         self.horizons = tuple(int(value) for value in cfg.DYNAMICS.HORIZONS)
         self.correction_mode = str(cfg.DYNAMICS.CORRECTION_MODE)
         self.rollout_mode = str(cfg.DYNAMICS.ROLLOUT_MODE)
-        if self.rollout_mode not in {"conditional", "open_loop"}:
-            raise ValueError("DYNAMICS.ROLLOUT_MODE must be conditional or open_loop")
+        if self.rollout_mode not in {"conditional", "open_loop", "joint"}:
+            raise ValueError(
+                "DYNAMICS.ROLLOUT_MODE must be conditional, open_loop or joint"
+            )
+        self.open_loop_dt = float(cfg.DYNAMICS.OPEN_LOOP_DT)
+        if self.open_loop_dt <= 0:
+            raise ValueError("DYNAMICS.OPEN_LOOP_DT must be positive")
+        self.open_loop_weight = float(cfg.LOSS.OPEN_LOOP_TRAJECTORY)
+        if self.open_loop_weight < 0:
+            raise ValueError("LOSS.OPEN_LOOP_TRAJECTORY must be non-negative")
         self.fixed_relation = bool(cfg.DYNAMICS.FIXED_RELATION)
         self.symmetric_coupling = bool(cfg.DYNAMICS.SYMMETRIC_COUPLING)
         self.disable_long_timescales = bool(cfg.DYNAMICS.DISABLE_LONG_TIMESCALES)
@@ -353,18 +361,18 @@ class DynamicsTrainingBundle(nn.Module):
             return value.reshape(batch_size * starts, horizon, width)[:, offset]
 
         for offset in range(horizon):
+            valid_step = valid_windows.reshape(batch_size * starts, horizon)[:, offset]
+            if rollout_mode == "open_loop" and offset > 0:
+                fixed_dt = dt_windows.new_full(
+                    (batch_size * starts,), self.open_loop_dt
+                )
+                decayed = self.state_model.decay_only(state, fixed_dt)
+                state = _where_state(valid_step, decayed, state)
+                continue
             affect = at_offset(windowed.aff, offset)
             semantic_event = at_offset(windowed.event, offset)
             action = at_offset(windowed.action, offset)
             reliability = at_offset(windowed.reliability, offset)
-            # The first transition uses information available at the rollout
-            # origin. Later open-loop transitions are a no-event/no-action
-            # baseline and therefore cannot inspect future observations.
-            if rollout_mode == "open_loop" and offset > 0:
-                affect = torch.zeros_like(affect)
-                semantic_event = torch.zeros_like(semantic_event)
-                action = torch.zeros_like(action)
-                reliability = torch.zeros_like(reliability)
             observation = EventObservation(
                 aff=affect,
                 event=semantic_event,
@@ -385,7 +393,6 @@ class DynamicsTrainingBundle(nn.Module):
                 symmetric_coupling=self.symmetric_coupling,
                 disable_long_timescales=self.disable_long_timescales,
             )
-            valid_step = valid_windows.reshape(batch_size * starts, horizon)[:, offset]
             state = _where_state(valid_step, output.next_prior, state)
 
         target_role = _flatten_window_targets(
@@ -617,22 +624,38 @@ class DynamicsTrainingBundle(nn.Module):
         horizon_losses = []
         result: Dict[str, Tensor] = {}
         for horizon in self.horizons:
-            losses, count = self._horizon_loss(
-                horizon,
-                event,
-                posterior_z,
-                posterior_relation,
-                batch,
-                teacher_aff,
-                class_weights,
-                enable_partner,
+            modes = (
+                ("conditional", "open_loop")
+                if self.rollout_mode == "joint"
+                else (self.rollout_mode,)
             )
-            weighted = (
-                losses["affect"]
-                + self.loss_emotion * losses["emotion"]
-                + self.loss_intensity * losses["intensity"]
-                + self.loss_vad * losses["vad"]
-            )
+            mode_losses = {}
+            count = zero_loss(posterior_z).detach()
+            for mode in modes:
+                losses, count = self._horizon_loss(
+                    horizon,
+                    event,
+                    posterior_z,
+                    posterior_relation,
+                    batch,
+                    teacher_aff,
+                    class_weights,
+                    enable_partner,
+                    rollout_mode=mode,
+                )
+                mode_losses[mode] = (
+                    losses["affect"]
+                    + self.loss_emotion * losses["emotion"]
+                    + self.loss_intensity * losses["intensity"]
+                    + self.loss_vad * losses["vad"]
+                )
+                result[f"{mode}_h{horizon}"] = mode_losses[mode].detach()
+            if self.rollout_mode == "joint":
+                weighted = mode_losses["conditional"] + (
+                    self.open_loop_weight * mode_losses["open_loop"]
+                )
+            else:
+                weighted = mode_losses[self.rollout_mode]
             horizon_losses.append(weighted)
             result[f"h{horizon}"] = weighted.detach()
             result[f"h{horizon}_count"] = count.detach()

@@ -62,20 +62,44 @@ def _load_global_dynamics(model: DyadicEmotionSSM, checkpoint: Path) -> None:
 
 
 class ConditionedTrainingSystem(nn.Module):
-    def __init__(self, generator, conditioner, projector, state_loss_weight: float) -> None:
+    def __init__(
+        self,
+        generator,
+        conditioner,
+        projector,
+        state_loss_weight: float,
+        state_anchor_weight: float = 0.0,
+        causal_state_context: bool = False,
+    ) -> None:
         super().__init__()
         self.generator = generator
         self.conditioner = conditioner
         self.projector = projector
         self.state_loss_weight = state_loss_weight
+        self.state_anchor_weight = state_anchor_weight
+        self.causal_state_context = causal_state_context
         self.state_frozen = True
+        state_model = getattr(conditioner, "state_model", None)
+        self._state_anchor_names = []
+        if state_model is not None:
+            for index, (name, parameter) in enumerate(state_model.named_parameters()):
+                self._state_anchor_names.append(name)
+                self.register_buffer(
+                    f"_state_anchor_{index}",
+                    parameter.detach().clone(),
+                    persistent=False,
+                )
+        self.set_state_frozen(True)
 
     def set_state_frozen(self, frozen: bool) -> None:
         self.state_frozen = frozen
         self.conditioner.requires_grad_(False)
+        for module in self._adapter_finetune_modules():
+            module.requires_grad_(True)
         if not frozen:
-            for module in self._state_finetune_modules():
-                module.requires_grad_(True)
+            state_model = getattr(self.conditioner, "state_model", None)
+            if state_model is not None:
+                state_model.requires_grad_(True)
         audio_observer = getattr(self.conditioner, "audio_observer", None)
         backbone = getattr(audio_observer, "backbone", None)
         if backbone is not None:
@@ -89,17 +113,15 @@ class ConditionedTrainingSystem(nn.Module):
         state_model = getattr(self.conditioner, "state_model", None)
         if state_model is not None:
             modules.append(state_model)
+        return modules
+
+    def _adapter_finetune_modules(self):
+        modules = []
         audio_observer = getattr(self.conditioner, "audio_observer", None)
         observer = getattr(audio_observer, "observation_encoder", None)
         if observer is not None:
             domain_id = int(getattr(audio_observer, "dataset_id", 2))
-            modules.extend(
-                [
-                    observer.audio_adapter.adapters[domain_id],
-                    observer.shared_affect_projector,
-                    observer.affect_weight,
-                ]
-            )
+            modules.append(observer.audio_adapter.adapters[domain_id])
         return modules
 
     def state_finetune_parameters(self):
@@ -112,6 +134,29 @@ class ConditionedTrainingSystem(nn.Module):
                     parameters.append(parameter)
         return parameters
 
+    def adapter_finetune_parameters(self):
+        return [
+            parameter
+            for module in self._adapter_finetune_modules()
+            for parameter in module.parameters()
+        ]
+
+    def restore_shared_observer(self, phase_b_encoder_state) -> None:
+        """Restore Phase-B coordinates while retaining the learned domain-2 adapter."""
+        audio_observer = getattr(self.conditioner, "audio_observer", None)
+        observer = getattr(audio_observer, "observation_encoder", None)
+        if observer is None:
+            return
+        domain_id = int(getattr(audio_observer, "dataset_id", 2))
+        adapter_state = {
+            name: value.detach().clone()
+            for name, value in observer.audio_adapter.adapters[
+                domain_id
+            ].state_dict().items()
+        }
+        observer.load_state_dict(phase_b_encoder_state, strict=True)
+        observer.audio_adapter.adapters[domain_id].load_state_dict(adapter_state)
+
     def set_baseline_frozen(self, frozen: bool) -> None:
         """Train FiLM first, then expose only the baseline synthesis head."""
         self.generator.baseline.requires_grad_(False)
@@ -121,22 +166,20 @@ class ConditionedTrainingSystem(nn.Module):
 
     def train(self, mode: bool = True):
         super().train(mode)
-        if self.state_frozen:
-            self.conditioner.eval()
-        else:
-            audio_observer = getattr(self.conditioner, "audio_observer", None)
-            observer = getattr(audio_observer, "observation_encoder", None)
-            if observer is not None:
-                # Frozen fusion/action/reliability modules must also stay in
-                # eval mode; otherwise their dropout changes the state signal.
-                observer.eval()
-                domain_id = int(getattr(audio_observer, "dataset_id", 2))
-                observer.audio_adapter.adapters[domain_id].train(mode)
-                observer.shared_affect_projector.train(mode)
-                observer.affect_weight.train(mode)
-            backbone = getattr(audio_observer, "backbone", None)
-            if backbone is not None:
-                backbone.eval()
+        audio_observer = getattr(self.conditioner, "audio_observer", None)
+        observer = getattr(audio_observer, "observation_encoder", None)
+        if observer is not None:
+            # The shared emotion coordinate system remains deterministic and
+            # frozen. Only the new DualTalk audio adapter learns domain shift.
+            observer.eval()
+            domain_id = int(getattr(audio_observer, "dataset_id", 2))
+            observer.audio_adapter.adapters[domain_id].train(mode)
+        backbone = getattr(audio_observer, "backbone", None)
+        if backbone is not None:
+            backbone.eval()
+        state_model = getattr(self.conditioner, "state_model", None)
+        if state_model is not None:
+            state_model.train(mode and not self.state_frozen)
         return self
 
     @staticmethod
@@ -152,26 +195,52 @@ class ConditionedTrainingSystem(nn.Module):
             speaker_ids=previous.speaker_ids,
         )
 
-    def _condition_chunk(self, batch: Mapping[str, torch.Tensor], state=None):
+    def _condition_chunk(
+        self,
+        batch: Mapping[str, torch.Tensor],
+        state=None,
+        enable_partner: bool = True,
+    ):
         audio_target = batch["target_audio"]
         audio_partner = batch["partner_audio"]
+        use_causal_context = (
+            self.causal_state_context
+            and hasattr(self.conditioner, "initialize_state")
+            and hasattr(self.conditioner, "state_context")
+        )
+        if use_causal_context and state is None:
+            state = self.conditioner.initialize_state(audio_target)
         conditioner_kwargs = {} if state is None else {"state": state}
+        accepted = inspect.signature(self.conditioner.forward).parameters
+        if "enable_partner" in accepted:
+            conditioner_kwargs["enable_partner"] = enable_partner
         for name in ("target_speech_active", "partner_speech_active"):
-            if name in batch:
+            if name in batch and name in accepted:
                 conditioner_kwargs[name] = batch[name]
-        if self.state_frozen:
-            with torch.no_grad():
-                context, next_state, evidence = self.conditioner(
-                    audio_target, audio_partner, batch["dt"], **conditioner_kwargs
-                )
-            context = context.detach()
-            target_aff = evidence.get("target_state_aff", evidence["target_aff"]).detach()
-        else:
-            context, next_state, evidence = self.conditioner(
-                audio_target, audio_partner, batch["dt"], **conditioner_kwargs
-            )
+        if use_causal_context:
+            context = self.conditioner.state_context(state)
+            target_aff = self.conditioner.state_model.state_to_aff(state.z[:, 0])
+        # requires_grad flags freeze the state parameters. Keep autograd active
+        # through state values so adapter 2 can learn from later causal chunks.
+        updated_context, next_state, evidence = self.conditioner(
+            audio_target, audio_partner, batch["dt"], **conditioner_kwargs
+        )
+        if not use_causal_context:
+            context = updated_context
             target_aff = evidence.get("target_state_aff", evidence["target_aff"])
         return context, next_state, target_aff
+
+    def _state_anchor_loss(self, reference: torch.Tensor) -> torch.Tensor:
+        state_model = getattr(self.conditioner, "state_model", None)
+        if state_model is None or not self._state_anchor_names:
+            return reference.sum() * 0.0
+        losses = []
+        current = dict(state_model.named_parameters())
+        for index, name in enumerate(self._state_anchor_names):
+            parameter = current[name]
+            anchor = getattr(self, f"_state_anchor_{index}")
+            losses.append((parameter - anchor).square().mean())
+        return torch.stack(losses).mean() if losses else reference.sum() * 0.0
 
     @staticmethod
     def _per_sample_mse(prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
@@ -275,15 +344,18 @@ class ConditionedTrainingSystem(nn.Module):
             }
         divisor = valid_count.clamp_min(1.0)
         means = {name: value / divisor for name, value in sums.items()}
+        state_anchor = self._state_anchor_loss(batch["target_audio"])
         total = (
             means["expression"]
             + means["jaw"]
             + means["neck"]
             + means["velocity"]
             + self.state_loss_weight * means["state_consistency"]
+            + self.state_anchor_weight * state_anchor
         )
         return {
             "total": total,
+            "state_anchor": state_anchor.detach(),
             **{name: value.detach() for name, value in means.items()},
         }
 
@@ -298,15 +370,18 @@ class ConditionedTrainingSystem(nn.Module):
         context, _, target_aff = self._condition_chunk(batch)
         losses = self._chunk_losses(batch, context, target_aff)
         means = {name: value.mean() for name, value in losses.items()}
+        state_anchor = self._state_anchor_loss(batch["target_audio"])
         total = (
             means["expression"]
             + means["jaw"]
             + means["neck"]
             + means["velocity"]
             + self.state_loss_weight * means["state_consistency"]
+            + self.state_anchor_weight * state_anchor
         )
         return {
             "total": total,
+            "state_anchor": state_anchor.detach(),
             **{name: value.detach() for name, value in means.items()},
         }
 
@@ -351,7 +426,12 @@ def _build_system(cfg, device: torch.device) -> ConditionedTrainingSystem:
         cfg.DUALTALK.BLENDSHAPE_DIM, cfg.MODEL.OBSERVATION_DIM
     )
     return ConditionedTrainingSystem(
-        generator, conditioner, projector, cfg.LOSS.GENERATION_STATE
+        generator,
+        conditioner,
+        projector,
+        cfg.LOSS.GENERATION_STATE,
+        cfg.LOSS.DUALTALK_STATE_ANCHOR,
+        cfg.DUALTALK.CAUSAL_STATE_CONTEXT,
     ).to(device)
 
 
@@ -420,9 +500,8 @@ def main() -> None:
         system.projector.parameters()
     )
     synthesis_parameters = list(system.generator.baseline.synthesis_module.parameters())
-    # Keep the historical optimizer group layout so existing training
-    # checkpoints remain resumable. Frozen parameters never receive gradients;
-    # set_state_frozen selectively releases only state_finetune_parameters().
+    # Preserve the historical optimizer group layout for checkpoint resume.
+    # requires_grad controls which conditioner parameters actually update.
     state_parameters = list(system.conditioner.parameters())
     optimizer = torch.optim.AdamW(
         [
@@ -459,6 +538,12 @@ def main() -> None:
         start_epoch = int(checkpoint["epoch"])
         global_step = int(checkpoint["global_step"])
         best_score = float(checkpoint.get("metrics", {}).get("val_total", best_score))
+        unwrap_model(system).restore_shared_observer(
+            load_component_state(
+                Path(cfg.DUALTALK.PHASE_B_CHECKPOINT or cfg.TRAIN.PHASE_B_CHECKPOINT),
+                "encoder",
+            )
+        )
 
     stop_epoch = (
         min(cfg.TRAIN.EPOCHS, cfg.TRAIN.STOP_AFTER_EPOCHS)

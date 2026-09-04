@@ -10,7 +10,7 @@ DATA:
   NUM_WORKERS: 8
 TRAIN:
   OUTPUT_ROOT: runs
-  EXPERIMENT_NAME: fold5
+  EXPERIMENT_NAME: fold5_open_loop
   SEQUENCE_BATCH_SIZE: 8
   EPOCHS: 50
   LR: 0.0003
@@ -21,5 +21,5 @@ DYNAMICS:
   HORIZONS: [1, 2, 4, 8, 16, 32]
   ENABLE_PARTNER: false
   CORRECTION_MODE: teacher_forced
-  ROLLOUT_MODE: conditional
+  ROLLOUT_MODE: open_loop
   OPEN_LOOP_DT: 1.0
