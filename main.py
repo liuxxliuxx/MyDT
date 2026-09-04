@@ -21,7 +21,8 @@ def trainer(args, train_loader, dev_loader, model, optimizer, criterion,epoch,la
         loss_log = []
         model.train()
         pbar = tqdm(enumerate(train_loader),total=len(train_loader))
-        optimizer.zero_grad()
+        accumulation_steps = max(int(args.gradient_accumulation_steps), 1)
+        optimizer.zero_grad(set_to_none=True)
 
         for i, (file_name, audio1, audio2, exp1, jawpose1, neck1, exp2, jawpose2, neck2) in pbar:
             iteration += 1
@@ -56,12 +57,21 @@ def trainer(args, train_loader, dev_loader, model, optimizer, criterion,epoch,la
             pred_vel = bs_output[:,1:, :] - bs_output[:,:-1, :]
             loss3 = criterion(pred_vel, gt_vel)
             loss = torch.mean(loss1+loss_jaw+loss_neck+loss3)
-            optimizer.zero_grad()
-            loss.backward()
             loss_log.append(loss.item())
-            if i % args.gradient_accumulation_steps == 0:
+
+            # Average the gradients over one accumulation group. The last
+            # group may contain fewer micro-batches than accumulation_steps.
+            group_start = (i // accumulation_steps) * accumulation_steps
+            group_size = min(accumulation_steps, len(train_loader) - group_start)
+            (loss / group_size).backward()
+
+            should_step = (
+                (i + 1) % accumulation_steps == 0
+                or (i + 1) == len(train_loader)
+            )
+            if should_step:
                 optimizer.step()
-                optimizer.zero_grad()
+                optimizer.zero_grad(set_to_none=True)
             pbar.set_description("(Epoch {}, iteration {}) TRAIN LOSS:{:.7f} EXP LOSS:{:.4f} JAW LOSS:{:.4f} NECK LOSS:{:.4f} VELOCITY LOSS:{:.4f} LR:{:.7f}".format((e+1+last_train), iteration ,np.mean(loss_log),loss1.item(),loss_jaw.item(),loss_neck.item(),loss3.item(),scheduler.get_last_lr()[0]))
 
         val_loss_log = []

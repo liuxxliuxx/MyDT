@@ -101,6 +101,40 @@ def resolve_speaker_id(item: Dict, dialogue_id: str) -> str:
     raise KeyError(f"{dialogue_id}: utterance has no speaker identity")
 
 
+def resolve_role(value: object) -> Optional[int]:
+    text = str(value).strip().lower()
+    if text in {"a", "f", "0", "speaker1", "user"}:
+        return 0
+    if text in {"b", "m", "1", "speaker2", "avatar"}:
+        return 1
+    return None
+
+
+def declared_role_speakers(labels: object) -> Dict[int, str]:
+    """Read both participants even when only one speaks in a short segment."""
+    if not isinstance(labels, dict):
+        return {}
+    speaker_map = labels.get("speaker_map", {})
+    if not isinstance(speaker_map, dict):
+        return {}
+    output: Dict[int, str] = {}
+    for speaker_id, role_name in speaker_map.items():
+        role = resolve_role(role_name)
+        if role is not None:
+            output[role] = str(speaker_id)
+    return output
+
+
+def declared_speaker_ids(labels: object) -> List[str]:
+    if not isinstance(labels, dict):
+        return []
+    output = list(declared_role_speakers(labels).values())
+    values = labels.get("speaker_ids", [])
+    if isinstance(values, (list, tuple)):
+        output.extend(str(value) for value in values)
+    return output
+
+
 def unpack_face_data(face_data, utterance_ids: Sequence[str]):
     if isinstance(face_data, dict) and "au_sequences" in face_data:
         stored_ids = list(face_data.get("utterance_ids", utterance_ids))
@@ -207,6 +241,10 @@ class FeatureDialogueStore:
         speakers = []
         for dialogue_id in self.dialogue_ids(split):
             labels = read_json(self.dialogues_root / dialogue_id / "labels.json")
+            speakers.extend(
+                self._speaker_key(speaker_id)
+                for speaker_id in declared_speaker_ids(labels)
+            )
             utterances = resolve_utterances(labels)
             for item in utterances:
                 speakers.append(
@@ -296,24 +334,39 @@ class FeatureDialogueStore:
             vad_masks.append(vad_mask)
 
         role_values = []
-        role_to_speaker: Dict[int, str] = {}
+        role_to_speaker = declared_role_speakers(labels)
         inferred_roles: Dict[str, int] = {}
         for item in utterances:
             speaker_id = resolve_speaker_id(item, dialogue_id)
             if "active_role" in item:
                 role = int(item["active_role"])
             else:
-                role_name = str(item.get("speaker", "")).strip().lower()
-                if role_name in {"a", "f", "0", "speaker1", "user"}:
-                    role = 0
-                elif role_name in {"b", "m", "1", "speaker2", "avatar"}:
-                    role = 1
-                else:
+                role = resolve_role(item.get("speaker", ""))
+                if role is None:
+                    role = next(
+                        (
+                            known_role
+                            for known_role, known_speaker in role_to_speaker.items()
+                            if known_speaker == speaker_id
+                        ),
+                        None,
+                    )
+                if role is None:
                     if speaker_id not in inferred_roles:
-                        inferred_roles[speaker_id] = len(inferred_roles)
+                        used_roles = set(role_to_speaker) | set(inferred_roles.values())
+                        inferred_roles[speaker_id] = next(
+                            (candidate for candidate in (0, 1) if candidate not in used_roles),
+                            len(used_roles),
+                        )
                     role = inferred_roles[speaker_id]
             if role not in {0, 1}:
                 raise ValueError(f"{dialogue_id}: active_role must be 0 or 1")
+            declared_speaker = role_to_speaker.get(role)
+            if declared_speaker is not None and declared_speaker != speaker_id:
+                raise ValueError(
+                    f"{dialogue_id}: role {role} maps to both "
+                    f"{declared_speaker} and {speaker_id}"
+                )
             role_values.append(role)
             role_to_speaker.setdefault(role, speaker_id)
         if set(role_to_speaker) != {0, 1}:

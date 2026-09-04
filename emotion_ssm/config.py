@@ -26,6 +26,7 @@ def get_cfg_defaults() -> CN:
     cfg.DATA.NUM_WORKERS = 0
     cfg.DATA.PIN_MEMORY = True
     cfg.DATA.DOMAIN_RATIO = [2, 1]
+    cfg.DATA.SOURCES = ["emotiontalk", "iemocap"]
 
     cfg.PREPROCESS = CN()
     cfg.PREPROCESS.AUDIO_MODEL = "facebook/wav2vec2-base-960h"
@@ -80,6 +81,7 @@ def get_cfg_defaults() -> CN:
     cfg.TRAIN.BATCH_SIZE = 128
     cfg.TRAIN.SEQUENCE_BATCH_SIZE = 8
     cfg.TRAIN.EPOCHS = 50
+    cfg.TRAIN.STOP_AFTER_EPOCHS = 0
     cfg.TRAIN.LR = 3e-4
     cfg.TRAIN.STATE_LR_SCALE = 0.1
     cfg.TRAIN.FINETUNE_OBSERVATION = False

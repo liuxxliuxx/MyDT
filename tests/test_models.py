@@ -51,6 +51,28 @@ def test_modality_subset_does_not_read_masked_values():
     assert torch.equal(a, b)
 
 
+def test_reliability_exposes_logits_and_probabilities():
+    model = ObservationEncoder(
+        audio_dim=12,
+        face_dim=5,
+        text_dim=10,
+        model_dim=16,
+        observation_dim=8,
+        num_domains=2,
+        num_layers=1,
+        num_heads=4,
+        dropout=0.0,
+    ).eval()
+    with torch.no_grad():
+        output = model(observation_batch(), torch.tensor([[1, 1, 1]]))
+    assert output.reliability_logits is not None
+    assert torch.allclose(
+        output.reliability, output.reliability_logits.sigmoid()
+    )
+    assert torch.all(output.reliability >= 0)
+    assert torch.all(output.reliability <= 1)
+
+
 def test_ema_has_no_gradient_and_updates():
     student = ObservationEncoder(
         audio_dim=12,

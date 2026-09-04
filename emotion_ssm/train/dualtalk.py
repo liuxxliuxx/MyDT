@@ -249,7 +249,12 @@ def main() -> None:
         global_step = int(checkpoint["global_step"])
         best_score = float(checkpoint.get("metrics", {}).get("val_total", best_score))
 
-    for epoch in range(start_epoch, cfg.TRAIN.EPOCHS):
+    stop_epoch = (
+        min(cfg.TRAIN.EPOCHS, cfg.TRAIN.STOP_AFTER_EPOCHS)
+        if cfg.TRAIN.STOP_AFTER_EPOCHS > 0
+        else cfg.TRAIN.EPOCHS
+    )
+    for epoch in range(start_epoch, stop_epoch):
         if train_sampler is not None:
             train_sampler.set_epoch(epoch)
         unwrap_model(system).set_state_frozen(epoch < cfg.DUALTALK.FREEZE_STATE_EPOCHS)

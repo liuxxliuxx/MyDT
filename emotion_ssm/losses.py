@@ -130,9 +130,17 @@ def observation_losses(
     actual = batch["modality_mask"][:, None, :]
     requested = subset_masks.to(actual.device)[None, :, :]
     reliability_target = (actual & requested).float()
+    reliability_logits = student.reliability_logits
+    if reliability_logits is None:
+        # Compatibility for externally constructed ObservationOutput values.
+        reliability_logits = torch.logit(
+            student.reliability.float().clamp(1e-6, 1.0 - 1e-6)
+        )
     reliability = masked_mean(
-        F.binary_cross_entropy(
-            student.reliability, reliability_target.expand_as(student.reliability), reduction="none"
+        F.binary_cross_entropy_with_logits(
+            reliability_logits,
+            reliability_target.expand_as(reliability_logits),
+            reduction="none",
         ),
         valid,
     )

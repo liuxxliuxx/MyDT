@@ -105,6 +105,15 @@ def parse_evaluations(path: Path, transcript: Mapping[str, str]) -> List[Dict]:
     return utterances
 
 
+def find_evaluation_files(raw_root: Path) -> List[Path]:
+    """Return real IEMOCAP annotations, excluding macOS AppleDouble files."""
+    return sorted(
+        path
+        for path in raw_root.glob("Session*/dialog/EmoEvaluation/*.txt")
+        if not path.name.startswith(".")
+    )
+
+
 def find_video(session_root: Path, dialogue_id: str) -> Optional[Path]:
     video_root = session_root / "dialog" / "avi" / "DivX"
     candidates = []
@@ -343,7 +352,7 @@ def preprocess(cfg) -> None:
     extractors = FeatureExtractors(cfg)
     errors = []
     completed = []
-    for evaluation_file in sorted(raw_root.glob("Session*/dialog/EmoEvaluation/*.txt")):
+    for evaluation_file in find_evaluation_files(raw_root):
         dialogue_id = evaluation_file.stem
         session_root = evaluation_file.parents[2]
         output_dialogue = output_root / "dialogues" / dialogue_id

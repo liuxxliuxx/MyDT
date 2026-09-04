@@ -80,6 +80,10 @@ class EmotionConditionedDualTalk(nn.Module):
         return self.baseline.synthesis_module(interaction_feature)
 
     def load_baseline_state_dict(self, state: Mapping[str, Tensor], strict: bool = True):
+        if "models" in state and isinstance(state["models"], Mapping):
+            models = state["models"]
+            if "baseline" in models and isinstance(models["baseline"], Mapping):
+                state = models["baseline"]
         if "state_dict" in state:
             state = state["state_dict"]
         if "model_state_dict" in state:
@@ -151,6 +155,7 @@ class DyadicAudioConditioner(nn.Module):
         dt: Tensor,
         state: Optional[DyadicState] = None,
         correct: bool = True,
+        enable_partner: bool = True,
     ) -> Tuple[Tensor, DyadicState, Dict[str, Tensor]]:
         batch_size = len(audio_target)
         if state is None:
@@ -166,7 +171,7 @@ class DyadicAudioConditioner(nn.Module):
             target_observation,
             torch.zeros(batch_size, dtype=torch.long, device=audio_target.device),
             half_dt,
-            enable_partner=True,
+            enable_partner=enable_partner,
             correct=correct,
         )
         partner_step = self.state_model.step(
@@ -174,7 +179,7 @@ class DyadicAudioConditioner(nn.Module):
             partner_observation,
             torch.ones(batch_size, dtype=torch.long, device=audio_target.device),
             half_dt,
-            enable_partner=True,
+            enable_partner=enable_partner,
             correct=correct,
         )
         final_state = partner_step.next_prior

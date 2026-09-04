@@ -21,6 +21,7 @@ class ObservationOutput:
     reliability: Tensor
     valid_subsets: Tensor
     hidden: Tensor
+    reliability_logits: Optional[Tensor] = None
 
     def select(self, subset_index: int) -> "EventObservation":
         return EventObservation(

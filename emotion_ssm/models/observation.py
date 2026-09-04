@@ -94,7 +94,9 @@ class ObservationEncoder(nn.Module):
         self.aff_head = nn.Sequential(nn.Linear(model_dim, observation_dim), nn.LayerNorm(observation_dim))
         self.event_head = nn.Sequential(nn.Linear(model_dim, observation_dim), nn.LayerNorm(observation_dim))
         self.action_head = nn.Sequential(nn.Linear(model_dim, observation_dim), nn.LayerNorm(observation_dim))
-        self.reliability_head = nn.Sequential(nn.Linear(model_dim, 3), nn.Sigmoid())
+        # Keep logits for the AMP-safe BCE-with-logits training objective.  The
+        # sigmoid probability is still exposed to the dynamics model as before.
+        self.reliability_head = nn.Sequential(nn.Linear(model_dim, 3))
         self.register_buffer("subset_masks", SUBSET_MASKS.clone(), persistent=False)
         nn.init.normal_(self.cls_token, std=0.02)
         nn.init.normal_(self.modality_embedding, std=0.02)
@@ -164,13 +166,15 @@ class ObservationEncoder(nn.Module):
         )
         hidden = self.fusion(tokens, src_key_padding_mask=padding)[:, 0]
         hidden = hidden.reshape(batch_size, num_subsets, -1)
+        reliability_logits = self.reliability_head(hidden)
         return ObservationOutput(
             aff=self.aff_head(hidden),
             event=self.event_head(hidden),
             action=self.action_head(hidden),
-            reliability=self.reliability_head(hidden),
+            reliability=torch.sigmoid(reliability_logits),
             valid_subsets=valid_subsets,
             hidden=hidden,
+            reliability_logits=reliability_logits,
         )
 
 

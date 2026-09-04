@@ -16,17 +16,34 @@ from emotion_ssm.utils.distributed import DistributedContext
 from emotion_ssm.utils.paths import ensure_output_directory
 
 
-def build_feature_stores(cfg) -> Tuple[FeatureDialogueStore, FeatureDialogueStore]:
-    emotiontalk = FeatureDialogueStore(
-        Path(cfg.DATA.EMOTIONTALK_ROOT), "emotiontalk", 0
-    )
-    iemocap = FeatureDialogueStore(
-        Path(cfg.DATA.IEMOCAP_FEATURE_ROOT),
-        "iemocap",
-        1,
-        fold=int(cfg.DATA.IEMOCAP_FOLD),
-    )
-    return emotiontalk, iemocap
+def build_feature_stores(cfg) -> Tuple[FeatureDialogueStore, ...]:
+    sources = list(cfg.DATA.SOURCES)
+    unknown = sorted(set(sources) - {"emotiontalk", "iemocap"})
+    if unknown:
+        raise ValueError(f"Unknown DATA.SOURCES values: {unknown}")
+    if not sources:
+        raise ValueError("DATA.SOURCES must contain at least one dataset")
+    if len(sources) != len(set(sources)):
+        raise ValueError(f"DATA.SOURCES contains duplicates: {sources}")
+
+    stores = []
+    for source in sources:
+        if source == "emotiontalk":
+            stores.append(
+                FeatureDialogueStore(
+                    Path(cfg.DATA.EMOTIONTALK_ROOT), "emotiontalk", 0
+                )
+            )
+        else:
+            stores.append(
+                FeatureDialogueStore(
+                    Path(cfg.DATA.IEMOCAP_FEATURE_ROOT),
+                    "iemocap",
+                    1,
+                    fold=int(cfg.DATA.IEMOCAP_FOLD),
+                )
+            )
+    return tuple(stores)
 
 
 def readonly_roots(cfg) -> Sequence[Path]:

@@ -15,6 +15,7 @@ from emotion_ssm.data import (
 )
 from emotion_ssm.preprocess.iemocap import (
     EMOTION_MAP,
+    find_evaluation_files,
     parse_evaluations,
     parse_transcript,
     slice_face_frames,
@@ -36,6 +37,18 @@ def test_iemocap_mapping_and_vad(tmp_path: Path):
     assert values[0]["vad"] == [1.0, 0.0, -1.0]
     assert values[1]["emotion_id"] == -1
     assert values[1]["vad_mask"] == [True, True, True]
+
+
+def test_iemocap_evaluation_discovery_ignores_appledouble(tmp_path: Path):
+    evaluation_root = tmp_path / "Session1" / "dialog" / "EmoEvaluation"
+    evaluation_root.mkdir(parents=True)
+    real = evaluation_root / "Ses01F_impro01.txt"
+    real.write_text("annotation", encoding="utf-8")
+    (evaluation_root / "._Ses01F_impro01.txt").write_text(
+        "metadata", encoding="utf-8"
+    )
+
+    assert find_evaluation_files(tmp_path) == [real]
 
 
 def test_au_time_slice_uses_best_face():
@@ -60,6 +73,49 @@ def test_feature_store_and_l33_window(feature_root: Path):
     assert windows[0]["audio"].shape == (33, 768)
     assert windows[0]["valid_mask"].sum().item() == 4
     assert not windows[0]["vad_mask"][:, 2].any()
+
+
+def test_feature_store_accepts_declared_partner_without_utterance(tmp_path: Path):
+    root = tmp_path / "features"
+    dialogue = root / "dialogues" / "single_active"
+    dialogue.mkdir(parents=True)
+    torch.save(torch.randn(2, 768), dialogue / "audio_features.pt")
+    torch.save(torch.randn(2, 768), dialogue / "text_features.pt")
+    torch.save(torch.randn(2, 35), dialogue / "face_au_features.pt")
+    labels = {
+        "speaker_map": {"01": "A", "02": "B"},
+        "speaker_ids": ["01", "02"],
+        "utterances": [
+            {
+                "utterance_id": f"utt_{turn}",
+                "speaker_id": "02",
+                "speaker": "B",
+                "emotion_id": 4,
+                "sentiment_score": 0.0,
+                "intensity_abs": 0.0,
+                "start_time": float(turn),
+                "end_time": float(turn) + 0.5,
+            }
+            for turn in range(2)
+        ],
+    }
+    (dialogue / "labels.json").write_text(json.dumps(labels), encoding="utf-8")
+    splits = root / "splits"
+    splits.mkdir()
+    (splits / "train_dialogues.txt").write_text(
+        "single_active\n", encoding="utf-8"
+    )
+
+    store = FeatureDialogueStore(root, "emotiontalk", 0)
+    vocab = SpeakerVocabulary(store.collect_speakers("train"))
+    record = store.load_dialogue("single_active", vocab)
+
+    assert len(vocab) == 2
+    assert record.active_role.tolist() == [1, 1]
+    assert record.speaker_ids.tolist() == [
+        vocab.encode("emotiontalk:01"),
+        vocab.encode("emotiontalk:02"),
+    ]
 
 
 def test_dualtalk_wav_npz_fixture(tmp_path: Path):
