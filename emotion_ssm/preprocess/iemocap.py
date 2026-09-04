@@ -200,6 +200,23 @@ def slice_face_frames(
     return au, confidence, valid
 
 
+def slice_face_timestamps(
+    frames: Sequence[Mapping[str, object]], start: float, end: float
+) -> Tensor:
+    """Return timestamps in the same deduplicated order as AU frame slicing."""
+    best_by_timestamp: Dict[float, Mapping[str, object]] = {}
+    for frame in frames:
+        timestamp = float(frame["timestamp"])
+        if timestamp < start or timestamp > end:
+            continue
+        current = best_by_timestamp.get(timestamp)
+        if current is None or float(frame["confidence"]) > float(current["confidence"]):
+            best_by_timestamp[timestamp] = frame
+    if not best_by_timestamp:
+        return torch.zeros(1, dtype=torch.float32)
+    return torch.tensor(sorted(best_by_timestamp), dtype=torch.float32)
+
+
 class FeatureExtractors:
     def __init__(self, cfg) -> None:
         from transformers import AutoModel, AutoTokenizer, Wav2Vec2Model, Wav2Vec2Processor
@@ -394,6 +411,7 @@ def preprocess(cfg) -> None:
             au_sequences = []
             confidence_sequences = []
             frame_valid_masks = []
+            timestamp_sequences = []
             for item in utterances:
                 au, confidence, valid = slice_face_frames(
                     frames,
@@ -404,6 +422,11 @@ def preprocess(cfg) -> None:
                 au_sequences.append(au)
                 confidence_sequences.append(confidence)
                 frame_valid_masks.append(valid)
+                timestamp_sequences.append(
+                    slice_face_timestamps(
+                        frames, float(item["start_time"]), float(item["end_time"])
+                    )
+                )
 
             output_dialogue.mkdir(parents=True, exist_ok=True)
             torch.save(audio, output_dialogue / "audio_features.pt")
@@ -416,6 +439,7 @@ def preprocess(cfg) -> None:
                     "au_sequences": au_sequences,
                     "confidence_sequences": confidence_sequences,
                     "frame_valid_masks": frame_valid_masks,
+                    "timestamp_sequences": timestamp_sequences,
                     "utterance_valid_mask": torch.tensor(
                         [bool(mask.any()) for mask in frame_valid_masks]
                     ),

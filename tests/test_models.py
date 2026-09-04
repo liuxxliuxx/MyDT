@@ -172,8 +172,8 @@ def test_online_counterfactual_matcher_masks_invalid_rows():
     matches = match_counterfactuals(
         event,
         action,
-        receiver_emotion=torch.tensor([1, 1, 1, 2, 1]),
-        receiver_intensity=torch.tensor([0.5, 0.55, 0.52, 0.5, 1.0]),
+        context_emotion=torch.tensor([1, 1, 1, 2, 1]),
+        context_intensity=torch.tensor([0.5, 0.55, 0.52, 0.5, 1.0]),
         turn_position=torch.tensor([0.1, 0.12, 0.11, 0.1, 0.1]),
         dialogue_id=torch.arange(5),
         top_k=3,
@@ -182,6 +182,26 @@ def test_online_counterfactual_matcher_masks_invalid_rows():
     assert matches.indices.shape == (5, 3)
     assert not matches.valid[3].any()
     assert not matches.valid[4].any()
+
+
+def test_counterfactual_matcher_respects_sender_direction():
+    event = F.normalize(torch.randn(4, 8), dim=-1)
+    action = F.normalize(torch.randn(4, 8), dim=-1)
+    matches = match_counterfactuals(
+        event,
+        action,
+        context_emotion=torch.ones(4, dtype=torch.long),
+        context_intensity=torch.full((4,), 0.5),
+        turn_position=torch.full((4,), 0.5),
+        dialogue_id=torch.arange(4),
+        sender_role=torch.tensor([0, 0, 1, 1]),
+        top_k=3,
+        max_action_cosine=2.0,
+    )
+    for row in range(4):
+        selected = matches.indices[row, matches.valid[row]]
+        assert selected.numel() == 1
+        assert torch.all(torch.tensor([0, 0, 1, 1])[selected] == (row >= 2))
 
 
 def test_zero_initialized_film_is_identity():

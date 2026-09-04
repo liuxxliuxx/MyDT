@@ -98,7 +98,7 @@ torchrun --nproc_per_node=2 -m emotion_ssm.train.phase_b \
   DATA.EMOTIONTALK_ROOT /home/s21_yhr/lzh/Emotiontalk_work/processed
 ```
 
-Phase B 从 `TRAIN.PHASE_A_CHECKPOINT` 恢复，启用 A→B、B→A 两套参数和 relation GRU。每个 batch 随机交换角色命名。在线 matcher 在不同 dialogue 间筛选接收方标签、强度、轮次位置和事件语义接近、发送方 action 不同的样本，并从前八个候选中选最难负例。无候选的行不计算 `L_cf`。输出 `phase_b_best.pt`。
+Phase B 从 `TRAIN.PHASE_A_CHECKPOINT` 恢复，启用 A→B、B→A 两套参数和 relation GRU。每个 batch 随机交换角色命名。在线 matcher 仅使用干预发生时已知的上下文：在不同 dialogue 中筛选发送方向、情感标签、强度、轮次位置和事件语义接近、发送方 action 不同的样本，并从前八个候选中选最难负例。接收方下一次发言的 affect 只作为后续排序监督目标，绝不参与候选筛选。无候选的行不计算 `L_cf`。输出 `phase_b_best.pt`。
 
 `TRAIN.FINETUNE_OBSERVATION=true` 时，Phase B 以 `TRAIN.STATE_LR_SCALE` 倍学习率继续微调 Observation Encoder；`phase_b_best.pt` 会同时保存这部分权重，评测和条件 DualTalk 会优先读取微调后的 encoder。
 
@@ -147,7 +147,7 @@ python -B -m emotion_ssm.evaluate \
   --output runs/phase_b_coupling/fold5/test_metrics.json
 ```
 
-输出七种模态子集的 Macro-F1/UAR、intensity MAE、AVT VAD CCC、speaker/domain leakage probe、多跨度 loss、PartnerGain 和反事实排序准确率。消融可用 CLI override，例如：
+输出七种模态子集的 Macro-F1/UAR、intensity MAE、VAD CCC、跨模态同句/随机句余弦间隔、latent 方差、speaker/domain leakage probe、多跨度 loss、PartnerGain 和反事实排序准确率。消融可用 CLI override，例如：
 
 ```bash
 python -B -m emotion_ssm.evaluate ... DYNAMICS.FIXED_RELATION true
@@ -155,6 +155,20 @@ python -B -m emotion_ssm.evaluate ... DYNAMICS.SYMMETRIC_COUPLING true
 python -B -m emotion_ssm.evaluate ... DYNAMICS.DISABLE_LONG_TIMESCALES true
 python -B -m emotion_ssm.evaluate ... DYNAMICS.CORRECTION_MODE none
 python -B -m emotion_ssm.evaluate ... DYNAMICS.RANDOM_PARTNER true
+```
+
+可把一个已确认的评测 JSON 作为参考，检查 AU 时序、跨模态对齐、latent 非坍塌、单模态 VAD 可用性、泄漏接近随机猜测，以及 emotion F1 没有明显下降：
+
+```bash
+CUDA_VISIBLE_DEVICES=2 python -B -m emotion_ssm.evaluate \
+  --config configs/phase_b.yaml \
+  --split test \
+  --observation-checkpoint runs/phase_a_observation/fold5/observation_encoder.pt \
+  --heads-checkpoint runs/phase_a_observation/fold5/emotion_heads.pt \
+  --ema-checkpoint runs/phase_a_observation/fold5/ema_teacher.pt \
+  --output runs/phase_b_coupling/fold5/test_metrics.json \
+  --reference-metrics runs/reference_metrics.json \
+  --assert-observation-contracts
 ```
 
 ## 7. 候选动作轨迹
@@ -195,3 +209,5 @@ pytest -q tests
 ```
 
 测试使用临时 `.pt/json/WAV` fixture，不读取真实数据或网络。完整 DualTalk dry run 会加载配置指定的 Hugging Face 权重，所以服务器应提前准备本地缓存，或把模型路径写成服务器上的只读绝对路径。
+
+`tests/test_emotion_contracts.py` 还固定检查以下模型契约：AU 帧顺序敏感且 padding 值不影响输出；同 utterance 的 A/V/T 相似度高于随机 utterance；latent 不坍塌；A、V、T、AVT 都能经过 emotion/VAD 预测头；open-loop 不读取未来 affect；sender action 的替换主要影响 receiver；连续 DualTalk chunk 传递状态；speaker/domain probe 接近随机猜测，同时受参考指标约束的 emotion 性能不得明显下降。

@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Mapping, Optional, Tuple
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from emotion_ssm.config import load_config
@@ -34,9 +36,14 @@ def evaluate_observation(encoder, heads, loader, device) -> Tuple[Dict[str, floa
     matrices = [torch.zeros(7, 7, dtype=torch.long) for _ in SUBSET_NAMES]
     intensity_error = torch.zeros(len(SUBSET_NAMES))
     counts = torch.zeros(len(SUBSET_NAMES))
-    vad_prediction: List[torch.Tensor] = []
-    vad_target: List[torch.Tensor] = []
-    vad_mask: List[torch.Tensor] = []
+    subset_vad_prediction: List[List[torch.Tensor]] = [list() for _ in SUBSET_NAMES]
+    subset_vad_mask: List[List[torch.Tensor]] = [list() for _ in SUBSET_NAMES]
+    subset_vad_target: List[List[torch.Tensor]] = [list() for _ in SUBSET_NAMES]
+    alignment = {
+        "AV": {"same_sum": 0.0, "same_count": 0, "random_sum": 0.0, "random_count": 0},
+        "AT": {"same_sum": 0.0, "same_count": 0, "random_sum": 0.0, "random_count": 0},
+        "VT": {"same_sum": 0.0, "same_count": 0, "random_sum": 0.0, "random_count": 0},
+    }
     full_aff: List[torch.Tensor] = []
     speakers: List[torch.Tensor] = []
     domains: List[torch.Tensor] = []
@@ -54,12 +61,39 @@ def evaluate_observation(encoder, heads, loader, device) -> Tuple[Dict[str, floa
                 predictions["intensity"][:, subset] - batch["intensity"]
             ).abs()[valid].sum().cpu()
             counts[subset] += valid.sum().cpu()
-        vad_prediction.append(predictions["vad"][:, -1].cpu())
-        vad_target.append(batch["vad"].cpu())
-        vad_mask.append((batch["vad_mask"] & output.valid_subsets[:, -1, None]).cpu())
-        full_aff.append(output.aff[:, -1].cpu())
-        speakers.append(batch["speaker"].cpu())
-        domains.append(batch["dataset_id"].cpu())
+        for subset in range(len(SUBSET_NAMES)):
+            subset_vad_prediction[subset].append(predictions["vad"][:, subset].cpu())
+            subset_vad_target[subset].append(batch["vad"].cpu())
+            subset_vad_mask[subset].append(
+                (batch["vad_mask"] & output.valid_subsets[:, subset, None]).cpu()
+            )
+        if output.modality_aff is not None:
+            actual_mask = batch["modality_mask"].bool()
+            for name, left, right in (("AV", 0, 1), ("AT", 0, 2), ("VT", 1, 2)):
+                same_valid = actual_mask[:, left] & actual_mask[:, right]
+                same = F.cosine_similarity(
+                    output.modality_aff[:, left], output.modality_aff[:, right], dim=-1
+                )
+                alignment[name]["same_sum"] += float(same[same_valid].sum().cpu())
+                alignment[name]["same_count"] += int(same_valid.sum().cpu())
+                if len(actual_mask) > 1:
+                    permutation = torch.roll(
+                        torch.arange(len(actual_mask), device=device), shifts=1
+                    )
+                    random_valid = actual_mask[:, left] & actual_mask[permutation, right]
+                    random = F.cosine_similarity(
+                        output.modality_aff[:, left],
+                        output.modality_aff[permutation, right],
+                        dim=-1,
+                    )
+                    alignment[name]["random_sum"] += float(
+                        random[random_valid].sum().cpu()
+                    )
+                    alignment[name]["random_count"] += int(random_valid.sum().cpu())
+        full_valid = output.valid_subsets[:, -1]
+        full_aff.append(output.aff[full_valid, -1].cpu())
+        speakers.append(batch["speaker"][full_valid].cpu())
+        domains.append(batch["dataset_id"][full_valid].cpu())
     metrics: Dict[str, float] = {}
     for subset, name in enumerate(SUBSET_NAMES):
         values = classification_metrics(matrices[subset])
@@ -68,14 +102,39 @@ def evaluate_observation(encoder, heads, loader, device) -> Tuple[Dict[str, floa
         metrics[f"{name}_intensity_mae"] = float(
             intensity_error[subset] / counts[subset].clamp_min(1)
         )
-    metrics["AVT_vad_ccc"] = ccc_value(
-        torch.cat(vad_prediction), torch.cat(vad_target), torch.cat(vad_mask)
-    )
+        metrics[f"{name}_vad_ccc"] = ccc_value(
+            torch.cat(subset_vad_prediction[subset]),
+            torch.cat(subset_vad_target[subset]),
+            torch.cat(subset_vad_mask[subset]),
+        )
+    metrics["mean_subset_f1"] = sum(
+        metrics[f"{name}_macro_f1"] for name in SUBSET_NAMES
+    ) / len(SUBSET_NAMES)
+    for name, values in alignment.items():
+        same_count = values["same_count"]
+        random_count = values["random_count"]
+        same = values["same_sum"] / max(same_count, 1)
+        random = values["random_sum"] / max(random_count, 1)
+        metrics[f"{name}_same_utterance_cosine"] = same
+        metrics[f"{name}_random_utterance_cosine"] = random
+        metrics[f"{name}_alignment_margin"] = same - random
+        metrics[f"{name}_alignment_pairs"] = float(min(same_count, random_count))
     evidence = {
         "aff": torch.cat(full_aff),
         "speaker": torch.cat(speakers),
         "domain": torch.cat(domains),
     }
+    # These diagnostics make the collapse and alignment contracts visible in
+    # a real run instead of limiting them to synthetic unit tests.
+    if evidence["aff"].shape[0] > 1:
+        latent_std = evidence["aff"].std(dim=0, unbiased=False)
+        evidence["latent_std_mean"] = latent_std.mean()
+        evidence["latent_near_constant_dimensions"] = (latent_std < 1e-3).sum()
+    else:
+        evidence["latent_std_mean"] = torch.tensor(0.0)
+        evidence["latent_near_constant_dimensions"] = torch.tensor(
+            evidence["aff"].shape[-1]
+        )
     return metrics, evidence
 
 
@@ -95,15 +154,91 @@ def linear_leakage_probe(features: torch.Tensor, target: torch.Tensor, seed: int
     std = features[train_index].std(0).clamp_min(1e-6)
     x_train = (features[train_index] - mean) / std
     x_test = (features[test_index] - mean) / std
-    classifier = nn.Linear(features.shape[-1], int(target.max()) + 1)
-    optimizer = torch.optim.Adam(classifier.parameters(), lr=0.03)
-    for _ in range(100):
-        optimizer.zero_grad(set_to_none=True)
-        loss = nn.functional.cross_entropy(classifier(x_train), target[train_index])
-        loss.backward()
-        optimizer.step()
-    with torch.no_grad():
-        return float((classifier(x_test).argmax(-1) == target[test_index]).float().mean())
+    # The split and probe initialization are both fixed so leakage comparisons
+    # between checkpoints are reproducible.
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(seed)
+        classifier = nn.Linear(features.shape[-1], int(target.max()) + 1)
+        optimizer = torch.optim.Adam(classifier.parameters(), lr=0.03)
+        for _ in range(100):
+            optimizer.zero_grad(set_to_none=True)
+            loss = nn.functional.cross_entropy(classifier(x_train), target[train_index])
+            loss.backward()
+            optimizer.step()
+        with torch.no_grad():
+            return float(
+                (classifier(x_test).argmax(-1) == target[test_index]).float().mean()
+            )
+
+
+def chance_accuracy(target: torch.Tensor) -> float:
+    """Uniform random-guess accuracy for labels actually present in a split."""
+    valid = target[target >= 0]
+    classes = valid.unique()
+    return 1.0 / len(classes) if len(classes) else 0.0
+
+
+def observation_contract_failures(
+    metrics: Mapping[str, object],
+    reference_metrics: Optional[Mapping[str, object]] = None,
+    min_alignment_margin: float = 0.0,
+    max_latent_constant_dimensions: int = 0,
+    max_leakage_excess: float = 0.1,
+    max_emotion_f1_drop: float = 0.02,
+) -> List[str]:
+    """Return failed real-run observation contracts without hiding metrics."""
+
+    def number(name: str) -> Optional[float]:
+        value = metrics.get(name)
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            return None
+        return value if math.isfinite(value) else None
+
+    failures = []
+    for name in ("AV", "AT", "VT"):
+        pairs = number(f"{name}_alignment_pairs")
+        margin = number(f"{name}_alignment_margin")
+        if pairs is None or pairs < 1:
+            failures.append(f"{name}: no valid same/random cross-modal pairs")
+        elif margin is None or margin < min_alignment_margin:
+            failures.append(
+                f"{name}: alignment margin {margin} is below {min_alignment_margin}"
+            )
+    collapsed = number("latent_near_constant_dimensions")
+    if collapsed is None or collapsed > max_latent_constant_dimensions:
+        failures.append(
+            "latent_near_constant_dimensions exceeds "
+            f"{max_latent_constant_dimensions}"
+        )
+    for name in ("A", "V", "T", "AVT"):
+        if number(f"{name}_vad_ccc") is None:
+            failures.append(f"{name}: VAD CCC is unavailable")
+    for name in ("speaker", "domain"):
+        leakage = number(f"{name}_leakage_accuracy")
+        chance = number(f"{name}_chance")
+        if leakage is None or chance is None:
+            failures.append(f"{name}: leakage or chance metric is unavailable")
+        elif leakage > chance + max_leakage_excess:
+            failures.append(
+                f"{name}: leakage {leakage} exceeds chance {chance} by more than "
+                f"{max_leakage_excess}"
+            )
+    if reference_metrics is not None:
+        current_f1 = number("mean_subset_f1")
+        try:
+            reference_f1 = float(reference_metrics["mean_subset_f1"])
+        except (KeyError, TypeError, ValueError):
+            reference_f1 = float("nan")
+        if current_f1 is None or not math.isfinite(reference_f1):
+            failures.append("mean_subset_f1 is unavailable for the reference comparison")
+        elif current_f1 < reference_f1 - max_emotion_f1_drop:
+            failures.append(
+                f"mean_subset_f1 dropped from {reference_f1} to {current_f1}, "
+                f"more than {max_emotion_f1_drop}"
+            )
+    return failures
 
 
 @torch.no_grad()
@@ -169,6 +304,12 @@ def main() -> None:
     parser.add_argument("--ema-checkpoint", type=Path, required=True)
     parser.add_argument("--dynamics-checkpoint", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--reference-metrics", type=Path)
+    parser.add_argument("--assert-observation-contracts", action="store_true")
+    parser.add_argument("--min-alignment-margin", type=float, default=0.0)
+    parser.add_argument("--max-latent-constant-dimensions", type=int, default=0)
+    parser.add_argument("--max-leakage-excess", type=float, default=0.1)
+    parser.add_argument("--max-emotion-f1-drop", type=float, default=0.02)
     parser.add_argument("opts", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     cfg = load_config(args.config, args.opts)
@@ -191,6 +332,7 @@ def main() -> None:
     ).to(device)
     heads.load_state_dict(load_component_state(args.heads_checkpoint, "heads"))
     metrics, evidence = evaluate_observation(encoder, heads, utterance_loader, device)
+    probe_evidence = evidence
     if args.split != "train":
         probe_dataset = UnifiedUtteranceDataset(stores, "train", speaker_vocab)
         probe_loader = DataLoader(
@@ -199,13 +341,21 @@ def main() -> None:
             shuffle=False,
             num_workers=cfg.DATA.NUM_WORKERS,
         )
-        _, evidence = evaluate_observation(encoder, heads, probe_loader, device)
+        _, probe_evidence = evaluate_observation(encoder, heads, probe_loader, device)
     metrics["speaker_leakage_accuracy"] = linear_leakage_probe(
-        evidence["aff"], evidence["speaker"], cfg.SEED
+        probe_evidence["aff"], probe_evidence["speaker"], cfg.SEED
     )
     metrics["domain_leakage_accuracy"] = linear_leakage_probe(
-        evidence["aff"], evidence["domain"], cfg.SEED
+        probe_evidence["aff"], probe_evidence["domain"], cfg.SEED
     )
+    metrics["latent_std_mean"] = float(evidence["latent_std_mean"])
+    metrics["latent_near_constant_dimensions"] = int(
+        evidence["latent_near_constant_dimensions"]
+    )
+    metrics["speaker_chance"] = chance_accuracy(probe_evidence["speaker"])
+    metrics["domain_chance"] = chance_accuracy(probe_evidence["domain"])
+    metrics["speaker_leakage_excess"] = metrics["speaker_leakage_accuracy"] - metrics["speaker_chance"]
+    metrics["domain_leakage_excess"] = metrics["domain_leakage_accuracy"] - metrics["domain_chance"]
 
     if args.dynamics_checkpoint:
         cfg_for_dynamics = cfg.clone()
@@ -252,6 +402,23 @@ def main() -> None:
                 f"h{horizon}", 0.0
             )
         metrics["state_curves"] = state_curves(bundle.state_model)
+    reference_metrics = None
+    if args.reference_metrics is not None:
+        if not args.reference_metrics.is_file():
+            raise FileNotFoundError(args.reference_metrics)
+        reference_metrics = json.loads(args.reference_metrics.read_text(encoding="utf-8"))
+    failures = []
+    if args.assert_observation_contracts:
+        failures = observation_contract_failures(
+            metrics,
+            reference_metrics,
+            args.min_alignment_margin,
+            args.max_latent_constant_dimensions,
+            args.max_leakage_excess,
+            args.max_emotion_f1_drop,
+        )
+        metrics["observation_contract_passed"] = not failures
+        metrics["observation_contract_failures"] = failures
     text = json.dumps(metrics, indent=2, ensure_ascii=False)
     print(text)
     if args.output:
@@ -265,6 +432,8 @@ def main() -> None:
             ],
         )
         (output_dir / args.output.name).write_text(text + "\n", encoding="utf-8")
+    if failures:
+        raise SystemExit("Observation contracts failed: " + "; ".join(failures))
 
 
 if __name__ == "__main__":

@@ -13,7 +13,6 @@ from .common import (
     SpeakerVocabulary,
     load_pt,
     pack_face_sequence,
-    pool_face_sequence,
     read_json,
     validate_record,
 )
@@ -301,19 +300,27 @@ class FeatureDialogueStore:
             confidence_sequences,
             frame_valid_masks,
         ):
-            if face_mean is not None:
-                au = (au.float() - face_mean) / face_std
-            # Keep the frame axis. TemporalAUEncoder uses this mask to ignore
-            # padded/failed OpenFace frames while retaining order information.
-            au = torch.nan_to_num(au.float())
-            confidence = confidence.float().flatten()
+            au = au.float()
+            confidence = torch.nan_to_num(
+                confidence.float().flatten(), nan=0.0, posinf=0.0, neginf=0.0
+            )
             valid = valid.bool().flatten()
             if len(confidence) != len(au) or len(valid) != len(au):
                 raise ValueError(f"{dialogue_id}: AU frame metadata length mismatch")
-            vector, reliability = pool_face_sequence(au, confidence, valid)
+            valid = valid & torch.isfinite(au).all(dim=-1)
+            if face_mean is not None:
+                au = (au - face_mean) / face_std
+            # Keep the frame axis. TemporalAUEncoder uses this mask to ignore
+            # padded/failed OpenFace frames while retaining order information.
+            au = torch.nan_to_num(au)
+            confidence = confidence.clamp(0.0, 1.0)
+            reliability = float(
+                (confidence * valid.to(confidence.dtype)).sum()
+                / valid.sum().clamp_min(1)
+            )
             face_vectors.append(au)
             face_masks.append(valid)
-            face_confidences.append(confidence.clamp(0.0, 1.0))
+            face_confidences.append(confidence)
             face_reliability.append(reliability)
         if len(face_vectors) != len(utterances):
             raise ValueError(f"{dialogue_id}: face sequence count differs from labels")

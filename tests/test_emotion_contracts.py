@@ -3,16 +3,19 @@
 import torch
 import torch.nn.functional as F
 
-from emotion_ssm.evaluate import linear_leakage_probe
+from emotion_ssm.evaluate import linear_leakage_probe, observation_contract_failures
+from emotion_ssm.losses import vicreg_loss
 from emotion_ssm.models.conditioned_dualtalk import DyadicAudioConditioner
 from emotion_ssm.models.dynamics import DyadicEmotionSSM
 from emotion_ssm.models.observation import (
+    AffectDecoder,
     ObservationEncoder,
     ObservationSupervisionHeads,
     TemporalAUEncoder,
 )
 from emotion_ssm.train.dualtalk import ConditionedTrainingSystem
-from emotion_ssm.train.dynamics_core import _flatten_event_windows
+from emotion_ssm.train.dynamics_core import DynamicsTrainingBundle, _flatten_event_windows
+from emotion_ssm.config import get_cfg_defaults
 from emotion_ssm.data.common import pack_face_sequence
 from emotion_ssm.schema import DyadicState, EventObservation
 
@@ -103,10 +106,15 @@ def test_same_utterance_modalities_are_more_similar_than_random():
         def forward(self, value, frame_mask=None, confidence=None):
             return value[:, :1, :1].squeeze(1).expand(-1, 16)
 
+    class AffectProjector(torch.nn.Module):
+        def forward(self, value):
+            return value[..., :8]
+
     model.audio_adapter = ScalarAdapter()
     model.text_adapter = ScalarAdapter()
     model.face_temporal = FaceAdapter()
     model.face_adapter = ScalarAdapter()
+    model.shared_affect_projector = AffectProjector()
     common = {
         "audio": torch.ones(1, 4),
         "face": torch.ones(1, 3, 5),
@@ -123,10 +131,11 @@ def test_same_utterance_modalities_are_more_similar_than_random():
     with torch.no_grad():
         same = model(common, torch.tensor([[1, 1, 1]])).modality_aff[0]
         random = model(other, torch.tensor([[1, 1, 1]])).modality_aff[0]
-    same_cosine = F.cosine_similarity(same[0], same[1], dim=0)
-    random_cosine = F.cosine_similarity(same[0], random[0], dim=0)
     assert same.shape == (3, 8)
-    assert same_cosine > random_cosine
+    for left, right in ((0, 1), (0, 2), (1, 2)):
+        same_cosine = F.cosine_similarity(same[left], same[right], dim=0)
+        random_cosine = F.cosine_similarity(same[left], random[right], dim=0)
+        assert same_cosine > random_cosine
 
 
 def test_latent_dimensions_have_nonzero_variance_and_heads_work_for_avt_and_single():
@@ -140,21 +149,34 @@ def test_latent_dimensions_have_nonzero_variance_and_heads_work_for_avt_and_sing
         "face_frame_mask": torch.ones(32, 2, dtype=torch.bool),
         "face_confidence": torch.ones(32, 2),
     }
-    output = model(batch)
+    subset_masks = torch.tensor(
+        [[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 1]], dtype=torch.bool
+    )
+    output = model(batch, subset_masks)
     output.aff.retain_grad()
     heads = ObservationSupervisionHeads(8, 2, 3)
     predictions = heads(output.aff, 0.0)
     assert torch.all(output.aff[:, -1].var(0) > 1e-5)
-    assert predictions["emotion"].shape[:2] == (32, 7)
-    assert predictions["vad"].shape[:2] == (32, 7)
+    assert predictions["emotion"].shape == (32, 4, 7)
+    assert predictions["vad"].shape == (32, 4, 3)
     assert torch.isfinite(predictions["emotion"]).all()
     assert torch.isfinite(predictions["vad"]).all()
-    # Both the A-only and AVT paths are connected to the emotion/VAD heads.
-    loss = predictions["emotion"][:, [0, -1]].square().mean()
-    loss = loss + predictions["vad"][:, [0, -1]].square().mean()
+    # Each A/V/T-only path and the AVT path reaches both supervision heads.
+    for subset in range(4):
+        assert predictions["emotion"][:, subset].shape == (32, 7)
+        assert predictions["vad"][:, subset].shape == (32, 3)
+    loss = predictions["emotion"].square().mean()
+    loss = loss + predictions["vad"].square().mean()
     loss.backward()
     assert output.aff.grad is not None
-    assert output.aff.grad[:, [0, -1]].abs().sum() > 0
+    assert output.aff.grad.abs().sum() > 0
+
+
+def test_vicreg_penalizes_collapsed_latent_dimensions():
+    collapsed = torch.zeros(8, 4)
+    diverse = torch.eye(4).repeat(2, 1)
+    valid = torch.ones(8, dtype=torch.bool)
+    assert vicreg_loss(collapsed, valid) > vicreg_loss(diverse, valid)
 
 
 def test_open_loop_does_not_read_future_affect():
@@ -245,6 +267,44 @@ def test_sender_action_changes_receiver_more_than_sender():
         second = model.transition(state, altered, torch.zeros(1, dtype=torch.long), torch.ones(1))
     delta = (second.next_prior.z - first.next_prior.z).abs()[0]
     assert delta[1].mean() > delta[0].mean()
+
+
+def test_phase_b_freezes_only_affect_branch_before_low_lr_release():
+    cfg = get_cfg_defaults()
+    cfg.defrost()
+    cfg.MODEL.AUDIO_DIM = 4
+    cfg.MODEL.FACE_DIM = 5
+    cfg.MODEL.TEXT_DIM = 6
+    cfg.MODEL.MODEL_DIM = 16
+    cfg.MODEL.OBSERVATION_DIM = 8
+    cfg.MODEL.STATE_DIM = 8
+    cfg.MODEL.RELATION_DIM = 4
+    cfg.MODEL.INFLUENCE_DIM = 8
+    cfg.MODEL.INFLUENCE_CHANNELS = 3
+    cfg.MODEL.NUM_LAYERS = 1
+    cfg.MODEL.NUM_HEADS = 4
+    cfg.MODEL.NUM_TIMESCALES = 2
+    cfg.freeze()
+    encoder = _encoder()
+    bundle = DynamicsTrainingBundle(
+        encoder,
+        DyadicEmotionSSM(
+            state_dim=8, observation_dim=8, relation_dim=4, influence_dim=8,
+            influence_channels=3, num_speakers=1, num_timescales=2,
+        ),
+        AffectDecoder(8),
+        cfg,
+    )
+    bundle.set_phase_b_affect_frozen(True)
+    action_event, affect = bundle.phase_b_parameter_groups()
+    assert action_event and affect
+    assert not {id(value) for value in action_event} & {id(value) for value in affect}
+    assert not any(value.requires_grad for value in affect)
+    assert all(value.requires_grad for value in bundle.encoder.action_head.parameters())
+    assert all(value.requires_grad for value in bundle.encoder.event_head.parameters())
+
+    bundle.set_phase_b_affect_frozen(False)
+    assert all(value.requires_grad for value in affect)
 
 
 class _FakeObserver(torch.nn.Module):
@@ -360,6 +420,38 @@ def test_probe_is_bounded_and_random_features_are_near_chance():
     accuracy = linear_leakage_probe(features, target, seed=4)
     assert 0.0 <= accuracy <= 1.0
     assert accuracy < 0.7
+
+
+def test_observation_contracts_require_alignment_variance_vad_and_low_leakage():
+    metrics = {
+        "AV_alignment_pairs": 8,
+        "AT_alignment_pairs": 8,
+        "VT_alignment_pairs": 8,
+        "AV_alignment_margin": 0.2,
+        "AT_alignment_margin": 0.2,
+        "VT_alignment_margin": 0.2,
+        "latent_near_constant_dimensions": 0,
+        "A_vad_ccc": 0.1,
+        "V_vad_ccc": 0.1,
+        "T_vad_ccc": 0.1,
+        "AVT_vad_ccc": 0.1,
+        "speaker_leakage_accuracy": 0.30,
+        "speaker_chance": 0.25,
+        "domain_leakage_accuracy": 0.40,
+        "domain_chance": 1.0 / 3.0,
+        "mean_subset_f1": 0.50,
+    }
+    reference = {"mean_subset_f1": 0.51}
+    assert not observation_contract_failures(metrics, reference)
+
+    failed = dict(metrics)
+    failed["AT_alignment_margin"] = -0.01
+    failed["speaker_leakage_accuracy"] = 0.50
+    failed["mean_subset_f1"] = 0.40
+    messages = observation_contract_failures(failed, reference)
+    assert any(message.startswith("AT:") for message in messages)
+    assert any(message.startswith("speaker:") for message in messages)
+    assert any(message.startswith("mean_subset_f1") for message in messages)
 
 
 def test_nuisance_grl_does_not_change_emotion_forward_path():

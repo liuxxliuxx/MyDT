@@ -73,6 +73,9 @@ def get_cfg_defaults() -> CN:
     cfg.LOSS.DOMAIN = 0.05
     cfg.LOSS.DECORRELATION = 0.01
     cfg.LOSS.VICREG = 0.01
+    # Phase B keeps the shared affect coordinates near the EMA observation
+    # teacher when its affect branch is eventually unfrozen.
+    cfg.LOSS.OBSERVATION_ANCHOR = 0.1
     cfg.LOSS.NEXT_STATE = 1.0
     cfg.LOSS.TRAJECTORY = 0.5
     cfg.LOSS.CORRECTION = 0.05
@@ -117,6 +120,8 @@ def get_cfg_defaults() -> CN:
     cfg.DYNAMICS.DISABLE_LONG_TIMESCALES = False
     cfg.DYNAMICS.RANDOM_ROLE_SWAP = True
     cfg.DYNAMICS.RANDOM_PARTNER = False
+    cfg.DYNAMICS.FREEZE_AFFECT_EPOCHS = 5
+    cfg.DYNAMICS.AFFECT_LR_SCALE = 0.05
 
     cfg.COUNTERFACTUAL = CN()
     cfg.COUNTERFACTUAL.TOP_K = 8

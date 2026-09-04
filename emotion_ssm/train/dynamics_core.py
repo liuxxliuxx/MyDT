@@ -212,6 +212,9 @@ class DynamicsTrainingBundle(nn.Module):
         self.loss_trajectory = float(cfg.LOSS.TRAJECTORY)
         self.loss_correction = float(cfg.LOSS.CORRECTION)
         self.loss_counterfactual = float(cfg.LOSS.COUNTERFACTUAL)
+        self.loss_observation_anchor = float(
+            getattr(cfg.LOSS, "OBSERVATION_ANCHOR", 0.0)
+        )
         self.finetune_observation = bool(cfg.TRAIN.FINETUNE_OBSERVATION)
 
     def train(self, mode: bool = True):
@@ -220,6 +223,42 @@ class DynamicsTrainingBundle(nn.Module):
         if not self.finetune_observation:
             self.encoder.eval()
         return self
+
+    def set_phase_b_affect_frozen(self, frozen: bool) -> None:
+        """Toggle only the shared-affect branch during Phase B.
+
+        The event/action heads and their fusion stack must remain trainable:
+        Phase B is where action becomes predictive of the partner's response.
+        Affect modules are released later at a small learning rate and are
+        anchored to the frozen EMA full-AVT representation.
+        """
+        self.finetune_observation = True
+        self.encoder.requires_grad_(True)
+        for module in self._affect_modules():
+            module.requires_grad_(not frozen)
+
+    def _affect_modules(self):
+        return (
+            self.encoder.audio_adapter,
+            self.encoder.face_temporal,
+            self.encoder.face_adapter,
+            self.encoder.text_adapter,
+            self.encoder.shared_affect_projector,
+            self.encoder.affect_weight,
+        )
+
+    def phase_b_parameter_groups(self):
+        """Return disjoint Phase-B action/event and shared-affect parameters."""
+        affect_ids = {
+            id(parameter)
+            for module in self._affect_modules()
+            for parameter in module.parameters()
+        }
+        affect = []
+        action_event = []
+        for parameter in self.encoder.parameters():
+            (affect if id(parameter) in affect_ids else action_event).append(parameter)
+        return action_event, affect
 
     def _decode_state(self, state_value: Tensor) -> Dict[str, Tensor]:
         aff = self.state_model.state_to_aff(state_value)
@@ -410,12 +449,16 @@ class DynamicsTrainingBundle(nn.Module):
             modality_mask=None,
         )
         matches = match_counterfactuals(
-            receiver_event=event.event[sample_index, future_index].detach(),
+            # Candidate matching is restricted to information known when the
+            # sender acts.  The next receiver turn below is used only as the
+            # supervision target, never to select a candidate action.
+            context_event=event.event[sample_index, turn_index].detach(),
             sender_action=observation.action.detach(),
-            receiver_emotion=batch["emotion"][sample_index, future_index],
-            receiver_intensity=batch["intensity"][sample_index, future_index],
-            turn_position=batch["turn_position"][sample_index, future_index],
+            context_emotion=batch["emotion"][sample_index, turn_index],
+            context_intensity=batch["intensity"][sample_index, turn_index],
+            turn_position=batch["turn_position"][sample_index, turn_index],
             dialogue_id=batch["dialogue_index"][sample_index],
+            sender_role=batch["active_role"][sample_index, turn_index],
             top_k=self.cf_top_k,
             intensity_tolerance=self.cf_intensity_tolerance,
             turn_tolerance=self.cf_turn_tolerance,
@@ -436,7 +479,11 @@ class DynamicsTrainingBundle(nn.Module):
             stop: int,
             replacement_action: Optional[Tensor] = None,
         ) -> DyadicState:
-            """Simulate until the receiver's next turn without future evidence."""
+            """Simulate conditionally to the receiver's next turn.
+
+            Later event/action inputs remain fixed on both branches, while
+            later affect evidence is never used because ``correct=False``.
+            """
             current = initial
             for turn in range(start, stop):
                 action = event.action[sample : sample + 1, turn]
@@ -532,6 +579,18 @@ class DynamicsTrainingBundle(nn.Module):
         event.modality_mask = batch["modality_mask"]
         if enable_partner and self.random_partner and batch_size > 1:
             event.action = event.action.roll(1, dims=0)
+        observation_anchor = zero_loss(event.aff)
+        if enable_partner and self.finetune_observation:
+            # The EMA observer sees the same full-AVT evidence but never
+            # receives Phase-B gradients.  This preserves the observation
+            # coordinate system while action/coupling learns response effects.
+            observation_anchor = masked_mean(
+                1.0 - F.cosine_similarity(event.aff, teacher_aff, dim=-1),
+                batch["valid_mask"],
+            ) + masked_mean(
+                F.smooth_l1_loss(event.aff, teacher_aff, reduction="none"),
+                batch["valid_mask"],
+            )
         posterior_z, posterior_relation, _, correction_error = self._teacher_forced_states(
             event, batch, enable_partner
         )
@@ -582,6 +641,7 @@ class DynamicsTrainingBundle(nn.Module):
             + self.loss_trajectory * trajectory
             + self.loss_correction * correction
             + self.loss_counterfactual * counterfactual
+            + self.loss_observation_anchor * observation_anchor
         )
         result.update(
             {
@@ -591,6 +651,7 @@ class DynamicsTrainingBundle(nn.Module):
                 "correction": correction.detach(),
                 "counterfactual": counterfactual.detach(),
                 "cf_ranking_accuracy": ranking_accuracy,
+                "observation_anchor": observation_anchor.detach(),
             }
         )
         return result

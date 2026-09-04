@@ -21,6 +21,7 @@ from emotion_ssm.preprocess.iemocap import (
     parse_evaluations,
     parse_transcript,
     slice_face_frames,
+    slice_face_timestamps,
 )
 from emotion_ssm.utils.paths import ensure_output_directory
 
@@ -66,13 +67,29 @@ def test_au_time_slice_uses_best_face():
     assert valid.item()
 
 
+def test_au_timestamp_slice_uses_the_same_deduplicated_order():
+    frames = [
+        {"timestamp": 0.5, "confidence": 0.7, "success": 1, "au": [1.0] * 35},
+        {"timestamp": 0.5, "confidence": 0.9, "success": 1, "au": [2.0] * 35},
+        {"timestamp": 0.75, "confidence": 0.8, "success": 1, "au": [3.0] * 35},
+    ]
+    assert slice_face_timestamps(frames, 0.0, 1.0).tolist() == [0.5, 0.75]
+
+
 def test_feature_store_and_l33_window(feature_root: Path):
     store = FeatureDialogueStore(feature_root, "emotiontalk", 0)
     vocab = SpeakerVocabulary(store.collect_speakers("train"))
     utterances = UnifiedUtteranceDataset([store], "train", vocab)
     windows = DialogueWindowDataset([store], "train", vocab, window_length=33, stride=4)
     assert len(utterances) == 4
+    # The data layer must preserve the AU frame axis for TemporalAUEncoder;
+    # a pooled [35] vector would make this assertion fail.
+    assert utterances[0]["face"].shape == (128, 35)
+    assert utterances[0]["face_frame_mask"].sum().item() == 3
+    assert utterances[0]["face_confidence"].shape == (128,)
     assert windows[0]["audio"].shape == (33, 768)
+    assert windows[0]["face"].shape == (33, 128, 35)
+    assert windows[0]["face_frame_mask"].shape == (33, 128)
     assert windows[0]["valid_mask"].sum().item() == 4
     assert not windows[0]["vad_mask"][:, 2].any()
 

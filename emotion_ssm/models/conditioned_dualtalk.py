@@ -123,7 +123,14 @@ class AudioOnlyStateObserver(nn.Module):
         batch_size = len(audio)
         batch = {
             "audio": audio,
-            "face": audio.new_zeros(batch_size, 35),
+            # TemporalAUEncoder accepts a one-frame sequence.  The explicit
+            # mask marks this placeholder as absent, so it cannot affect the
+            # A-only observation while keeping the batch schema well-formed.
+            "face": audio.new_zeros(batch_size, 1, 35),
+            "face_frame_mask": torch.zeros(
+                batch_size, 1, dtype=torch.bool, device=audio.device
+            ),
+            "face_confidence": audio.new_zeros(batch_size, 1),
             "text": audio.new_zeros(batch_size, 768),
             "dataset_id": torch.full(
                 (batch_size,), dataset_id, dtype=torch.long, device=audio.device

@@ -144,23 +144,37 @@ def run_dynamics_stage(
     teacher = _load_teacher(cfg, context.device)
     bundle = maybe_ddp(bundle, context)
     raw_bundle = unwrap_model(bundle)
-    parameter_groups = [
-        {
-            "params": list(raw_bundle.state_model.parameters())
-            + list(raw_bundle.decoder.parameters()),
-            "lr": cfg.TRAIN.LR,
-        }
-    ]
-    observation_parameters = [
-        value for value in raw_bundle.encoder.parameters() if value.requires_grad
-    ]
-    if observation_parameters:
-        parameter_groups.append(
-            {
-                "params": observation_parameters,
-                "lr": cfg.TRAIN.LR * cfg.TRAIN.STATE_LR_SCALE,
-            }
+    parameter_groups = [{
+        "params": list(raw_bundle.state_model.parameters())
+        + list(raw_bundle.decoder.parameters()),
+        "lr": cfg.TRAIN.LR,
+    }]
+    if enable_partner:
+        # Phase B trains event/action/fusion at the main learning rate.  The
+        # shared affect branch starts frozen and is included here so that it
+        # can be released without rebuilding optimizer state.
+        raw_bundle.set_phase_b_affect_frozen(True)
+        action_event_parameters, affect_parameters = raw_bundle.phase_b_parameter_groups()
+        parameter_groups.extend(
+            [
+                {"params": action_event_parameters, "lr": cfg.TRAIN.LR},
+                {
+                    "params": affect_parameters,
+                    "lr": cfg.TRAIN.LR * cfg.DYNAMICS.AFFECT_LR_SCALE,
+                },
+            ]
         )
+    else:
+        observation_parameters = [
+            value for value in raw_bundle.encoder.parameters() if value.requires_grad
+        ]
+        if observation_parameters:
+            parameter_groups.append(
+                {
+                    "params": observation_parameters,
+                    "lr": cfg.TRAIN.LR * cfg.TRAIN.STATE_LR_SCALE,
+                }
+            )
     optimizer = torch.optim.AdamW(
         parameter_groups, weight_decay=cfg.TRAIN.WEIGHT_DECAY
     )
@@ -187,6 +201,10 @@ def run_dynamics_stage(
     for epoch in range(start_epoch, cfg.TRAIN.EPOCHS):
         if train_sampler is not None:
             train_sampler.set_epoch(epoch)
+        if enable_partner:
+            raw_bundle.set_phase_b_affect_frozen(
+                epoch < cfg.DYNAMICS.FREEZE_AFFECT_EPOCHS
+            )
         bundle.train()
         totals: Dict[str, float] = {}
         batches = 0
