@@ -297,7 +297,7 @@ def test_open_loop_horizon_ignores_future_event_and_action_but_conditional_uses_
     assert not torch.equal(conditional_a["affect"], conditional_b["affect"])
 
 
-def test_open_loop_horizon_ignores_future_turn_structure():
+def test_open_loop_horizon_ignores_future_roles_but_uses_query_time():
     cfg = get_cfg_defaults()
     cfg.defrost()
     cfg.MODEL.STATE_DIM = 8
@@ -335,8 +335,6 @@ def test_open_loop_horizon_ignores_future_turn_structure():
     changed = dict(batch)
     changed["active_role"] = batch["active_role"].clone()
     changed["active_role"][:, 1] = 1
-    changed["dt_to_next"] = batch["dt_to_next"].clone()
-    changed["dt_to_next"][:, 1] = 100.0
     posterior_z = torch.randn(1, 3, 2, 8)
     posterior_relation = torch.randn(1, 3, 4)
     target_aff = F.normalize(torch.randn(1, 3, 8), dim=-1)
@@ -350,6 +348,11 @@ def test_open_loop_horizon_ignores_future_turn_structure():
             torch.ones(7), True, rollout_mode="open_loop",
         )
     assert all(torch.equal(first[name], second[name]) for name in first)
+    changed["dt_to_next"] = batch["dt_to_next"].clone()
+    changed["dt_to_next"][:, 1] = 100.0
+    later, _ = bundle._horizon_loss(2, event, posterior_z, posterior_relation, changed,
+        target_aff, torch.ones(7), True, rollout_mode="open_loop")
+    assert not torch.allclose(first["affect"], later["affect"])
 
 
 def test_dt_accepts_scalar_and_column_shapes():
@@ -419,7 +422,7 @@ def test_sender_action_changes_receiver_more_than_sender():
     assert delta[1].mean() > delta[0].mean()
 
 
-def test_phase_b_freezes_only_affect_branch_before_low_lr_release():
+def test_phase_b_keeps_affect_frozen_after_warmup():
     cfg = get_cfg_defaults()
     cfg.defrost()
     cfg.MODEL.AUDIO_DIM = 4
@@ -454,7 +457,7 @@ def test_phase_b_freezes_only_affect_branch_before_low_lr_release():
     assert all(value.requires_grad for value in bundle.encoder.event_head.parameters())
 
     bundle.set_phase_b_affect_frozen(False)
-    assert all(value.requires_grad for value in affect)
+    assert not any(value.requires_grad for value in affect)
 
 
 class _FakeObserver(torch.nn.Module):

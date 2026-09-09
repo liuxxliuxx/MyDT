@@ -2,8 +2,8 @@ SEED: 6666
 DEVICE: cuda
 DATA:
   ROOT: datasets
-  EMOTIONTALK_ROOT: datasets/emotiontalk/processed
-  IEMOCAP_FEATURE_ROOT: artifacts/features/iemocap
+  EMOTIONTALK_ROOT: artifacts/features/emotiontalk_v2
+  IEMOCAP_FEATURE_ROOT: artifacts/features/iemocap_v2
   IEMOCAP_FOLD: 5
   NUM_WORKERS: 8
 TRAIN:

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import inspect
 import json
+import time
 from pathlib import Path
-from typing import Dict, Mapping
+from typing import Dict, Mapping, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -31,6 +32,7 @@ from emotion_ssm.train.common import (
     move_to_device,
 )
 from emotion_ssm.train.dynamics_core import load_component_state
+from emotion_ssm.schema import EventObservation
 from emotion_ssm.utils.checkpoint import load_training_checkpoint, save_training_checkpoint
 from emotion_ssm.utils.distributed import init_distributed, unwrap_model
 
@@ -70,6 +72,7 @@ class ConditionedTrainingSystem(nn.Module):
         state_loss_weight: float,
         state_anchor_weight: float = 0.0,
         causal_state_context: bool = False,
+        audio_feature_batch_size: int = 16,
     ) -> None:
         super().__init__()
         self.generator = generator
@@ -78,6 +81,7 @@ class ConditionedTrainingSystem(nn.Module):
         self.state_loss_weight = state_loss_weight
         self.state_anchor_weight = state_anchor_weight
         self.causal_state_context = causal_state_context
+        self.audio_feature_batch_size = max(int(audio_feature_batch_size), 1)
         self.state_frozen = True
         state_model = getattr(conditioner, "state_model", None)
         self._state_anchor_names = []
@@ -123,6 +127,123 @@ class ConditionedTrainingSystem(nn.Module):
             domain_id = int(getattr(audio_observer, "dataset_id", 2))
             modules.append(observer.audio_adapter.adapters[domain_id])
         return modules
+
+    @staticmethod
+    def _restore_sequence_field(
+        value: torch.Tensor, valid_indices: torch.Tensor, batch_size: int, chunk_count: int
+    ) -> torch.Tensor:
+        """Scatter valid flattened chunks back to [B, chunks, ...]."""
+        flat = value.new_zeros((batch_size * chunk_count,) + tuple(value.shape[1:]))
+        if value.shape[0] > 0:
+            flat.index_copy_(0, valid_indices, value)
+        return flat.reshape((batch_size, chunk_count) + tuple(value.shape[1:]))
+
+    @classmethod
+    def _restore_observation(
+        cls,
+        observation: EventObservation,
+        valid_indices: torch.Tensor,
+        batch_size: int,
+        chunk_count: int,
+    ) -> EventObservation:
+        modality_mask = None
+        if observation.modality_mask is not None:
+            modality_mask = cls._restore_sequence_field(
+                observation.modality_mask, valid_indices, batch_size, chunk_count
+            )
+        return EventObservation(
+            aff=cls._restore_sequence_field(
+                observation.aff, valid_indices, batch_size, chunk_count
+            ),
+            event=cls._restore_sequence_field(
+                observation.event, valid_indices, batch_size, chunk_count
+            ),
+            action=cls._restore_sequence_field(
+                observation.action, valid_indices, batch_size, chunk_count
+            ),
+            reliability=cls._restore_sequence_field(
+                observation.reliability, valid_indices, batch_size, chunk_count
+            ),
+            modality_mask=modality_mask,
+        )
+
+    def _precompute_sequence_features(
+        self, batch: Mapping[str, torch.Tensor], chunk_mask: torch.Tensor
+    ):
+        """Batch frozen audio backbones once, then reuse features per chunk.
+
+        The observation encoder and state model remain outside ``no_grad`` so
+        gradients still train the DualTalk adapter and dynamics parameters.
+        """
+        observer = getattr(self.conditioner, "audio_observer", None)
+        baseline = getattr(self.generator, "baseline", None)
+        joint_encoder = getattr(baseline, "joint_encoder", None)
+        if observer is None or not hasattr(observer, "encode_pair"):
+            return None
+        if joint_encoder is None or not hasattr(
+            joint_encoder, "extract_audio_features"
+        ) or not hasattr(joint_encoder, "forward_from_audio_features"):
+            return None
+
+        batch_size, chunk_count = chunk_mask.shape
+        flat_mask = chunk_mask.reshape(-1)
+        valid_indices = flat_mask.nonzero(as_tuple=False).flatten()
+        target_audio = batch["target_audio"].reshape(batch_size * chunk_count, -1)
+        partner_audio = batch["partner_audio"].reshape(batch_size * chunk_count, -1)
+        target_valid = target_audio.index_select(0, valid_indices)
+        partner_valid = partner_audio.index_select(0, valid_indices)
+
+        # Wav2Vec2 is frozen; extraction is batched in bounded micro-batches to
+        # raise GPU occupancy without risking a large activation spike.
+        target_embedding, partner_embedding = observer.encode_pair(
+            target_valid,
+            partner_valid,
+            batch_size=self.audio_feature_batch_size,
+        )
+        target_observation = observer.observations_from_embeddings(target_embedding)
+        partner_observation = observer.observations_from_embeddings(partner_embedding)
+        with torch.no_grad():
+            target_feature, partner_feature = joint_encoder.extract_audio_features(
+                target_valid,
+                partner_valid,
+                batch_size=self.audio_feature_batch_size,
+            )
+
+        return {
+            "observations": (
+                self._restore_observation(
+                    target_observation, valid_indices, batch_size, chunk_count
+                ),
+                self._restore_observation(
+                    partner_observation, valid_indices, batch_size, chunk_count
+                ),
+            ),
+            "audio_features": (
+                self._restore_sequence_field(
+                    target_feature, valid_indices, batch_size, chunk_count
+                ),
+                self._restore_sequence_field(
+                    partner_feature, valid_indices, batch_size, chunk_count
+                ),
+            ),
+        }
+
+    @staticmethod
+    def _select_observation_chunk(
+        observation: EventObservation, chunk_index: int
+    ) -> EventObservation:
+        modality_mask = (
+            None
+            if observation.modality_mask is None
+            else observation.modality_mask[:, chunk_index]
+        )
+        return EventObservation(
+            aff=observation.aff[:, chunk_index],
+            event=observation.event[:, chunk_index],
+            action=observation.action[:, chunk_index],
+            reliability=observation.reliability[:, chunk_index],
+            modality_mask=modality_mask,
+        )
 
     def state_finetune_parameters(self):
         seen = set()
@@ -200,6 +321,7 @@ class ConditionedTrainingSystem(nn.Module):
         batch: Mapping[str, torch.Tensor],
         state=None,
         enable_partner: bool = True,
+        observations: Optional[Tuple[EventObservation, EventObservation]] = None,
     ):
         audio_target = batch["target_audio"]
         audio_partner = batch["partner_audio"]
@@ -217,6 +339,8 @@ class ConditionedTrainingSystem(nn.Module):
         for name in ("target_speech_active", "partner_speech_active"):
             if name in batch and name in accepted:
                 conditioner_kwargs[name] = batch[name]
+        if observations is not None and "observations" in accepted:
+            conditioner_kwargs["observations"] = observations
         if use_causal_context:
             context = self.conditioner.state_context(state)
             target_aff = self.conditioner.state_model.state_to_aff(state.z[:, 0])
@@ -227,7 +351,7 @@ class ConditionedTrainingSystem(nn.Module):
         )
         if not use_causal_context:
             context = updated_context
-            target_aff = evidence.get("target_state_aff", evidence["target_aff"])
+            target_aff = evidence["target_state_aff"] if "target_state_aff" in evidence else evidence["target_aff"]
         return context, next_state, target_aff
 
     def _state_anchor_loss(self, reference: torch.Tensor) -> torch.Tensor:
@@ -251,15 +375,21 @@ class ConditionedTrainingSystem(nn.Module):
         batch: Mapping[str, torch.Tensor],
         context: torch.Tensor,
         target_aff: torch.Tensor,
+        audio_features: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
     ) -> Dict[str, torch.Tensor]:
         audio_target = batch["target_audio"]
         audio_partner = batch["partner_audio"]
+        generator_kwargs = {"enable_film": True}
+        if audio_features is not None and "audio_features" in inspect.signature(
+            self.generator.forward
+        ).parameters:
+            generator_kwargs["audio_features"] = audio_features
         generated = self.generator(
             audio_target,
             audio_partner,
             batch["partner_blendshape"],
             context,
-            enable_film=True,
+            **generator_kwargs,
         )
         target = batch["target_blendshape"]
         length = min(generated.shape[1], target.shape[1])
@@ -307,6 +437,7 @@ class ConditionedTrainingSystem(nn.Module):
         if batch["target_audio"].shape[:2] != (batch_size, chunk_count):
             raise ValueError("target_audio and chunk_mask disagree on dialogue axes")
 
+        precomputed = self._precompute_sequence_features(batch, chunk_mask)
         sums = None
         valid_count = chunk_mask.sum().to(dtype=batch["target_audio"].dtype)
         state = None
@@ -325,9 +456,28 @@ class ConditionedTrainingSystem(nn.Module):
                     "partner_speech_active",
                 }
             }
-            context, candidate_state, target_aff = self._condition_chunk(chunk, state)
+            observations = None
+            audio_features = None
+            if precomputed is not None:
+                observations = (
+                    self._select_observation_chunk(
+                        precomputed["observations"][0], chunk_index
+                    ),
+                    self._select_observation_chunk(
+                        precomputed["observations"][1], chunk_index
+                    ),
+                )
+                audio_features = (
+                    precomputed["audio_features"][0][:, chunk_index],
+                    precomputed["audio_features"][1][:, chunk_index],
+                )
+            context, candidate_state, target_aff = self._condition_chunk(
+                chunk, state, observations=observations
+            )
             state = self._merge_state(state, candidate_state, valid)
-            losses = self._chunk_losses(chunk, context, target_aff)
+            losses = self._chunk_losses(
+                chunk, context, target_aff, audio_features=audio_features
+            )
             if sums is None:
                 sums = {name: value.new_zeros(()) for name, value in losses.items()}
             weight = valid.to(dtype=next(iter(losses.values())).dtype)
@@ -432,6 +582,7 @@ def _build_system(cfg, device: torch.device) -> ConditionedTrainingSystem:
         cfg.LOSS.GENERATION_STATE,
         cfg.LOSS.DUALTALK_STATE_ANCHOR,
         cfg.DUALTALK.CAUSAL_STATE_CONTEXT,
+        cfg.DUALTALK.AUDIO_FEATURE_BATCH_SIZE,
     ).to(device)
 
 
@@ -442,10 +593,17 @@ def validate(
     context,
     bptt_chunks: int,
     max_batches: int = 0,
+    log_interval: int = 0,
+    epoch: int = 0,
+    progress_path: Optional[Path] = None,
 ) -> Dict[str, float]:
     system.eval()
     totals: Dict[str, float] = {}
     batches = 0
+    total_batches = len(loader)
+    if max_batches > 0:
+        total_batches = min(total_batches, max_batches)
+    validation_start = time.perf_counter()
     for index, raw_batch in enumerate(loader):
         if max_batches and index >= max_batches:
             break
@@ -453,6 +611,27 @@ def validate(
         for name, value in losses.items():
             totals[name] = totals.get(name, 0.0) + float(value)
         batches += 1
+        if (
+            context.is_main
+            and log_interval > 0
+            and (batches % log_interval == 0 or batches == total_batches)
+        ):
+            elapsed = time.perf_counter() - validation_start
+            seconds_per_batch = elapsed / max(batches, 1)
+            remaining = max(total_batches - batches, 0)
+            record = {
+                "phase": "validation_progress",
+                "epoch": epoch,
+                "batch": batches,
+                "total_batches": total_batches,
+                "percent": 100.0 * batches / max(total_batches, 1),
+                "elapsed_sec": elapsed,
+                "sec_per_batch": seconds_per_batch,
+                "eta_sec": seconds_per_batch * remaining,
+            }
+            print(json.dumps(record, ensure_ascii=False), flush=True)
+            if progress_path is not None:
+                append_metrics(progress_path, record)
     metrics = {f"val_{name}": value / max(batches, 1) for name, value in totals.items()}
     metrics = context.reduce_scalars(metrics)
     system.train()
@@ -461,6 +640,9 @@ def validate(
 
 def main() -> None:
     cfg, _ = parse_config_args("Emotion-conditioned DualTalk training")
+    if cfg.DUALTALK.PROTOCOL_VERSION == 2:
+        from emotion_ssm.train.generation import run_generation
+        return run_generation(cfg)
     context = init_distributed(cfg.DEVICE, cfg.SEED, cfg.DETERMINISTIC)
     run_dir = create_run_directory(cfg, "dualtalk_conditioned")
     if context.is_main:
@@ -485,6 +667,8 @@ def main() -> None:
         cfg.DATA.NUM_WORKERS,
         cfg.DATA.PIN_MEMORY,
         collate_fn=collate_dualtalk_dialogues,
+        bucket_by_length=True,
+        seed=cfg.SEED,
     )
     val_loader, _ = make_loader(
         val_dataset,
@@ -494,6 +678,8 @@ def main() -> None:
         cfg.DATA.NUM_WORKERS,
         cfg.DATA.PIN_MEMORY,
         collate_fn=collate_dualtalk_dialogues,
+        bucket_by_length=True,
+        seed=cfg.SEED,
     )
     system = _build_system(cfg, context.device)
     film_and_projector_parameters = list(system.generator.film.parameters()) + list(
@@ -538,12 +724,6 @@ def main() -> None:
         start_epoch = int(checkpoint["epoch"])
         global_step = int(checkpoint["global_step"])
         best_score = float(checkpoint.get("metrics", {}).get("val_total", best_score))
-        unwrap_model(system).restore_shared_observer(
-            load_component_state(
-                Path(cfg.DUALTALK.PHASE_B_CHECKPOINT or cfg.TRAIN.PHASE_B_CHECKPOINT),
-                "encoder",
-            )
-        )
 
     stop_epoch = (
         min(cfg.TRAIN.EPOCHS, cfg.TRAIN.STOP_AFTER_EPOCHS)
@@ -561,6 +741,19 @@ def main() -> None:
         totals: Dict[str, float] = {}
         batches = 0
         optimizer.zero_grad(set_to_none=True)
+        total_batches = len(train_loader)
+        if cfg.TRAIN.DRY_RUN:
+            total_batches = min(total_batches, cfg.TRAIN.DRY_RUN_TRAIN_BATCHES)
+        epoch_start = time.perf_counter()
+        progress_path = run_dir / "progress.jsonl"
+        if context.is_main:
+            start_record = {
+                "phase": "train_start",
+                "epoch": epoch + 1,
+                "total_batches": total_batches,
+            }
+            print(json.dumps(start_record, ensure_ascii=False), flush=True)
+            append_metrics(progress_path, start_record)
         for index, raw_batch in enumerate(train_loader):
             if cfg.TRAIN.DRY_RUN and index >= cfg.TRAIN.DRY_RUN_TRAIN_BATCHES:
                 break
@@ -587,20 +780,61 @@ def main() -> None:
             for name, value in losses.items():
                 totals[name] = totals.get(name, 0.0) + float(value.detach())
             batches += 1
+            if (
+                context.is_main
+                and cfg.TRAIN.LOG_INTERVAL > 0
+                and (
+                    batches % cfg.TRAIN.LOG_INTERVAL == 0
+                    or batches == total_batches
+                )
+            ):
+                elapsed = time.perf_counter() - epoch_start
+                seconds_per_batch = elapsed / max(batches, 1)
+                remaining = max(total_batches - batches, 0)
+                progress_record = {
+                    "phase": "train_progress",
+                    "epoch": epoch + 1,
+                    "batch": batches,
+                    "total_batches": total_batches,
+                    "percent": 100.0 * batches / max(total_batches, 1),
+                    "elapsed_sec": elapsed,
+                    "sec_per_batch": seconds_per_batch,
+                    "eta_sec": seconds_per_batch * remaining,
+                    "loss": float(losses["total"].detach()),
+                }
+                print(json.dumps(progress_record, ensure_ascii=False), flush=True)
+                append_metrics(progress_path, progress_record)
         scheduler.step()
         totals = {name: value / max(batches, 1) for name, value in totals.items()}
         totals = context.reduce_scalars(totals)
+        if context.is_main:
+            validation_start_record = {
+                "phase": "validation_start",
+                "epoch": epoch + 1,
+            }
+            print(json.dumps(validation_start_record, ensure_ascii=False), flush=True)
+            append_metrics(progress_path, validation_start_record)
         val_metrics = validate(
             system,
             val_loader,
             context,
             cfg.DUALTALK.STATE_BPTT_CHUNKS,
             cfg.TRAIN.DRY_RUN_VAL_BATCHES if cfg.TRAIN.DRY_RUN else 0,
+            cfg.TRAIN.LOG_INTERVAL,
+            epoch + 1,
+            progress_path,
         )
+        if context.is_main:
+            validation_done_record = {
+                "phase": "validation_done",
+                "epoch": epoch + 1,
+            }
+            print(json.dumps(validation_done_record, ensure_ascii=False), flush=True)
+            append_metrics(progress_path, validation_done_record)
         metrics = {"epoch": epoch + 1, **totals, **val_metrics}
         if context.is_main:
             append_metrics(run_dir / "metrics.jsonl", metrics)
-            print(json.dumps(metrics, ensure_ascii=False))
+            print(json.dumps(metrics, ensure_ascii=False), flush=True)
             models = {"system": system}
             save_training_checkpoint(
                 run_dir / "last.pt",

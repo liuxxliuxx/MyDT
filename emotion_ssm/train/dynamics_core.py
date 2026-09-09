@@ -58,7 +58,7 @@ def flatten_sequence_batch(batch: Mapping[str, Tensor]) -> Dict[str, Tensor]:
         name: batch[name].reshape((batch_size * length,) + batch[name].shape[2:])
         for name in fields
     }
-    for name in ("face_frame_mask", "face_confidence"):
+    for name in ("face_frame_mask", "face_confidence", "event_text", "event_present"):
         if name in batch:
             output[name] = batch[name].reshape(
                 (batch_size * length,) + batch[name].shape[2:]
@@ -99,6 +99,8 @@ def event_at(event: EventObservation, turn: int) -> EventObservation:
         modality_mask=(
             None if event.modality_mask is None else event.modality_mask[:, turn]
         ),
+        event_present=None if event.event_present is None else event.event_present[:, turn],
+        action_duration=None if event.action_duration is None else event.action_duration[:, turn],
     )
 
 
@@ -212,6 +214,9 @@ class DynamicsTrainingBundle(nn.Module):
         self.disable_long_timescales = bool(cfg.DYNAMICS.DISABLE_LONG_TIMESCALES)
         self.random_partner = bool(cfg.DYNAMICS.RANDOM_PARTNER)
         self.cf_top_k = int(cfg.COUNTERFACTUAL.TOP_K)
+        self.cf_eval_pool_dialogues = int(cfg.COUNTERFACTUAL.EVAL_DIALOGUES_PER_POOL)
+        if self.cf_eval_pool_dialogues < 2:
+            raise ValueError("Counterfactual evaluation pools require at least two dialogues")
         self.cf_intensity_tolerance = float(cfg.COUNTERFACTUAL.INTENSITY_TOLERANCE)
         self.cf_turn_tolerance = float(cfg.COUNTERFACTUAL.TURN_TOLERANCE)
         self.cf_max_action_cosine = float(cfg.COUNTERFACTUAL.MAX_ACTION_COSINE)
@@ -227,12 +232,16 @@ class DynamicsTrainingBundle(nn.Module):
             getattr(cfg.LOSS, "OBSERVATION_ANCHOR", 0.0)
         )
         self.finetune_observation = bool(cfg.TRAIN.FINETUNE_OBSERVATION)
+        self.keep_affect_frozen = bool(cfg.DYNAMICS.KEEP_AFFECT_FROZEN)
+        self.bptt_events = int(cfg.DYNAMICS.BPTT_EVENTS)
+        self.modality_subsets = bool(cfg.DYNAMICS.MODALITY_SUBSETS)
+        self.register_buffer("affect_sum", torch.zeros(cfg.MODEL.OBSERVATION_DIM))
+        self.register_buffer("affect_count", torch.zeros(()))
 
     def train(self, mode: bool = True):
         super().train(mode)
         # The pretrained observer remains a deterministic evidence extractor.
-        if not self.finetune_observation:
-            self.encoder.eval()
+        self.encoder.eval()
         return self
 
     def set_phase_b_affect_frozen(self, frozen: bool) -> None:
@@ -240,13 +249,12 @@ class DynamicsTrainingBundle(nn.Module):
 
         The event/action heads and their fusion stack must remain trainable:
         Phase B is where action becomes predictive of the partner's response.
-        Affect modules are released later at a small learning rate and are
-        anchored to the frozen EMA full-AVT representation.
+        Shared affect stays frozen by default throughout Phase B.
         """
         self.finetune_observation = True
         self.encoder.requires_grad_(True)
         for module in self._affect_modules():
-            module.requires_grad_(not frozen)
+            module.requires_grad_(not (frozen or self.keep_affect_frozen))
 
     def _affect_modules(self):
         return (
@@ -289,32 +297,42 @@ class DynamicsTrainingBundle(nn.Module):
         posterior_relation = []
         next_prior_z = []
         correction_errors = []
+        pre_event_z, pre_event_relation = [], []
         for turn in range(valid.shape[1]):
-            output = self.state_model.step(
-                current,
-                event_at(event, turn),
-                batch["active_role"][:, turn],
-                batch["dt_to_next"][:, turn],
-                enable_partner=enable_partner,
-                correct=(
-                    self.correction_mode == "teacher_forced"
-                    or (self.correction_mode == "initial_only" and turn == 0)
-                ),
-                fixed_relation=self.fixed_relation,
-                symmetric_coupling=self.symmetric_coupling,
-                disable_long_timescales=self.disable_long_timescales,
-            )
-            posterior = _where_state(valid[:, turn], output.posterior, current)
-            next_state = _where_state(valid[:, turn], output.next_prior, current)
-            active_posterior = select_role(posterior.z, batch["active_role"][:, turn])
-            reconstructed = self.state_model.state_to_aff(active_posterior)
-            correction_errors.append(
-                1.0 - F.cosine_similarity(reconstructed, event.aff[:, turn], dim=-1)
-            )
+            observation = event_at(event, turn)
+            elapsed = (batch["dt_to_next"][:, turn-1] if turn else
+                       batch["dt_to_next"].new_zeros(valid.shape[0]))
+            active = batch["active_role"][:, turn]
+            pre_event = self.state_model.decay_only(current, elapsed)
+            do_correct = self.correction_mode == "teacher_forced" or (self.correction_mode == "initial_only" and turn == 0)
+            pre_event, _ = self.state_model.correct(pre_event, observation, active, do_correct)
+            pre_event_z.append(pre_event.z)
+            pre_event_relation.append(pre_event.relation)
+            pair = []
+            for role in (0, 1):
+                mask = active == role
+                present = observation.modality_mask
+                if present is None:
+                    present = torch.ones_like(observation.reliability, dtype=torch.bool)
+                pair.append(EventObservation(
+                    observation.aff, observation.event, observation.action,
+                    observation.reliability, present & mask[:, None],
+                    event_present=(present[:, 2] if observation.event_present is None else observation.event_present) & mask,
+                    action_duration=(batch["end_time"][:, turn] - batch["start_time"][:, turn]).clamp_min(0) * mask
+                    if "end_time" in batch else elapsed * mask))
+            updated = self.state_model.observe(
+                current, pair, elapsed, enable_partner=enable_partner,
+                correct=do_correct,
+                fixed_relation=self.fixed_relation, symmetric_coupling=self.symmetric_coupling)
+            posterior = _where_state(valid[:, turn], updated, current)
+            reconstructed = self.state_model.state_to_aff(select_role(posterior.z, active))
+            correction_errors.append(1.0 - F.cosine_similarity(reconstructed, observation.aff, dim=-1))
             posterior_z.append(posterior.z)
             posterior_relation.append(posterior.relation)
-            next_prior_z.append(next_state.z)
-            current = next_state
+            next_prior_z.append(posterior.z)
+            current = posterior.detach() if (turn + 1) % self.bptt_events == 0 else posterior
+        self._pre_event_z = torch.stack(pre_event_z, dim=1)
+        self._pre_event_relation = torch.stack(pre_event_relation, dim=1)
         return (
             torch.stack(posterior_z, dim=1),
             torch.stack(posterior_relation, dim=1),
@@ -352,6 +370,9 @@ class DynamicsTrainingBundle(nn.Module):
         windowed = _flatten_event_windows(event, starts, horizon)
         role_windows = _flatten_windows(batch["active_role"], starts, horizon)
         dt_windows = _flatten_windows(batch["dt_to_next"], starts, horizon)
+        duration = (batch["end_time"] - batch["start_time"]).clamp_min(0) if "end_time" in batch else batch["dt_to_next"]
+        duration_windows = _flatten_windows(duration, starts, horizon)
+        presence_windows = _flatten_windows(event.event_present, starts, horizon) if event.event_present is not None else None
         valid_windows = _flatten_windows(batch["valid_mask"], starts, horizon)
 
         def at_offset(value: Optional[Tensor], offset: int) -> Optional[Tensor]:
@@ -360,40 +381,33 @@ class DynamicsTrainingBundle(nn.Module):
             width = value.shape[-1]
             return value.reshape(batch_size * starts, horizon, width)[:, offset]
 
-        for offset in range(horizon):
-            valid_step = valid_windows.reshape(batch_size * starts, horizon)[:, offset]
-            if rollout_mode == "open_loop" and offset > 0:
-                fixed_dt = dt_windows.new_full(
-                    (batch_size * starts,), self.open_loop_dt
-                )
-                decayed = self.state_model.decay_only(state, fixed_dt)
-                state = _where_state(valid_step, decayed, state)
-                continue
-            affect = at_offset(windowed.aff, offset)
-            semantic_event = at_offset(windowed.event, offset)
-            action = at_offset(windowed.action, offset)
-            reliability = at_offset(windowed.reliability, offset)
-            observation = EventObservation(
-                aff=affect,
-                event=semantic_event,
-                action=action,
-                reliability=reliability,
-                modality_mask=at_offset(windowed.modality_mask, offset),
-            )
-            role = role_windows.reshape(batch_size * starts, horizon)[:, offset]
-            dt = dt_windows.reshape(batch_size * starts, horizon)[:, offset]
-            output = self.state_model.step(
-                state,
-                observation,
-                role,
-                dt,
-                enable_partner=enable_partner,
-                correct=False,
-                fixed_relation=self.fixed_relation,
-                symmetric_coupling=self.symmetric_coupling,
-                disable_long_timescales=self.disable_long_timescales,
-            )
-            state = _where_state(valid_step, output.next_prior, state)
+        # The origin posterior already includes its event/action exactly once.
+        # Query time is requested explicitly; no future behavior is read.
+        if rollout_mode == "open_loop":
+            elapsed = dt_windows.reshape(batch_size * starts, horizon).sum(-1)
+            state = self.state_model.decay_only(state, elapsed)
+        else:
+            for offset in range(horizon):
+                interval = dt_windows.reshape(batch_size * starts, horizon)[:, offset]
+                state = self.state_model.decay_only(state, interval)
+                if offset + 1 == horizon:
+                    break
+                role = role_windows.reshape(batch_size * starts, horizon)[:, offset + 1]
+                event_value = at_offset(windowed.event, offset + 1)
+                mask = at_offset(windowed.modality_mask, offset + 1)
+                if mask is None:
+                    mask = torch.ones_like(at_offset(windowed.reliability, offset + 1), dtype=torch.bool)
+                pair = []
+                for role_id in (0, 1):
+                    active = role == role_id
+                    pair.append(EventObservation(torch.zeros_like(event_value), event_value,
+                        at_offset(windowed.action, offset + 1), at_offset(windowed.reliability, offset + 1),
+                        mask & active[:, None],
+                        (mask[:, 2] if presence_windows is None else presence_windows[:, offset + 1]) & active,
+                        duration_windows[:, offset + 1] * active))
+                state = self.state_model.observe(state, pair, torch.zeros_like(interval),
+                    enable_partner=enable_partner, correct=False, fixed_relation=self.fixed_relation,
+                    symmetric_coupling=self.symmetric_coupling)
 
         target_role = _flatten_window_targets(
             batch["active_role"], starts, horizon
@@ -418,6 +432,10 @@ class DynamicsTrainingBundle(nn.Module):
                 batch["vad_mask"], starts, horizon
             ).bool(),
         }
+        target["intensity_mask"] = (_flatten_window_targets(batch["intensity_mask"], starts, horizon).bool()
+                                    if "intensity_mask" in batch else torch.ones_like(target_valid))
+        if not self.training and hasattr(self, "prediction_statistics"):
+            self.prediction_statistics.update(f"{rollout_mode}_h{horizon}", prediction, target, target_valid, class_weights)
         losses = state_prediction_losses(
             prediction,
             target["aff"],
@@ -427,6 +445,7 @@ class DynamicsTrainingBundle(nn.Module):
             target["vad_mask"],
             target_valid,
             class_weights,
+            _flatten_window_targets(batch["intensity_mask"], starts, horizon).bool() if "intensity_mask" in batch else None,
         )
         valid_count = target_valid.sum().to(predicted_state.dtype)
         return losses, valid_count
@@ -440,6 +459,7 @@ class DynamicsTrainingBundle(nn.Module):
         target_aff: Tensor,
         enable_partner: bool,
     ) -> Tuple[Tensor, Tensor]:
+        self.cf_statistics = {"cf_anchors": 0., "cf_valid_anchors": 0., "cf_pairs": 0., "cf_pair_correct": 0.}
         if not enable_partner:
             zero = zero_loss(posterior_z)
             return zero, zero.detach()
@@ -454,6 +474,10 @@ class DynamicsTrainingBundle(nn.Module):
                     if int(batch["active_role"][sample, future].item()) == receiver:
                         anchors.append((sample, turn, future, receiver))
                         break
+        self.cf_statistics["cf_anchors"] = float(len(anchors))
+        if len(anchors) > 64:
+            anchors = [anchors[i] for i in torch.linspace(0, len(anchors)-1, 64).long().tolist()]
+            self.cf_statistics["cf_anchors"] = 64.
         if len(anchors) < 2:
             zero = zero_loss(posterior_z)
             return zero, zero.detach()
@@ -463,8 +487,8 @@ class DynamicsTrainingBundle(nn.Module):
         future_index = torch.tensor([x[2] for x in anchors], device=posterior_z.device)
         receiver_role = torch.tensor([x[3] for x in anchors], device=posterior_z.device)
         state = DyadicState(
-            z=posterior_z[sample_index, turn_index],
-            relation=posterior_relation[sample_index, turn_index],
+            z=getattr(self, "_pre_event_z", posterior_z)[sample_index, turn_index],
+            relation=getattr(self, "_pre_event_relation", posterior_relation)[sample_index, turn_index],
             speaker_ids=batch["speaker_ids"][sample_index],
         )
         observation = EventObservation(
@@ -489,8 +513,11 @@ class DynamicsTrainingBundle(nn.Module):
             intensity_tolerance=self.cf_intensity_tolerance,
             turn_tolerance=self.cf_turn_tolerance,
             max_action_cosine=self.cf_max_action_cosine,
+            dataset_id=batch["dataset_id"][sample_index, turn_index] if "dataset_id" in batch else None,
         )
         anchor_valid = matches.valid.any(dim=-1)
+        self.cf_statistics["cf_valid_anchors"] = float(anchor_valid.sum())
+        self.cf_statistics["cf_pairs"] = float(matches.valid.sum())
         if not anchor_valid.any():
             zero = zero_loss(posterior_z)
             return zero, zero.detach()
@@ -515,24 +542,20 @@ class DynamicsTrainingBundle(nn.Module):
                 action = event.action[sample : sample + 1, turn]
                 if turn == start and replacement_action is not None:
                     action = replacement_action[None]
-                step_observation = EventObservation(
-                    aff=event.aff[sample : sample + 1, turn],
-                    event=event.event[sample : sample + 1, turn],
-                    action=action,
-                    reliability=event.reliability[sample : sample + 1, turn],
-                    modality_mask=None,
-                )
-                current = self.state_model.step(
-                    current,
-                    step_observation,
-                    batch["active_role"][sample : sample + 1, turn],
-                    batch["dt_to_next"][sample : sample + 1, turn],
-                    enable_partner=True,
-                    correct=False,
-                    fixed_relation=self.fixed_relation,
-                    symmetric_coupling=self.symmetric_coupling,
-                    disable_long_timescales=self.disable_long_timescales,
-                ).next_prior
+                role = batch["active_role"][sample:sample+1, turn]
+                mask = (event.modality_mask[sample:sample+1, turn] if event.modality_mask is not None
+                        else torch.ones_like(event.reliability[sample:sample+1, turn], dtype=torch.bool))
+                present = mask[:, 2] if event.event_present is None else event.event_present[sample:sample+1, turn]
+                duration = ((batch["end_time"] - batch["start_time"])[sample:sample+1, turn].clamp_min(0)
+                            if "end_time" in batch else batch["dt_to_next"][sample:sample+1, turn])
+                pair = [EventObservation(torch.zeros_like(event.aff[sample:sample+1, turn]),
+                            event.event[sample:sample+1, turn], action,
+                            event.reliability[sample:sample+1, turn], mask & (role == r)[:, None],
+                            present & (role == r), duration * (role == r)) for r in (0, 1)]
+                current = self.state_model.observe(current, pair, 0., correct=False,
+                    enable_partner=True, fixed_relation=self.fixed_relation,
+                    symmetric_coupling=self.symmetric_coupling)
+                current = self.state_model.decay_only(current, batch["dt_to_next"][sample:sample+1, turn])
             return current
 
         real_aff_values = []
@@ -578,10 +601,32 @@ class DynamicsTrainingBundle(nn.Module):
             dim=-1,
         )
         candidate_distance = candidate_distance.masked_fill(~matches.valid, float("inf"))
+        self.cf_statistics["cf_pair_correct"] = float(((real_distance[:, None] < candidate_distance) & matches.valid).sum())
+        self.cf_statistics["cf_margin_pair_correct"] = float(((real_distance[:, None] + self.cf_margin < candidate_distance) & matches.valid).sum())
         hardest_distance = candidate_distance.min(dim=-1).values
         loss = F.relu(self.cf_margin + real_distance - hardest_distance)
         ranking_accuracy = (real_distance + self.cf_margin < hardest_distance).float()
         return masked_mean(loss, anchor_valid), masked_mean(ranking_accuracy, anchor_valid).detach()
+
+    @torch.no_grad()
+    def forecast_baselines(self, horizon, z, relation, batch, target_aff):
+        starts = z.shape[1] - horizon
+        if starts <= 0:
+            return {}
+        b = z.shape[0]
+        ids = batch["speaker_ids"][:, None].expand(-1, starts, -1).reshape(-1, 2)
+        initial = DyadicState(z[:, :starts].reshape(-1, 2, z.shape[-1]),
+                              relation[:, :starts].reshape(b*starts, -1), ids)
+        elapsed = _flatten_windows(batch["dt_to_next"], starts, horizon).sum(-1)
+        roles = _flatten_window_targets(batch["active_role"], starts, horizon)
+        last = self.state_model.state_to_aff(select_role(initial.z, roles))
+        decayed = self.state_model.state_to_aff(select_role(self.state_model.decay_only(initial, elapsed).z, roles))
+        target = _flatten_window_targets(target_aff, starts, horizon)
+        valid = batch["valid_mask"][:, :starts].reshape(-1) & batch["valid_mask"][:, horizon:].reshape(-1)
+        mean = (self.affect_sum / self.affect_count.clamp_min(1)).expand_as(target)
+        return {f"{name}_affect_h{horizon}": masked_mean(1-F.cosine_similarity(value, target, dim=-1), valid)
+                + masked_mean(F.smooth_l1_loss(value, target, reduction="none"), valid)
+                for name, value in (("last_state", last), ("training_mean", mean), ("pure_decay", decayed))}
 
     def forward(
         self,
@@ -590,19 +635,38 @@ class DynamicsTrainingBundle(nn.Module):
         class_weights: Tensor,
         enable_partner: bool,
         use_counterfactual: bool,
+        subset_mask=None,
     ) -> Dict[str, Tensor]:
         batch_size, length = batch["valid_mask"].shape
+        if not self.training:
+            from emotion_ssm.utils.prediction_statistics import PredictionStatistics
+            self.prediction_statistics = PredictionStatistics()
+        if self.training:
+            with torch.no_grad():
+                selected = teacher_aff[batch["valid_mask"] & batch["modality_mask"].any(-1)]
+                summed, count = selected.sum(0), self.affect_count.new_tensor(len(selected))
+                if torch.distributed.is_available() and torch.distributed.is_initialized():
+                    torch.distributed.all_reduce(summed)
+                    torch.distributed.all_reduce(count)
+                self.affect_sum.add_(summed)
+                self.affect_count.add_(count)
+        if subset_mask is None:
+            from emotion_ssm.models.observation import SUBSET_MASKS
+            subset_mask = (SUBSET_MASKS[torch.randint(7, ()).item():][:1]
+                           if self.training and self.modality_subsets else FULL_AVT_MASK)
+        selected_mask = subset_mask.to(batch["audio"].device)
         if self.finetune_observation:
             encoder_output = self.encoder(
-                flatten_sequence_batch(batch), FULL_AVT_MASK.to(batch["audio"].device)
+                flatten_sequence_batch(batch), selected_mask
             )
         else:
             with torch.no_grad():
                 encoder_output = self.encoder(
-                    flatten_sequence_batch(batch), FULL_AVT_MASK.to(batch["audio"].device)
+                    flatten_sequence_batch(batch), selected_mask
                 )
         event = _reshape_event(encoder_output, batch_size, length)
-        event.modality_mask = batch["modality_mask"]
+        event.modality_mask = batch["modality_mask"] & selected_mask[0]
+        event.event_present = batch.get("event_present", batch["modality_mask"][..., 2]) & selected_mask[0, 2]
         if enable_partner and self.random_partner and batch_size > 1:
             event.action = event.action.roll(1, dims=0)
         observation_anchor = zero_loss(event.aff)
@@ -624,6 +688,7 @@ class DynamicsTrainingBundle(nn.Module):
         horizon_losses = []
         result: Dict[str, Tensor] = {}
         for horizon in self.horizons:
+            result.update(self.forecast_baselines(horizon, posterior_z, posterior_relation, batch, teacher_aff))
             modes = (
                 ("conditional", "open_loop")
                 if self.rollout_mode == "joint"
@@ -650,6 +715,7 @@ class DynamicsTrainingBundle(nn.Module):
                     + self.loss_vad * losses["vad"]
                 )
                 result[f"{mode}_h{horizon}"] = mode_losses[mode].detach()
+                result[f"{mode}_affect_h{horizon}"] = losses["affect"].detach()
             if self.rollout_mode == "joint":
                 weighted = mode_losses["conditional"] + (
                     self.open_loop_weight * mode_losses["open_loop"]
@@ -696,6 +762,9 @@ class DynamicsTrainingBundle(nn.Module):
                 "observation_anchor": observation_anchor.detach(),
             }
         )
+        statistics = getattr(self, "cf_statistics", {}) if use_counterfactual else {}
+        result.update({name: total.new_tensor(value) for name, value in statistics.items()})
+        result["valid_events"] = batch["valid_mask"].sum().detach()
         return result
 
 

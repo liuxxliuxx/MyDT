@@ -1,0 +1,9 @@
+# Tested core for the v2 emotion pipeline. Install the matching torch wheel
+# for the target CPU/CUDA runtime before this file if necessary.
+torch==2.5.1
+transformers==4.44.2
+numpy==1.26.4
+scipy>=1.11,<2
+librosa==0.10.2.post1
+yacs==0.1.8
+tqdm>=4.64

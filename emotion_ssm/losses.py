@@ -125,7 +125,8 @@ def observation_losses(
         predictions["emotion"], emotion_target, label_valid, class_weights
     )
     intensity_target = batch["intensity"][:, None].expand(-1, num_subsets)
-    intensity = masked_mse(predictions["intensity"], intensity_target, valid)
+    intensity_valid = valid & batch.get("intensity_mask", torch.ones_like(batch["intensity"], dtype=torch.bool))[:, None]
+    intensity = masked_mse(predictions["intensity"], intensity_target, intensity_valid)
     vad_target = batch["vad"][:, None, :].expand(-1, num_subsets, -1)
     vad_mask = batch["vad_mask"][:, None, :].expand_as(vad_target)
     vad_mask = vad_mask & valid[:, :, None]
@@ -152,7 +153,7 @@ def observation_losses(
     requested = subset_masks.to(actual.device)[None, :, :]
     quality = batch.get("reliability")
     if quality is None:
-        quality = torch.ones_like(actual, dtype=student.aff.dtype)
+        quality = torch.ones_like(batch["modality_mask"], dtype=student.aff.dtype)
     # Confidence is a soft target.  A present but unreliable modality should
     # not be treated the same as a perfectly observed modality.
     reliability_target = quality[:, None, :].to(student.aff.dtype) * (
@@ -177,7 +178,18 @@ def observation_losses(
         + decorrelation_loss(student.aff, student.action, valid)
         + decorrelation_loss(student.event, student.action, valid)
     ) / 3.0
-    if student.raw_aff is not None:
+    if student.raw_modality_aff is not None:
+        # Variance across seven subsets can be large even when each modality
+        # is constant across people. Measure across independent samples within
+        # each domain/modality, so domain offsets cannot hide collapse either.
+        penalties = []
+        for domain_id in batch["dataset_id"].unique():
+            for modality in range(3):
+                selected = (batch["dataset_id"] == domain_id) & batch["modality_mask"][:, modality]
+                if selected.sum() >= 2:
+                    penalties.append(vicreg_loss(student.raw_modality_aff[:, modality], selected, target_std=1.0))
+        vicreg = torch.stack(penalties).mean() if penalties else zero_loss(student.aff)
+    elif student.raw_aff is not None:
         vicreg = vicreg_loss(student.raw_aff, valid, target_std=1.0)
     else:
         # Backward-compatible fallback for externally constructed outputs.
@@ -224,6 +236,7 @@ def state_prediction_losses(
     target_vad_mask: Tensor,
     valid: Tensor,
     class_weights: Optional[Tensor] = None,
+    intensity_mask: Optional[Tensor] = None,
 ) -> Dict[str, Tensor]:
     affect = masked_mean(
         1.0 - F.cosine_similarity(predictions["aff"], target_aff, dim=-1), valid
@@ -234,7 +247,7 @@ def state_prediction_losses(
     emotion = masked_cross_entropy(
         predictions["emotion"], target_emotion, emotion_valid, class_weights
     )
-    intensity = masked_mse(predictions["intensity"], target_intensity, valid)
+    intensity = masked_mse(predictions["intensity"], target_intensity, valid if intensity_mask is None else valid & intensity_mask)
     vad_valid = target_vad_mask & valid[..., None]
     if vad_valid.any():
         vad_mse = masked_mse(predictions["vad"], target_vad, vad_valid)

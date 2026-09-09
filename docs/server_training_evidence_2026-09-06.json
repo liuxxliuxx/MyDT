@@ -1,0 +1,4918 @@
+{
+  "audit_time": "2026-09-06T10:56:43.369372+08:00",
+  "remote_access": "read-only; no remote file writes; no GPU evaluation or training changes",
+  "server2_root": "/data/home/kxrgzn/lzh/MyDualTalk",
+  "server2_evaluations": [
+    {
+      "file": "runs/comparison_all_three/baseline_official_ood.json",
+      "data": {
+        "model": "baseline",
+        "ablation": "official",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/model/dualtalk_baseline.pth",
+        "split": "ood",
+        "dataset_chunks": 1876,
+        "evaluated_chunks": 1876,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 50.79980421066284,
+        "expression_mse": 0.6278987848928488,
+        "jaw_mse": 0.001605865709488919,
+        "neck_mse": 0.02567340499683738,
+        "velocity_mse": 0.03224023973807488,
+        "generation_total": 0.68741829533725
+      }
+    },
+    {
+      "file": "runs/comparison_all_three/baseline_official_test.json",
+      "data": {
+        "model": "baseline",
+        "ablation": "official",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/model/dualtalk_baseline.pth",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 65.47685241699219,
+        "expression_mse": 0.3977316248883388,
+        "jaw_mse": 0.001164279505860744,
+        "neck_mse": 0.01868029453772907,
+        "velocity_mse": 0.023225254536118192,
+        "generation_total": 0.4408014534680468
+      }
+    },
+    {
+      "file": "runs/comparison_all_three/conditioned_fold5_epoch3_ood.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/fold5/dualtalk_emotion_best.pt",
+        "split": "ood",
+        "dataset_chunks": 1876,
+        "evaluated_chunks": 1876,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 81.85227537155151,
+        "epoch": 3,
+        "global_step": 8880,
+        "expression_mse": 0.5570314921104578,
+        "jaw_mse": 0.0014442953334190614,
+        "neck_mse": 0.02327568474651315,
+        "velocity_mse": 0.025328673312570816,
+        "generation_total": 0.6070801455029609,
+        "state_consistency": 0.037164846113495735
+      }
+    },
+    {
+      "file": "runs/comparison_all_three/conditioned_fold5_epoch3_test.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/fold5/dualtalk_emotion_best.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 108.02800440788269,
+        "epoch": 3,
+        "global_step": 8880,
+        "expression_mse": 0.3262523615022408,
+        "jaw_mse": 0.0010668109643443917,
+        "neck_mse": 0.01713763959940706,
+        "velocity_mse": 0.01820560388441885,
+        "generation_total": 0.3626624159504111,
+        "state_consistency": 0.03810449619163839
+      }
+    },
+    {
+      "file": "runs/comparison_current_baseline/baseline_200_smoke.json",
+      "data": {
+        "model": "baseline",
+        "ablation": "official",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_baseline_control/equal_epoch3/baseline_control_best.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 4,
+        "batch_size": 4,
+        "max_batches": 1,
+        "elapsed_seconds": 13.540118932723999,
+        "epoch": 3,
+        "global_step": 8880,
+        "expression_mse": 0.1502176513671875,
+        "jaw_mse": 0.00040581042567888894,
+        "neck_mse": 0.0068926382064819335,
+        "velocity_mse": 0.012442729153054615,
+        "generation_total": 0.16995882915240293
+      }
+    },
+    {
+      "file": "runs/comparison_current_baseline/baseline_200_test.json",
+      "data": {
+        "model": "baseline",
+        "ablation": "official",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_baseline_control/equal_epoch3/baseline_control_best.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 68.64444303512573,
+        "epoch": 3,
+        "global_step": 8880,
+        "expression_mse": 0.32563519236956456,
+        "jaw_mse": 0.0010579376801155334,
+        "neck_mse": 0.017033737949006627,
+        "velocity_mse": 0.01781591208703396,
+        "generation_total": 0.3615427800857207
+      }
+    },
+    {
+      "file": "runs/comparison_current_baseline/baseline_test.json",
+      "data": {
+        "model": "baseline",
+        "ablation": "official",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_baseline_control/equal_epoch3/baseline_control_best.pt",
+        "split": "test",
+        "dataset_chunks": 25748,
+        "evaluated_chunks": 25748,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 453.3866641521454,
+        "epoch": 3,
+        "global_step": 8880,
+        "expression_mse": 0.45730114799239946,
+        "jaw_mse": 0.0013235296174395972,
+        "neck_mse": 0.020075096455350827,
+        "velocity_mse": 0.020942618328229787,
+        "generation_total": 0.4996423923934197
+      }
+    },
+    {
+      "file": "runs/comparison_current_baseline/conditioned_epoch7_default200_legacy25_test.json",
+      "data": {
+        "model": "conditioned_legacy",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/comparison_current_baseline/dualtalk_emotion_best_epoch7_default200.pt",
+        "split": "test",
+        "chunk_frames": 25,
+        "dataset_chunks": 25748,
+        "evaluated_chunks": 25748,
+        "batch_size": 4,
+        "elapsed_seconds": 790.7642912864685,
+        "epoch": 7,
+        "global_step": 8057,
+        "expression_mse": 0.5015624516782098,
+        "jaw_mse": 0.001398012278313898,
+        "neck_mse": 0.02114012441517194,
+        "velocity_mse": 0.0249578632380499,
+        "generation_total": 0.5490584516097456,
+        "state_consistency": 0.3804732803067232
+      }
+    },
+    {
+      "file": "runs/comparison_current_baseline/conditioned_epoch7_default200_native200_test.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/comparison_current_baseline/dualtalk_emotion_best_epoch7_default200.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "dataset_dialogues": 1010,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 135.9723563194275,
+        "epoch": 7,
+        "global_step": 8057,
+        "expression_mse": 0.36604417355559593,
+        "jaw_mse": 0.0010716968415743005,
+        "neck_mse": 0.017220929664542816,
+        "velocity_mse": 0.019979150984374392,
+        "generation_total": 0.4043159510460875,
+        "state_consistency": 0.008690130595088929
+      }
+    },
+    {
+      "file": "runs/comparison_current_baseline/conditioned_epoch7_default200_smoke.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/comparison_current_baseline/dualtalk_emotion_best_epoch7_default200.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 4,
+        "batch_size": 4,
+        "max_batches": 1,
+        "elapsed_seconds": 16.748083114624023,
+        "epoch": 7,
+        "global_step": 8057,
+        "expression_mse": 0.2382737060546875,
+        "jaw_mse": 0.000569919894138972,
+        "neck_mse": 0.010370141665140787,
+        "velocity_mse": 0.013924755471606778,
+        "generation_total": 0.263138523085574,
+        "state_consistency": 0.36989444494247437
+      }
+    },
+    {
+      "file": "runs/comparison_current_baseline/conditioned_old_allthree_200_test.json",
+      "data": {
+        "model": "conditioned_legacy",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/all_three/dualtalk_emotion_best.pt",
+        "split": "test",
+        "chunk_frames": 200,
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "elapsed_seconds": 94.05745196342468,
+        "epoch": 23,
+        "global_step": 136183,
+        "expression_mse": 0.3152849351986434,
+        "jaw_mse": 0.0009694025892504426,
+        "neck_mse": 0.01687174730461081,
+        "velocity_mse": 0.018714730117877162,
+        "generation_total": 0.35184081521038185,
+        "state_consistency": 0.000004250896993533586
+      }
+    },
+    {
+      "file": "runs/comparison_current_baseline/conditioned_test_legacy.json",
+      "data": {
+        "model": "conditioned_legacy",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/all_three/dualtalk_emotion_best.pt",
+        "split": "test",
+        "chunk_frames": 25,
+        "dataset_chunks": 25748,
+        "evaluated_chunks": 25748,
+        "batch_size": 4,
+        "elapsed_seconds": 797.7560656070709,
+        "epoch": 18,
+        "global_step": 106578,
+        "expression_mse": 0.45793265587517945,
+        "jaw_mse": 0.0012852722730693612,
+        "neck_mse": 0.020431602614181872,
+        "velocity_mse": 0.022644862149716328,
+        "generation_total": 0.502294392912147,
+        "state_consistency": 0.0000069414965573426854
+      }
+    },
+    {
+      "file": "runs/comparison_data_sources/emotiontalk_only_ood.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/emotiontalk_only_epoch3/dualtalk_emotion_best.pt",
+        "split": "ood",
+        "dataset_chunks": 1876,
+        "evaluated_chunks": 1876,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 82.53824234008789,
+        "epoch": 3,
+        "global_step": 8883,
+        "expression_mse": 0.5509232651440066,
+        "jaw_mse": 0.0015626576091424319,
+        "neck_mse": 0.023242277005672794,
+        "velocity_mse": 0.024205387312768497,
+        "generation_total": 0.5999335870715903,
+        "state_consistency": 0.011219553951261394
+      }
+    },
+    {
+      "file": "runs/comparison_data_sources/emotiontalk_only_test.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/emotiontalk_only_epoch3/dualtalk_emotion_best.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 104.84655857086182,
+        "epoch": 3,
+        "global_step": 8883,
+        "expression_mse": 0.33236392200558684,
+        "jaw_mse": 0.0010841535067411972,
+        "neck_mse": 0.016508402200324283,
+        "velocity_mse": 0.017839742215137976,
+        "generation_total": 0.36779621992779027,
+        "state_consistency": 0.011165523829386216
+      }
+    },
+    {
+      "file": "runs/comparison_data_sources/iemocap_only_ood.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/iemocap_only_epoch3/dualtalk_emotion_best.pt",
+        "split": "ood",
+        "dataset_chunks": 1876,
+        "evaluated_chunks": 1876,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 86.06366991996765,
+        "epoch": 3,
+        "global_step": 8883,
+        "expression_mse": 0.5562149235121477,
+        "jaw_mse": 0.001459957618734984,
+        "neck_mse": 0.022305909721836097,
+        "velocity_mse": 0.023745425145608044,
+        "generation_total": 0.6037262159983269,
+        "state_consistency": 0.060155132241340586
+      }
+    },
+    {
+      "file": "runs/comparison_data_sources/iemocap_only_test.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/iemocap_only_epoch3/dualtalk_emotion_best.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 106.07749271392822,
+        "epoch": 3,
+        "global_step": 8883,
+        "expression_mse": 0.330358881400648,
+        "jaw_mse": 0.001066608775416702,
+        "neck_mse": 0.016152544168692842,
+        "velocity_mse": 0.01767200079323897,
+        "generation_total": 0.36525003513799653,
+        "state_consistency": 0.06590913774431213
+      }
+    },
+    {
+      "file": "runs/comparison_epoch24/conditioned_epoch22_ood.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/comparison_epoch24/dualtalk_emotion_best_epoch22.pt",
+        "split": "ood",
+        "dataset_chunks": 1876,
+        "evaluated_chunks": 1876,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 87.21966123580933,
+        "epoch": 22,
+        "global_step": 65120,
+        "expression_mse": 0.5650508305726529,
+        "jaw_mse": 0.001485346276008583,
+        "neck_mse": 0.02401342151621681,
+        "velocity_mse": 0.026089915089671196,
+        "generation_total": 0.6166395134545495,
+        "state_consistency": 0.000006378014712953872
+      }
+    },
+    {
+      "file": "runs/comparison_epoch24/conditioned_epoch22_test.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/comparison_epoch24/dualtalk_emotion_best_epoch22.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 111.04303860664368,
+        "epoch": 22,
+        "global_step": 65120,
+        "expression_mse": 0.32088075851085573,
+        "jaw_mse": 0.000994162892648416,
+        "neck_mse": 0.017042709239385542,
+        "velocity_mse": 0.018529671716011546,
+        "generation_total": 0.35744730235890126,
+        "state_consistency": 0.000006829052008399667
+      }
+    },
+    {
+      "file": "runs/comparison_epoch24/conditioned_epoch25_ood.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/comparison_epoch24/dualtalk_emotion_best_epoch25.pt",
+        "split": "ood",
+        "dataset_chunks": 1876,
+        "evaluated_chunks": 1876,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 86.16838121414185,
+        "epoch": 25,
+        "global_step": 74000,
+        "expression_mse": 0.5573794611493662,
+        "jaw_mse": 0.0014630153044984115,
+        "neck_mse": 0.024152154173296907,
+        "velocity_mse": 0.026605924087927956,
+        "generation_total": 0.6096005547150894,
+        "state_consistency": 0.0000028305851828569033
+      }
+    },
+    {
+      "file": "runs/comparison_epoch24/conditioned_epoch25_test.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/comparison_epoch24/dualtalk_emotion_best_epoch25.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 112.785151720047,
+        "epoch": 25,
+        "global_step": 74000,
+        "expression_mse": 0.3169951701698008,
+        "jaw_mse": 0.0009937632439865006,
+        "neck_mse": 0.017157608706821766,
+        "velocity_mse": 0.018730338764249583,
+        "generation_total": 0.3538768808848586,
+        "state_consistency": 0.0000030192755913549616
+      }
+    },
+    {
+      "file": "runs/comparison_epoch24/film_off_epoch22_ood.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "film_off",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/comparison_epoch24/dualtalk_emotion_best_epoch22.pt",
+        "split": "ood",
+        "dataset_chunks": 1876,
+        "evaluated_chunks": 1876,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 88.08007621765137,
+        "epoch": 22,
+        "global_step": 65120,
+        "expression_mse": 0.5765584378565807,
+        "jaw_mse": 0.00152790975148638,
+        "neck_mse": 0.024638161023161305,
+        "velocity_mse": 0.026832082512991722,
+        "generation_total": 0.6295565911442201,
+        "state_consistency": 0.000006510409464968293
+      }
+    },
+    {
+      "file": "runs/comparison_epoch24/film_off_epoch22_test.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "film_off",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/comparison_epoch24/dualtalk_emotion_best_epoch22.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 110.54083490371704,
+        "epoch": 22,
+        "global_step": 65120,
+        "expression_mse": 0.32531633185334907,
+        "jaw_mse": 0.0010222338447275089,
+        "neck_mse": 0.017358838006353502,
+        "velocity_mse": 0.018851966100901944,
+        "generation_total": 0.36254936980533203,
+        "state_consistency": 0.000006984208905419638
+      }
+    },
+    {
+      "file": "runs/comparison_epoch24/film_off_epoch25_ood.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "film_off",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/comparison_epoch24/dualtalk_emotion_best_epoch25.pt",
+        "split": "ood",
+        "dataset_chunks": 1876,
+        "evaluated_chunks": 1876,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 83.34488916397095,
+        "epoch": 25,
+        "global_step": 74000,
+        "expression_mse": 0.5686261855070525,
+        "jaw_mse": 0.001497120674389766,
+        "neck_mse": 0.024823350043015523,
+        "velocity_mse": 0.027427781876411553,
+        "generation_total": 0.6223744381008693,
+        "state_consistency": 0.000002898291738302723
+      }
+    },
+    {
+      "file": "runs/comparison_epoch24/film_off_epoch25_test.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "film_off",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/comparison_epoch24/dualtalk_emotion_best_epoch25.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 112.76399326324463,
+        "epoch": 25,
+        "global_step": 74000,
+        "expression_mse": 0.32135114722436714,
+        "jaw_mse": 0.0010158858670533011,
+        "neck_mse": 0.017553897960087432,
+        "velocity_mse": 0.019087306269547386,
+        "generation_total": 0.3590082373210553,
+        "state_consistency": 0.0000031054019927978516
+      }
+    },
+    {
+      "file": "runs/comparison_epoch24/random_partner_epoch22_ood.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "random_partner",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/comparison_epoch24/dualtalk_emotion_best_epoch22.pt",
+        "split": "ood",
+        "dataset_chunks": 1876,
+        "evaluated_chunks": 1876,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 84.20024728775024,
+        "epoch": 22,
+        "global_step": 65120,
+        "expression_mse": 0.5650506950329616,
+        "jaw_mse": 0.001485347245298935,
+        "neck_mse": 0.0240134311487002,
+        "velocity_mse": 0.026089880091260027,
+        "generation_total": 0.6166393535182207,
+        "state_consistency": 0.000006379412689697006
+      }
+    },
+    {
+      "file": "runs/comparison_epoch24/random_partner_epoch22_test.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "random_partner",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/comparison_epoch24/dualtalk_emotion_best_epoch22.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 111.77243852615356,
+        "epoch": 22,
+        "global_step": 65120,
+        "expression_mse": 0.3208808046515413,
+        "jaw_mse": 0.0009941635877856604,
+        "neck_mse": 0.017042698127816815,
+        "velocity_mse": 0.018529680237661047,
+        "generation_total": 0.3574473466048048,
+        "state_consistency": 0.000006829352341881094
+      }
+    },
+    {
+      "file": "runs/comparison_epoch24/self_only_epoch22_ood.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "self_only",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/comparison_epoch24/dualtalk_emotion_best_epoch22.pt",
+        "split": "ood",
+        "dataset_chunks": 1876,
+        "evaluated_chunks": 1876,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 78.7760763168335,
+        "epoch": 22,
+        "global_step": 65120,
+        "expression_mse": 0.5650092069125633,
+        "jaw_mse": 0.0014849407371999358,
+        "neck_mse": 0.02401259677178824,
+        "velocity_mse": 0.026087664603846893,
+        "generation_total": 0.6165944090253984,
+        "state_consistency": 0.00000636943621930283
+      }
+    },
+    {
+      "file": "runs/comparison_epoch24/self_only_epoch22_test.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "self_only",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/comparison_epoch24/dualtalk_emotion_best_epoch22.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 106.55211687088013,
+        "epoch": 22,
+        "global_step": 65120,
+        "expression_mse": 0.3208652321323129,
+        "jaw_mse": 0.0009940135425644944,
+        "neck_mse": 0.017042322599148566,
+        "velocity_mse": 0.018528657310679573,
+        "generation_total": 0.35743022558470555,
+        "state_consistency": 0.000006819117900937103
+      }
+    },
+    {
+      "file": "runs/comparison_epoch3/baseline_equal_epoch3_ood.json",
+      "data": {
+        "model": "baseline",
+        "ablation": "official",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_baseline_control/equal_epoch3/last.pt",
+        "split": "ood",
+        "dataset_chunks": 1876,
+        "evaluated_chunks": 1876,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 48.772037506103516,
+        "epoch": 3,
+        "global_step": 8880,
+        "expression_mse": 0.5566031447420751,
+        "jaw_mse": 0.0014471217554642448,
+        "neck_mse": 0.023231910897978842,
+        "velocity_mse": 0.024393061647230985,
+        "generation_total": 0.6056752390427491
+      }
+    },
+    {
+      "file": "runs/comparison_epoch3/baseline_equal_epoch3_test.json",
+      "data": {
+        "model": "baseline",
+        "ablation": "official",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_baseline_control/equal_epoch3/last.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 62.012917280197144,
+        "epoch": 3,
+        "global_step": 8880,
+        "expression_mse": 0.32563519236956456,
+        "jaw_mse": 0.0010579376801155334,
+        "neck_mse": 0.017033737949006627,
+        "velocity_mse": 0.01781591208703396,
+        "generation_total": 0.3615427800857207
+      }
+    },
+    {
+      "file": "runs/comparison_epoch3/baseline_ood.json",
+      "data": {
+        "model": "baseline",
+        "ablation": "official",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/model/dualtalk_baseline.pth",
+        "split": "ood",
+        "dataset_chunks": 1876,
+        "evaluated_chunks": 1876,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 48.50923418998718,
+        "expression_mse": 0.6278987848928488,
+        "jaw_mse": 0.001605865709488919,
+        "neck_mse": 0.02567340499683738,
+        "velocity_mse": 0.03224023973807488,
+        "generation_total": 0.68741829533725
+      }
+    },
+    {
+      "file": "runs/comparison_epoch3/baseline_test.json",
+      "data": {
+        "model": "baseline",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/model/dualtalk_baseline.pth",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 141.9528729915619,
+        "expression_mse": 0.3977316248883388,
+        "jaw_mse": 0.001164279505860744,
+        "neck_mse": 0.01868029453772907,
+        "velocity_mse": 0.023225254536118192,
+        "generation_total": 0.4408014534680468
+      }
+    },
+    {
+      "file": "runs/comparison_epoch3/conditioned_epoch3_25_legacy_ood.json",
+      "data": {
+        "model": "conditioned_legacy",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/fold5/dualtalk_emotion_best.pt",
+        "split": "ood",
+        "chunk_frames": 25,
+        "dataset_chunks": 18510,
+        "evaluated_chunks": 18510,
+        "batch_size": 4,
+        "elapsed_seconds": 499.76112961769104,
+        "epoch": 3,
+        "global_step": 8880,
+        "expression_mse": 0.6551832380116533,
+        "jaw_mse": 0.0016769294950439546,
+        "neck_mse": 0.02601227331933794,
+        "velocity_mse": 0.0279814132311414,
+        "generation_total": 0.7108538540571767,
+        "state_consistency": 0.09633559236521337
+      }
+    },
+    {
+      "file": "runs/comparison_epoch3/conditioned_epoch3_25_legacy_test.json",
+      "data": {
+        "model": "conditioned_legacy",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/fold5/dualtalk_emotion_best.pt",
+        "split": "test",
+        "chunk_frames": 25,
+        "dataset_chunks": 25748,
+        "evaluated_chunks": 25748,
+        "batch_size": 4,
+        "elapsed_seconds": 761.0084404945374,
+        "epoch": 3,
+        "global_step": 8880,
+        "expression_mse": 0.4653215075635236,
+        "jaw_mse": 0.0013769565947454347,
+        "neck_mse": 0.020399293421419593,
+        "velocity_mse": 0.021598298113213548,
+        "generation_total": 0.5086960556929022,
+        "state_consistency": 0.09766449890504143
+      }
+    },
+    {
+      "file": "runs/comparison_epoch3/conditioned_ood.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/fold5/dualtalk_emotion_best.pt",
+        "split": "ood",
+        "dataset_chunks": 1876,
+        "evaluated_chunks": 1876,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 85.23400568962097,
+        "epoch": 3,
+        "global_step": 8880,
+        "expression_mse": 0.5570314921104578,
+        "jaw_mse": 0.0014442953334190614,
+        "neck_mse": 0.02327568474651315,
+        "velocity_mse": 0.025328673312570816,
+        "generation_total": 0.6070801455029609,
+        "state_consistency": 0.037164846113495735
+      }
+    },
+    {
+      "file": "runs/comparison_epoch3/conditioned_test.json",
+      "data": {
+        "model": "conditioned",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/fold5/dualtalk_emotion_best.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 134.66432166099548,
+        "epoch": 3,
+        "global_step": 8880,
+        "expression_mse": 0.3262523615022408,
+        "jaw_mse": 0.0010668109643443917,
+        "neck_mse": 0.01713763959940706,
+        "velocity_mse": 0.01820560388441885,
+        "generation_total": 0.3626624159504111,
+        "state_consistency": 0.03810449619163839
+      }
+    },
+    {
+      "file": "runs/comparison_epoch3/film_off_ood.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "film_off",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/fold5/dualtalk_emotion_best.pt",
+        "split": "ood",
+        "dataset_chunks": 1876,
+        "evaluated_chunks": 1876,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 79.72463917732239,
+        "epoch": 3,
+        "global_step": 8880,
+        "expression_mse": 0.5683105229034099,
+        "jaw_mse": 0.0014679988699501172,
+        "neck_mse": 0.023628351158848364,
+        "velocity_mse": 0.026245189850906188,
+        "generation_total": 0.6196520627831145,
+        "state_consistency": 0.040330969321448154
+      }
+    },
+    {
+      "file": "runs/comparison_epoch3/film_off_test.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "film_off",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/fold5/dualtalk_emotion_best.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 110.7325873374939,
+        "epoch": 3,
+        "global_step": 8880,
+        "expression_mse": 0.3312284253118944,
+        "jaw_mse": 0.0010863159756327784,
+        "neck_mse": 0.017366863953358753,
+        "velocity_mse": 0.018635928187219604,
+        "generation_total": 0.3683175334281055,
+        "state_consistency": 0.04186766015928845
+      }
+    },
+    {
+      "file": "runs/comparison_epoch3/random_partner_ood.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "random_partner",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/fold5/dualtalk_emotion_best.pt",
+        "split": "ood",
+        "dataset_chunks": 1876,
+        "evaluated_chunks": 1876,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 81.64452075958252,
+        "epoch": 3,
+        "global_step": 8880,
+        "expression_mse": 0.5571578581397213,
+        "jaw_mse": 0.0014405345030038934,
+        "neck_mse": 0.023279424397421797,
+        "velocity_mse": 0.025337129132052015,
+        "generation_total": 0.607214946172199,
+        "state_consistency": 0.0375691520443349
+      }
+    },
+    {
+      "file": "runs/comparison_epoch3/random_partner_test.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "random_partner",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/fold5/dualtalk_emotion_best.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 111.73604369163513,
+        "epoch": 3,
+        "global_step": 8880,
+        "expression_mse": 0.3264687423918968,
+        "jaw_mse": 0.0010655646902107145,
+        "neck_mse": 0.017126075258550717,
+        "velocity_mse": 0.018209677929173634,
+        "generation_total": 0.36287006026983193,
+        "state_consistency": 0.03853836158911387
+      }
+    },
+    {
+      "file": "runs/comparison_epoch3/self_only_ood.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "self_only",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/fold5/dualtalk_emotion_best.pt",
+        "split": "ood",
+        "dataset_chunks": 1876,
+        "evaluated_chunks": 1876,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 80.11277556419373,
+        "epoch": 3,
+        "global_step": 8880,
+        "expression_mse": 0.557041953770489,
+        "jaw_mse": 0.0014446235086448497,
+        "neck_mse": 0.02327539741463414,
+        "velocity_mse": 0.02532948614075316,
+        "generation_total": 0.6070914608345211,
+        "state_consistency": 0.037168006843595364
+      }
+    },
+    {
+      "file": "runs/comparison_epoch3/self_only_test.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "self_only",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/dualtalk_conditioned/fold5/dualtalk_emotion_best.pt",
+        "split": "test",
+        "dataset_chunks": 2580,
+        "evaluated_chunks": 2580,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 105.66349697113037,
+        "epoch": 3,
+        "global_step": 8880,
+        "expression_mse": 0.32626155980309773,
+        "jaw_mse": 0.0010669852323656858,
+        "neck_mse": 0.017137382407059042,
+        "velocity_mse": 0.018205877154617914,
+        "generation_total": 0.3626718045971404,
+        "state_consistency": 0.03809279316617537
+      }
+    },
+    {
+      "file": "runs/comparison_epoch7/baseline_ood.json",
+      "data": {
+        "model": "baseline",
+        "ablation": "official",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/model/dualtalk_baseline.pth",
+        "split": "ood",
+        "dataset_chunks": 18510,
+        "evaluated_chunks": 18510,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 314.50079703330994,
+        "expression_mse": 0.7280790870420022,
+        "jaw_mse": 0.0018925148619390192,
+        "neck_mse": 0.029182080049676207,
+        "velocity_mse": 0.03869491716933221,
+        "generation_total": 0.7978485991229496
+      }
+    },
+    {
+      "file": "runs/comparison_epoch7/baseline_test.json",
+      "data": {
+        "model": "baseline",
+        "ablation": "official",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/model/dualtalk_baseline.pth",
+        "split": "test",
+        "dataset_chunks": 25748,
+        "evaluated_chunks": 25748,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 423.69445061683655,
+        "expression_mse": 0.5427078628632488,
+        "jaw_mse": 0.001561662172158357,
+        "neck_mse": 0.023054788495027127,
+        "velocity_mse": 0.030778332028132575,
+        "generation_total": 0.598102645558567
+      }
+    },
+    {
+      "file": "runs/comparison_epoch7/conditioned_epoch7_ood.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/comparison_epoch7/dualtalk_emotion_best_epoch7.pt",
+        "split": "ood",
+        "dataset_chunks": 18510,
+        "evaluated_chunks": 18510,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 603.364500284195,
+        "epoch": 7,
+        "global_step": 8491,
+        "expression_mse": 0.617590247134678,
+        "jaw_mse": 0.0015867868156682022,
+        "neck_mse": 0.024539530204402075,
+        "velocity_mse": 0.026441890137002565,
+        "generation_total": 0.6701584542917508,
+        "state_consistency": 0.20128074947207247
+      }
+    },
+    {
+      "file": "runs/comparison_epoch7/conditioned_epoch7_test.json",
+      "data": {
+        "model": "conditioned",
+        "ablation": "full",
+        "checkpoint": "/data/home/kxrgzn/lzh/MyDualTalk/runs/comparison_epoch7/dualtalk_emotion_best_epoch7.pt",
+        "split": "test",
+        "dataset_chunks": 25748,
+        "evaluated_chunks": 25748,
+        "batch_size": 4,
+        "max_batches": 0,
+        "elapsed_seconds": 783.9955644607544,
+        "epoch": 7,
+        "global_step": 8491,
+        "expression_mse": 0.46596315471891553,
+        "jaw_mse": 0.0013554530329793965,
+        "neck_mse": 0.019622028193799573,
+        "velocity_mse": 0.02111548835388615,
+        "generation_total": 0.5080561242995806,
+        "state_consistency": 0.20040858514388193
+      }
+    }
+  ],
+  "server2_training": [
+    {
+      "dir": "runs/dualtalk_baseline_control/equal_epoch3",
+      "cfg": {
+        "DATA": {},
+        "DUALTALK": {
+          "CHUNK_FRAMES": 200,
+          "FPS": 25,
+          "FREEZE_STATE_EPOCHS": 10,
+          "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best.pt"
+        },
+        "TRAIN": {
+          "EPOCHS": 100,
+          "FINETUNE_OBSERVATION": false,
+          "GRAD_ACCUMULATION": 1,
+          "LR": 0.0001,
+          "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/fold5/observation_encoder.pt",
+          "PHASE_A_CHECKPOINT": "",
+          "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best.pt",
+          "RESUME": "",
+          "SEQUENCE_BATCH_SIZE": 4
+        },
+        "LOSS": {
+          "GENERATION_STATE": 0.1
+        },
+        "DYNAMICS": {}
+      },
+      "segments": [
+        {
+          "count": 3,
+          "first": {
+            "epoch": 1,
+            "expression": 0.2293649428637346,
+            "jaw": 0.000829761192616806,
+            "neck": 0.011793932699888623,
+            "total": 0.2594338953174097,
+            "velocity": 0.01744525824001726,
+            "val_expression": 0.33230252185657666,
+            "val_jaw": 0.0010496168814326677,
+            "val_neck": 0.01654761770848998,
+            "val_total": 0.3676150131728443,
+            "val_velocity": 0.017715257050429152
+          },
+          "last": {
+            "epoch": 3,
+            "expression": 0.15865822789334766,
+            "jaw": 0.0007095565400148287,
+            "neck": 0.009663888669476019,
+            "total": 0.1863035436807754,
+            "velocity": 0.017271870571681034,
+            "val_expression": 0.325367572253149,
+            "val_jaw": 0.0010567375062383681,
+            "val_neck": 0.01701888903303666,
+            "val_total": 0.36123533797199514,
+            "val_velocity": 0.017792140122866344
+          },
+          "best": {
+            "epoch": 3,
+            "expression": 0.15865822789334766,
+            "jaw": 0.0007095565400148287,
+            "neck": 0.009663888669476019,
+            "total": 0.1863035436807754,
+            "velocity": 0.017271870571681034,
+            "val_expression": 0.325367572253149,
+            "val_jaw": 0.0010567375062383681,
+            "val_neck": 0.01701888903303666,
+            "val_total": 0.36123533797199514,
+            "val_velocity": 0.017792140122866344
+          }
+        }
+      ]
+    },
+    {
+      "dir": "runs/dualtalk_conditioned/all_three",
+      "cfg": {
+        "DATA": {
+          "SOURCES": [
+            "emotiontalk",
+            "iemocap"
+          ]
+        },
+        "DUALTALK": {
+          "CHUNK_FRAMES": 200,
+          "FPS": 25,
+          "FREEZE_STATE_EPOCHS": 10,
+          "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best_numpy1_compat.pt"
+        },
+        "TRAIN": {
+          "EPOCHS": 100,
+          "FINETUNE_OBSERVATION": false,
+          "GRAD_ACCUMULATION": 1,
+          "LR": 0.0001,
+          "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/fold5/observation_encoder.pt",
+          "PHASE_A_CHECKPOINT": "",
+          "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best.pt",
+          "RESUME": "runs/dualtalk_conditioned/all_three/last.pt",
+          "SEQUENCE_BATCH_SIZE": 2,
+          "STOP_AFTER_EPOCHS": 0
+        },
+        "LOSS": {
+          "GENERATION_STATE": 0.1
+        },
+        "DYNAMICS": {}
+      },
+      "segments": [
+        {
+          "count": 27,
+          "first": {
+            "epoch": 1,
+            "total": 0.28666532798416205,
+            "expression": 0.248809890515487,
+            "jaw": 0.0009224638885414497,
+            "neck": 0.012769332539199433,
+            "velocity": 0.017836595691947822,
+            "state_consistency": 0.06327045222801285,
+            "val_total": 0.39361052639031596,
+            "val_expression": 0.3534570272347724,
+            "val_jaw": 0.0011375654153318268,
+            "val_neck": 0.01632872635837962,
+            "val_velocity": 0.01788713790931154,
+            "val_state_consistency": 0.0480007014533346
+          },
+          "last": {
+            "epoch": 27,
+            "expression": 0.06838345133492324,
+            "jaw": 0.00045645864412261947,
+            "neck": 0.004145106434773086,
+            "state_consistency": 0.000037361323340199644,
+            "total": 0.08871078646913727,
+            "velocity": 0.015722033950338023,
+            "val_expression": 0.31723968705465627,
+            "val_jaw": 0.0010023060508452305,
+            "val_neck": 0.017272540611122884,
+            "val_state_consistency": 0.0000028905018355495246,
+            "val_total": 0.3543855156171922,
+            "val_velocity": 0.01887069227473536
+          },
+          "best": {
+            "epoch": 23,
+            "expression": 0.07547611552621716,
+            "jaw": 0.0004886929202607218,
+            "neck": 0.004655955398488077,
+            "state_consistency": 0.00006257862310678527,
+            "total": 0.09676930593181036,
+            "velocity": 0.01614228430523159,
+            "val_expression": 0.31528993468991545,
+            "val_jaw": 0.0009694069712922516,
+            "val_neck": 0.01687219725216039,
+            "val_state_consistency": 0.000004248956377192061,
+            "val_total": 0.3518466009938902,
+            "val_velocity": 0.01871463700207564
+          }
+        }
+      ]
+    },
+    {
+      "dir": "runs/dualtalk_conditioned/all_three_ddp_smoke2",
+      "cfg": {
+        "DATA": {
+          "SOURCES": [
+            "emotiontalk",
+            "iemocap"
+          ]
+        },
+        "DUALTALK": {
+          "CHUNK_FRAMES": 200,
+          "FPS": 25,
+          "FREEZE_STATE_EPOCHS": 10,
+          "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best_numpy1_compat.pt"
+        },
+        "TRAIN": {
+          "EPOCHS": 100,
+          "FINETUNE_OBSERVATION": false,
+          "GRAD_ACCUMULATION": 1,
+          "LR": 0.0001,
+          "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/fold5/observation_encoder.pt",
+          "PHASE_A_CHECKPOINT": "",
+          "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best.pt",
+          "RESUME": "",
+          "SEQUENCE_BATCH_SIZE": 2,
+          "STOP_AFTER_EPOCHS": 0
+        },
+        "LOSS": {
+          "GENERATION_STATE": 0.1
+        },
+        "DYNAMICS": {}
+      },
+      "segments": [
+        {
+          "count": 1,
+          "first": {
+            "epoch": 1,
+            "expression": 0.19826196460053325,
+            "jaw": 0.0014195232288329862,
+            "neck": 0.011713586805853993,
+            "state_consistency": 0.950195699930191,
+            "total": 0.3208712115883827,
+            "velocity": 0.0144565689843148,
+            "val_expression": 0.2656985968351364,
+            "val_jaw": 0.0006410402420442551,
+            "val_neck": 0.011987611185759306,
+            "val_state_consistency": 0.9465914368629456,
+            "val_total": 0.3901439756155014,
+            "val_velocity": 0.017157611902803183
+          },
+          "last": {
+            "epoch": 1,
+            "expression": 0.19826196460053325,
+            "jaw": 0.0014195232288329862,
+            "neck": 0.011713586805853993,
+            "state_consistency": 0.950195699930191,
+            "total": 0.3208712115883827,
+            "velocity": 0.0144565689843148,
+            "val_expression": 0.2656985968351364,
+            "val_jaw": 0.0006410402420442551,
+            "val_neck": 0.011987611185759306,
+            "val_state_consistency": 0.9465914368629456,
+            "val_total": 0.3901439756155014,
+            "val_velocity": 0.017157611902803183
+          },
+          "best": {
+            "epoch": 1,
+            "expression": 0.19826196460053325,
+            "jaw": 0.0014195232288329862,
+            "neck": 0.011713586805853993,
+            "state_consistency": 0.950195699930191,
+            "total": 0.3208712115883827,
+            "velocity": 0.0144565689843148,
+            "val_expression": 0.2656985968351364,
+            "val_jaw": 0.0006410402420442551,
+            "val_neck": 0.011987611185759306,
+            "val_state_consistency": 0.9465914368629456,
+            "val_total": 0.3901439756155014,
+            "val_velocity": 0.017157611902803183
+          }
+        }
+      ]
+    },
+    {
+      "dir": "runs/dualtalk_conditioned/all_three_smoke2",
+      "cfg": {
+        "DATA": {
+          "SOURCES": [
+            "emotiontalk",
+            "iemocap"
+          ]
+        },
+        "DUALTALK": {
+          "CHUNK_FRAMES": 200,
+          "FPS": 25,
+          "FREEZE_STATE_EPOCHS": 10,
+          "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best.pt"
+        },
+        "TRAIN": {
+          "EPOCHS": 100,
+          "FINETUNE_OBSERVATION": false,
+          "GRAD_ACCUMULATION": 1,
+          "LR": 0.0001,
+          "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/fold5/observation_encoder.pt",
+          "PHASE_A_CHECKPOINT": "",
+          "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best.pt",
+          "RESUME": "",
+          "SEQUENCE_BATCH_SIZE": 4,
+          "STOP_AFTER_EPOCHS": 0
+        },
+        "LOSS": {
+          "GENERATION_STATE": 0.1
+        },
+        "DYNAMICS": {}
+      },
+      "segments": []
+    },
+    {
+      "dir": "runs/dualtalk_conditioned/all_three_smoke3",
+      "cfg": {
+        "DATA": {
+          "SOURCES": [
+            "emotiontalk",
+            "iemocap"
+          ]
+        },
+        "DUALTALK": {
+          "CHUNK_FRAMES": 200,
+          "FPS": 25,
+          "FREEZE_STATE_EPOCHS": 10,
+          "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best.pt"
+        },
+        "TRAIN": {
+          "EPOCHS": 100,
+          "FINETUNE_OBSERVATION": false,
+          "GRAD_ACCUMULATION": 1,
+          "LR": 0.0001,
+          "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/fold5/observation_encoder.pt",
+          "PHASE_A_CHECKPOINT": "",
+          "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best.pt",
+          "RESUME": "",
+          "SEQUENCE_BATCH_SIZE": 4,
+          "STOP_AFTER_EPOCHS": 0
+        },
+        "LOSS": {
+          "GENERATION_STATE": 0.1
+        },
+        "DYNAMICS": {}
+      },
+      "segments": [
+        {
+          "count": 1,
+          "first": {
+            "epoch": 1,
+            "total": 0.34454335272312164,
+            "expression": 0.21194375306367874,
+            "jaw": 0.0004886040987912565,
+            "neck": 0.009483665926381946,
+            "velocity": 0.02708679437637329,
+            "state_consistency": 0.9554054737091064,
+            "val_total": 0.40377599000930786,
+            "val_expression": 0.28068700432777405,
+            "val_jaw": 0.0008705744403414428,
+            "val_neck": 0.011532153934240341,
+            "val_velocity": 0.016490889713168144,
+            "val_state_consistency": 0.9419535398483276
+          },
+          "last": {
+            "epoch": 1,
+            "total": 0.34454335272312164,
+            "expression": 0.21194375306367874,
+            "jaw": 0.0004886040987912565,
+            "neck": 0.009483665926381946,
+            "velocity": 0.02708679437637329,
+            "state_consistency": 0.9554054737091064,
+            "val_total": 0.40377599000930786,
+            "val_expression": 0.28068700432777405,
+            "val_jaw": 0.0008705744403414428,
+            "val_neck": 0.011532153934240341,
+            "val_velocity": 0.016490889713168144,
+            "val_state_consistency": 0.9419535398483276
+          },
+          "best": {
+            "epoch": 1,
+            "total": 0.34454335272312164,
+            "expression": 0.21194375306367874,
+            "jaw": 0.0004886040987912565,
+            "neck": 0.009483665926381946,
+            "velocity": 0.02708679437637329,
+            "state_consistency": 0.9554054737091064,
+            "val_total": 0.40377599000930786,
+            "val_expression": 0.28068700432777405,
+            "val_jaw": 0.0008705744403414428,
+            "val_neck": 0.011532153934240341,
+            "val_velocity": 0.016490889713168144,
+            "val_state_consistency": 0.9419535398483276
+          }
+        }
+      ]
+    },
+    {
+      "dir": "runs/dualtalk_conditioned/emotiontalk_only_epoch3",
+      "cfg": {
+        "DATA": {
+          "SOURCES": [
+            "emotiontalk"
+          ]
+        },
+        "DUALTALK": {
+          "CHUNK_FRAMES": 200,
+          "FPS": 25,
+          "FREEZE_STATE_EPOCHS": 10,
+          "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/emotiontalk_only/phase_b_best.pt"
+        },
+        "TRAIN": {
+          "EPOCHS": 100,
+          "FINETUNE_OBSERVATION": false,
+          "GRAD_ACCUMULATION": 2,
+          "LR": 0.0001,
+          "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/emotiontalk_only/observation_encoder.pt",
+          "PHASE_A_CHECKPOINT": "",
+          "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/emotiontalk_only/phase_b_best.pt",
+          "RESUME": "",
+          "SEQUENCE_BATCH_SIZE": 4,
+          "STOP_AFTER_EPOCHS": 3
+        },
+        "LOSS": {
+          "GENERATION_STATE": 0.1
+        },
+        "DYNAMICS": {}
+      },
+      "segments": [
+        {
+          "count": 3,
+          "first": {
+            "epoch": 1,
+            "total": 0.2637323945039703,
+            "expression": 0.22985480277862144,
+            "jaw": 0.0008315228037572321,
+            "neck": 0.011779754010786575,
+            "velocity": 0.017422533240559368,
+            "state_consistency": 0.03843781458246327,
+            "val_total": 0.37441312679948735,
+            "val_expression": 0.3382101010213527,
+            "val_jaw": 0.001021614466112941,
+            "val_neck": 0.016239727710287064,
+            "val_velocity": 0.017623973880035355,
+            "val_state_consistency": 0.013177096427873123
+          },
+          "last": {
+            "epoch": 3,
+            "total": 0.18880486321298784,
+            "expression": 0.15987841053548907,
+            "jaw": 0.0007107845924767856,
+            "neck": 0.009731206067391382,
+            "velocity": 0.01726708384740357,
+            "state_consistency": 0.012173782699999225,
+            "val_total": 0.3689791693012844,
+            "val_expression": 0.3323732813026092,
+            "val_jaw": 0.0010841588193258314,
+            "val_neck": 0.016508852864810547,
+            "val_velocity": 0.017839937903665642,
+            "val_state_consistency": 0.011729378778805104
+          },
+          "best": {
+            "epoch": 3,
+            "total": 0.18880486321298784,
+            "expression": 0.15987841053548907,
+            "jaw": 0.0007107845924767856,
+            "neck": 0.009731206067391382,
+            "velocity": 0.01726708384740357,
+            "state_consistency": 0.012173782699999225,
+            "val_total": 0.3689791693012844,
+            "val_expression": 0.3323732813026092,
+            "val_jaw": 0.0010841588193258314,
+            "val_neck": 0.016508852864810547,
+            "val_velocity": 0.017839937903665642,
+            "val_state_consistency": 0.011729378778805104
+          }
+        }
+      ]
+    },
+    {
+      "dir": "runs/dualtalk_conditioned/iemocap_only_epoch3",
+      "cfg": {
+        "DATA": {
+          "SOURCES": [
+            "iemocap"
+          ]
+        },
+        "DUALTALK": {
+          "CHUNK_FRAMES": 200,
+          "FPS": 25,
+          "FREEZE_STATE_EPOCHS": 10,
+          "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/iemocap_only/phase_b_best.pt"
+        },
+        "TRAIN": {
+          "EPOCHS": 100,
+          "FINETUNE_OBSERVATION": false,
+          "GRAD_ACCUMULATION": 2,
+          "LR": 0.0001,
+          "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/iemocap_only/observation_encoder.pt",
+          "PHASE_A_CHECKPOINT": "",
+          "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/iemocap_only/phase_b_best.pt",
+          "RESUME": "",
+          "SEQUENCE_BATCH_SIZE": 4,
+          "STOP_AFTER_EPOCHS": 3
+        },
+        "LOSS": {
+          "GENERATION_STATE": 0.1
+        },
+        "DYNAMICS": {}
+      },
+      "segments": [
+        {
+          "count": 3,
+          "first": {
+            "epoch": 1,
+            "total": 0.27232009687663394,
+            "expression": 0.2302044710671956,
+            "jaw": 0.0008305512537216817,
+            "neck": 0.011789577118350103,
+            "velocity": 0.017426964561216656,
+            "state_consistency": 0.12068532879913081,
+            "val_total": 0.3862015702696734,
+            "val_expression": 0.34161043180975803,
+            "val_jaw": 0.0010474787754062636,
+            "val_neck": 0.016184798891425076,
+            "val_velocity": 0.01767185954268762,
+            "val_state_consistency": 0.09687000143435574
+          },
+          "last": {
+            "epoch": 3,
+            "total": 0.1966889138023478,
+            "expression": 0.16138041206239004,
+            "jaw": 0.0007403307199916246,
+            "neck": 0.009704290375332436,
+            "velocity": 0.01728068826373448,
+            "state_consistency": 0.07583192326071858,
+            "val_total": 0.37220490604870077,
+            "val_expression": 0.3303759183243726,
+            "val_jaw": 0.001066427411468223,
+            "val_neck": 0.01614811071555686,
+            "val_velocity": 0.01767219939601225,
+            "val_state_consistency": 0.06942250028599141
+          },
+          "best": {
+            "epoch": 3,
+            "total": 0.1966889138023478,
+            "expression": 0.16138041206239004,
+            "jaw": 0.0007403307199916246,
+            "neck": 0.009704290375332436,
+            "velocity": 0.01728068826373448,
+            "state_consistency": 0.07583192326071858,
+            "val_total": 0.37220490604870077,
+            "val_expression": 0.3303759183243726,
+            "val_jaw": 0.001066427411468223,
+            "val_neck": 0.01614811071555686,
+            "val_velocity": 0.01767219939601225,
+            "val_state_consistency": 0.06942250028599141
+          }
+        }
+      ]
+    },
+    {
+      "dir": "runs/phase_a_dynamics/emotiontalk_only",
+      "cfg": {
+        "DATA": {
+          "SOURCES": [
+            "emotiontalk"
+          ]
+        },
+        "DUALTALK": {
+          "CHUNK_FRAMES": 200,
+          "FPS": 25,
+          "FREEZE_STATE_EPOCHS": 10,
+          "PHASE_B_CHECKPOINT": ""
+        },
+        "TRAIN": {
+          "EPOCHS": 50,
+          "FINETUNE_OBSERVATION": false,
+          "GRAD_ACCUMULATION": 2,
+          "LR": 0.0003,
+          "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/emotiontalk_only/observation_encoder.pt",
+          "PHASE_A_CHECKPOINT": "",
+          "PHASE_B_CHECKPOINT": "",
+          "RESUME": "",
+          "SEQUENCE_BATCH_SIZE": 8,
+          "STOP_AFTER_EPOCHS": 0
+        },
+        "LOSS": {
+          "GENERATION_STATE": 0.1
+        },
+        "DYNAMICS": {}
+      },
+      "segments": [
+        {
+          "count": 50,
+          "first": {
+            "epoch": 1,
+            "total": 3.6444873394222435,
+            "val_total": 3.3265249729156494,
+            "val_cf_ranking_accuracy": 0
+          },
+          "last": {
+            "epoch": 50,
+            "total": 2.2146716642817226,
+            "val_total": 3.016488289833069,
+            "val_cf_ranking_accuracy": 0
+          },
+          "best": {
+            "epoch": 20,
+            "total": 2.2976754280405305,
+            "val_total": 2.9981786966323853,
+            "val_cf_ranking_accuracy": 0
+          }
+        }
+      ]
+    },
+    {
+      "dir": "runs/phase_a_dynamics/iemocap_only",
+      "cfg": {
+        "DATA": {
+          "SOURCES": [
+            "iemocap"
+          ]
+        },
+        "DUALTALK": {
+          "CHUNK_FRAMES": 200,
+          "FPS": 25,
+          "FREEZE_STATE_EPOCHS": 10,
+          "PHASE_B_CHECKPOINT": ""
+        },
+        "TRAIN": {
+          "EPOCHS": 50,
+          "FINETUNE_OBSERVATION": false,
+          "GRAD_ACCUMULATION": 2,
+          "LR": 0.0003,
+          "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/iemocap_only/observation_encoder.pt",
+          "PHASE_A_CHECKPOINT": "",
+          "PHASE_B_CHECKPOINT": "",
+          "RESUME": "",
+          "SEQUENCE_BATCH_SIZE": 8,
+          "STOP_AFTER_EPOCHS": 0
+        },
+        "LOSS": {
+          "GENERATION_STATE": 0.1
+        },
+        "DYNAMICS": {}
+      },
+      "segments": [
+        {
+          "count": 50,
+          "first": {
+            "epoch": 1,
+            "total": 3.4911425136825414,
+            "val_total": 2.8508542597293856,
+            "val_cf_ranking_accuracy": 0
+          },
+          "last": {
+            "epoch": 50,
+            "total": 1.3654763692791023,
+            "val_total": 2.5691015511751174,
+            "val_cf_ranking_accuracy": 0
+          },
+          "best": {
+            "epoch": 24,
+            "total": 1.5246555920943474,
+            "val_total": 2.509246236085892,
+            "val_cf_ranking_accuracy": 0
+          }
+        }
+      ]
+    },
+    {
+      "dir": "runs/phase_a_observation/emotiontalk_only",
+      "cfg": {
+        "DATA": {
+          "SOURCES": [
+            "emotiontalk"
+          ]
+        },
+        "DUALTALK": {
+          "CHUNK_FRAMES": 200,
+          "FPS": 25,
+          "FREEZE_STATE_EPOCHS": 10,
+          "PHASE_B_CHECKPOINT": ""
+        },
+        "TRAIN": {
+          "EPOCHS": 50,
+          "FINETUNE_OBSERVATION": false,
+          "GRAD_ACCUMULATION": 2,
+          "LR": 0.0003,
+          "OBSERVATION_CHECKPOINT": "",
+          "PHASE_A_CHECKPOINT": "",
+          "PHASE_B_CHECKPOINT": "",
+          "RESUME": "",
+          "SEQUENCE_BATCH_SIZE": 8,
+          "STOP_AFTER_EPOCHS": 0
+        },
+        "LOSS": {
+          "GENERATION_STATE": 0.1
+        },
+        "DYNAMICS": {}
+      },
+      "segments": [
+        {
+          "count": 50,
+          "first": {
+            "epoch": 1,
+            "total": 2.359443651512265,
+            "A_macro_f1": 0.34273186326026917,
+            "V_macro_f1": 0.23039259016513824,
+            "T_macro_f1": 0.3432128131389618,
+            "AVT_macro_f1": 0.48154810070991516,
+            "mean_subset_f1": 0.37873444174017223
+          },
+          "last": {
+            "epoch": 50,
+            "total": 0.6816133731044829,
+            "A_macro_f1": 0.3913469910621643,
+            "V_macro_f1": 0.24488769471645355,
+            "T_macro_f1": 0.35498347878456116,
+            "AVT_macro_f1": 0.5053651928901672,
+            "mean_subset_f1": 0.39708210102149416
+          },
+          "best": {
+            "epoch": 10,
+            "total": 1.3077685106545687,
+            "A_macro_f1": 0.4350205361843109,
+            "V_macro_f1": 0.2721726596355438,
+            "T_macro_f1": 0.4231760799884796,
+            "AVT_macro_f1": 0.5540716648101807,
+            "mean_subset_f1": 0.44683348706790377
+          }
+        }
+      ]
+    },
+    {
+      "dir": "runs/phase_a_observation/iemocap_only",
+      "cfg": {
+        "DATA": {
+          "SOURCES": [
+            "iemocap"
+          ]
+        },
+        "DUALTALK": {
+          "CHUNK_FRAMES": 200,
+          "FPS": 25,
+          "FREEZE_STATE_EPOCHS": 10,
+          "PHASE_B_CHECKPOINT": ""
+        },
+        "TRAIN": {
+          "EPOCHS": 50,
+          "FINETUNE_OBSERVATION": false,
+          "GRAD_ACCUMULATION": 2,
+          "LR": 0.0003,
+          "OBSERVATION_CHECKPOINT": "",
+          "PHASE_A_CHECKPOINT": "",
+          "PHASE_B_CHECKPOINT": "",
+          "RESUME": "",
+          "SEQUENCE_BATCH_SIZE": 8,
+          "STOP_AFTER_EPOCHS": 0
+        },
+        "LOSS": {
+          "GENERATION_STATE": 0.1
+        },
+        "DYNAMICS": {}
+      },
+      "segments": [
+        {
+          "count": 50,
+          "first": {
+            "epoch": 1,
+            "total": 2.656032011244032,
+            "A_macro_f1": 0.12310288846492767,
+            "V_macro_f1": 0.21134331822395325,
+            "T_macro_f1": 0.16246725618839264,
+            "AVT_macro_f1": 0.23300443589687347,
+            "mean_subset_f1": 0.19096652950559342
+          },
+          "last": {
+            "epoch": 50,
+            "total": 0.702750215265486,
+            "A_macro_f1": 0.3141067922115326,
+            "V_macro_f1": 0.18009403347969055,
+            "T_macro_f1": 0.561350405216217,
+            "AVT_macro_f1": 0.5502063035964966,
+            "mean_subset_f1": 0.4294228894369943
+          },
+          "best": {
+            "epoch": 38,
+            "total": 0.7429479440053304,
+            "A_macro_f1": 0.2842261791229248,
+            "V_macro_f1": 0.1829451471567154,
+            "T_macro_f1": 0.5574414134025574,
+            "AVT_macro_f1": 0.5630940198898315,
+            "mean_subset_f1": 0.4319586604833603
+          }
+        }
+      ]
+    },
+    {
+      "dir": "runs/phase_b_coupling/emotiontalk_only",
+      "cfg": {
+        "DATA": {
+          "SOURCES": [
+            "emotiontalk"
+          ]
+        },
+        "DUALTALK": {
+          "CHUNK_FRAMES": 200,
+          "FPS": 25,
+          "FREEZE_STATE_EPOCHS": 10,
+          "PHASE_B_CHECKPOINT": ""
+        },
+        "TRAIN": {
+          "EPOCHS": 50,
+          "FINETUNE_OBSERVATION": true,
+          "GRAD_ACCUMULATION": 2,
+          "LR": 0.0003,
+          "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/emotiontalk_only/observation_encoder.pt",
+          "PHASE_A_CHECKPOINT": "runs/phase_a_dynamics/emotiontalk_only/phase_a_best.pt",
+          "PHASE_B_CHECKPOINT": "",
+          "RESUME": "",
+          "SEQUENCE_BATCH_SIZE": 8,
+          "STOP_AFTER_EPOCHS": 0
+        },
+        "LOSS": {
+          "GENERATION_STATE": 0.1
+        },
+        "DYNAMICS": {}
+      },
+      "segments": [
+        {
+          "count": 50,
+          "first": {
+            "epoch": 1,
+            "total": 2.3657454700644958,
+            "val_total": 3.0501394748687742,
+            "val_cf_ranking_accuracy": 0,
+            "val_partner_gain": 0.00454028844833374
+          },
+          "last": {
+            "epoch": 50,
+            "total": 1.5386578183655346,
+            "val_total": 3.368295764923096,
+            "val_cf_ranking_accuracy": 0,
+            "val_partner_gain": 0.017030811309814452
+          },
+          "best": {
+            "epoch": 5,
+            "total": 2.2143873730930714,
+            "val_total": 2.99315824508667,
+            "val_cf_ranking_accuracy": 0,
+            "val_partner_gain": 0.03726472854614258
+          }
+        }
+      ]
+    },
+    {
+      "dir": "runs/phase_b_coupling/iemocap_only",
+      "cfg": {
+        "DATA": {
+          "SOURCES": [
+            "iemocap"
+          ]
+        },
+        "DUALTALK": {
+          "CHUNK_FRAMES": 200,
+          "FPS": 25,
+          "FREEZE_STATE_EPOCHS": 10,
+          "PHASE_B_CHECKPOINT": ""
+        },
+        "TRAIN": {
+          "EPOCHS": 50,
+          "FINETUNE_OBSERVATION": true,
+          "GRAD_ACCUMULATION": 2,
+          "LR": 0.0003,
+          "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/iemocap_only/observation_encoder.pt",
+          "PHASE_A_CHECKPOINT": "runs/phase_a_dynamics/iemocap_only/phase_a_best.pt",
+          "PHASE_B_CHECKPOINT": "",
+          "RESUME": "",
+          "SEQUENCE_BATCH_SIZE": 8,
+          "STOP_AFTER_EPOCHS": 0
+        },
+        "LOSS": {
+          "GENERATION_STATE": 0.1
+        },
+        "DYNAMICS": {}
+      },
+      "segments": [
+        {
+          "count": 50,
+          "first": {
+            "epoch": 1,
+            "total": 1.6351945643286103,
+            "val_total": 2.4997010320425033,
+            "val_cf_ranking_accuracy": 0,
+            "val_partner_gain": 0.0015645906329154967
+          },
+          "last": {
+            "epoch": 50,
+            "total": 0.543652657455611,
+            "val_total": 3.4338732302188872,
+            "val_cf_ranking_accuracy": 0.01944444477558136,
+            "val_partner_gain": -0.03810795098543167
+          },
+          "best": {
+            "epoch": 1,
+            "total": 1.6351945643286103,
+            "val_total": 2.4997010320425033,
+            "val_cf_ranking_accuracy": 0,
+            "val_partner_gain": 0.0015645906329154967
+          }
+        }
+      ]
+    }
+  ],
+  "server2_checkpoints": {
+    "runs/dualtalk_conditioned/all_three/dualtalk_emotion_best.pt": {
+      "keys": [
+        "epoch",
+        "global_step",
+        "models",
+        "optimizer",
+        "scheduler",
+        "scaler",
+        "metrics",
+        "config",
+        "rng_state"
+      ],
+      "epoch": 23,
+      "global_step": 136183,
+      "metrics": {
+        "epoch": 23,
+        "expression": 0.07547611552621716,
+        "jaw": 0.0004886929202607218,
+        "neck": 0.004655955398488077,
+        "state_consistency": 0.00006257862310678527,
+        "total": 0.09676930593181036,
+        "velocity": 0.01614228430523159,
+        "val_expression": 0.31528993468991545,
+        "val_jaw": 0.0009694069712922516,
+        "val_neck": 0.01687219725216039,
+        "val_state_consistency": 0.000004248956377192061,
+        "val_total": 0.3518466009938902,
+        "val_velocity": 0.01871463700207564
+      },
+      "config": "COUNTERFACTUAL:\n  INTENSITY_TOLERANCE: 0.2\n  MAX_ACTION_COSINE: 0.8\n  TOP_K: 8\n  TURN_TOLERANCE: 0.15\nDATA:\n  DOMAIN_RATIO:\n  - 2\n  - 1\n  DUALTALK_ROOT: datasets/dualtalk\n  EMOTIONTALK_ROOT: datasets/emotiontalk/processed\n  IEMOCAP_FEATURE_ROOT: artifacts/features/iemocap\n  IEMOCAP_FOLD: 5\n  IEMOCAP_RAW_ROOT: datasets/iemocap/raw\n  NUM_WORKERS: 8\n  PIN_MEMORY: true\n  ROOT: datasets\n  SOURCES:\n  - emotiontalk\n  - iemocap\n  WINDOW_LENGTH: 33\n  WINDOW_STRIDE: 4\nDETERMINISTIC: false\nDEVICE: cuda\nDUALTALK:\n  AUDIO_MODEL: facebook/wav2vec2-base-960h\n  BASELINE_CHECKPOINT: model/dualtalk_baseline.pth\n  BLENDSHAPE_DIM: 56\n  CHUNK_FRAMES: 200\n  FEATURE_DIM: 256\n  FILM_SCALE: 0.1\n  FPS: 25\n  FREEZE_STATE_EPOCHS: 10\n  JOINT_FINETUNE_LR_SCALE: 0.1\n  LOCAL_FILES_ONLY: false\n  PHASE_B_CHECKPOINT: runs/phase_b_coupling/fold5/phase_b_best_numpy1_compat.pt\n  RENDER_COMMAND: ''\nDYNAMICS:\n  CORRECTION_MODE: teacher_forced\n  DISABLE_LONG_TIMESCALES: false\n  ENABLE_PARTNER: true\n  FIXED_RELATION: false\n  HORIZONS:\n  - 1\n  - 2\n  - 4\n  - 8\n  - 16\n  - 32\n  RANDOM_PARTNER: false\n  RANDOM_ROLE_SWAP: true\n  SYMMETRIC_COUPLING: false\nLOSS:\n  CORRECTION: 0.05\n  COUNTERFACTUAL: 0.2\n  COUNTERFACTUAL_MARGIN: 0.2\n  DECORRELATION: 0.01\n  DOMAIN: 0.05\n  EMOTION: 1.0\n  GENERATION_STATE: 0.1\n  INTENSITY: 0.5\n  NEXT_STATE: 1.0\n  RELIABILITY: 0.1\n  SMOOTH_L1: 1.0\n  SPEAKER: 0.05\n  TRAJECTORY: 0.5\n  UNIFY: 1.0\n  VAD: 0.5\nMODEL:\n  AUDIO_DIM: 768\n  DROPOUT: 0.1\n  FACE_DIM: 35\n  INFLUENCE_CHANNELS: 32\n  INFLUENCE_DIM: 128\n  MODEL_DIM: 256\n  NUM_DOMAINS: 2\n  NUM_HEADS: 4\n  NUM_LAYERS: 2\n  NUM_TIMESCALES: 8\n  OBSERVATION_DIM: 128\n  RELATION_DIM: 64\n  SPEAKER_DELTA_SCALE: 0.1\n  STATE_DIM: 128\n  TAU_MAX: 300.0\n  TAU_MIN: 0.5\n  TEXT_DIM: 768\nPREPROCESS:\n  AUDIO_MODEL: facebook/wav2vec2-base-960h\n  BATCH_SIZE: 32\n  CONFIDENCE_THRESHOLD: 0.8\n  DEVICE: cuda:0\n  FFMPEG_BIN: ffmpeg\n  LOCAL_FILES_ONLY: false\n  OPENFACE_BIN: FeatureExtraction\n  SKIP_OPENFACE: false\n  TEXT_MODEL: roberta-base\nSEED: 6666\nTRAIN:\n  AMP: true\n  BATCH_SIZE: 128\n  DRY_RUN: false\n  DRY_RUN_TRAIN_BATCHES: 2\n  DRY_RUN_VAL_BATCHES: 1\n  EMA_DECAY: 0.996\n  EMA_TEACHER_CHECKPOINT: ''\n  EMOTION_HEADS_CHECKPOINT: ''\n  EPOCHS: 100\n  EXPERIMENT_NAME: all_three\n  FINETUNE_OBSERVATION: false\n  GRAD_ACCUMULATION: 1\n  GRAD_CLIP: 5.0\n  GRL_WARMUP_EPOCHS: 10.0\n  LOG_INTERVAL: 20\n  LR: 0.0001\n  OBSERVATION_CHECKPOINT: runs/phase_a_observation/fold5/observation_encoder.pt\n  OUTPUT_ROOT: runs\n  PHASE_A_CHECKPOINT: ''\n  PHASE_B_CHECKPOINT: runs/phase_b_coupling/fold5/phase_b_best.pt\n  RESUME: runs/dualtalk_conditioned/all_three/last.pt\n  SAVE_EVERY: 1\n  SEQUENCE_BATCH_SIZE: 2\n  STATE_LR_SCALE: 0.1\n  STOP_AFTER_EPOCHS: 0\n  WEIGHT_DECAY: 0.0001\n",
+      "modelkeys": [
+        "system"
+      ],
+      "system_selected_shapes": {
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.0.layers.0.weight": [
+          256,
+          768
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.0.layers.0.bias": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.0.layers.1.weight": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.0.layers.1.bias": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.1.layers.0.weight": [
+          256,
+          768
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.1.layers.0.bias": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.1.layers.1.weight": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.1.layers.1.bias": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.aff_head.0.weight": [
+          128,
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.aff_head.0.bias": [
+          128
+        ],
+        "conditioner.audio_observer.observation_encoder.aff_head.1.weight": [
+          128
+        ],
+        "conditioner.audio_observer.observation_encoder.aff_head.1.bias": [
+          128
+        ],
+        "conditioner.state_model.self_input.0.weight": [
+          128,
+          256
+        ],
+        "conditioner.state_model.self_input.0.bias": [
+          128
+        ],
+        "conditioner.state_model.self_input.2.weight": [
+          128,
+          128
+        ],
+        "conditioner.state_model.self_input.2.bias": [
+          128
+        ],
+        "projector.layers.0.weight": [
+          128,
+          56
+        ],
+        "projector.layers.0.bias": [
+          128
+        ],
+        "projector.layers.2.weight": [
+          128,
+          128
+        ],
+        "projector.layers.2.bias": [
+          128
+        ]
+      }
+    },
+    "runs/phase_a_observation/fold5/observation_encoder.pt": {
+      "keys": [
+        "cls_token",
+        "modality_embedding",
+        "audio_adapter.adapters.0.layers.0.weight",
+        "audio_adapter.adapters.0.layers.0.bias",
+        "audio_adapter.adapters.0.layers.1.weight",
+        "audio_adapter.adapters.0.layers.1.bias",
+        "audio_adapter.adapters.1.layers.0.weight",
+        "audio_adapter.adapters.1.layers.0.bias",
+        "audio_adapter.adapters.1.layers.1.weight",
+        "audio_adapter.adapters.1.layers.1.bias",
+        "audio_adapter.adapters.2.layers.0.weight",
+        "audio_adapter.adapters.2.layers.0.bias",
+        "audio_adapter.adapters.2.layers.1.weight",
+        "audio_adapter.adapters.2.layers.1.bias",
+        "face_adapter.adapters.0.layers.0.weight",
+        "face_adapter.adapters.0.layers.0.bias",
+        "face_adapter.adapters.0.layers.1.weight",
+        "face_adapter.adapters.0.layers.1.bias",
+        "face_adapter.adapters.1.layers.0.weight",
+        "face_adapter.adapters.1.layers.0.bias",
+        "face_adapter.adapters.1.layers.1.weight",
+        "face_adapter.adapters.1.layers.1.bias",
+        "face_adapter.adapters.2.layers.0.weight",
+        "face_adapter.adapters.2.layers.0.bias",
+        "face_adapter.adapters.2.layers.1.weight",
+        "face_adapter.adapters.2.layers.1.bias",
+        "text_adapter.adapters.0.layers.0.weight",
+        "text_adapter.adapters.0.layers.0.bias",
+        "text_adapter.adapters.0.layers.1.weight",
+        "text_adapter.adapters.0.layers.1.bias",
+        "text_adapter.adapters.1.layers.0.weight",
+        "text_adapter.adapters.1.layers.0.bias",
+        "text_adapter.adapters.1.layers.1.weight",
+        "text_adapter.adapters.1.layers.1.bias",
+        "text_adapter.adapters.2.layers.0.weight",
+        "text_adapter.adapters.2.layers.0.bias",
+        "text_adapter.adapters.2.layers.1.weight",
+        "text_adapter.adapters.2.layers.1.bias",
+        "face_temporal.input.0.weight",
+        "face_temporal.input.0.bias",
+        "face_temporal.input.1.weight",
+        "face_temporal.input.1.bias",
+        "face_temporal.encoder.layers.0.self_attn.in_proj_weight",
+        "face_temporal.encoder.layers.0.self_attn.in_proj_bias",
+        "face_temporal.encoder.layers.0.self_attn.out_proj.weight",
+        "face_temporal.encoder.layers.0.self_attn.out_proj.bias",
+        "face_temporal.encoder.layers.0.linear1.weight",
+        "face_temporal.encoder.layers.0.linear1.bias",
+        "face_temporal.encoder.layers.0.linear2.weight",
+        "face_temporal.encoder.layers.0.linear2.bias",
+        "face_temporal.encoder.layers.0.norm1.weight",
+        "face_temporal.encoder.layers.0.norm1.bias",
+        "face_temporal.encoder.layers.0.norm2.weight",
+        "face_temporal.encoder.layers.0.norm2.bias",
+        "face_temporal.encoder.layers.1.self_attn.in_proj_weight",
+        "face_temporal.encoder.layers.1.self_attn.in_proj_bias",
+        "face_temporal.encoder.layers.1.self_attn.out_proj.weight",
+        "face_temporal.encoder.layers.1.self_attn.out_proj.bias",
+        "face_temporal.encoder.layers.1.linear1.weight",
+        "face_temporal.encoder.layers.1.linear1.bias",
+        "face_temporal.encoder.layers.1.linear2.weight",
+        "face_temporal.encoder.layers.1.linear2.bias",
+        "face_temporal.encoder.layers.1.norm1.weight",
+        "face_temporal.encoder.layers.1.norm1.bias",
+        "face_temporal.encoder.layers.1.norm2.weight",
+        "face_temporal.encoder.layers.1.norm2.bias",
+        "face_temporal.encoder.layers.2.self_attn.in_proj_weight",
+        "face_temporal.encoder.layers.2.self_attn.in_proj_bias",
+        "face_temporal.encoder.layers.2.self_attn.out_proj.weight",
+        "face_temporal.encoder.layers.2.self_attn.out_proj.bias",
+        "face_temporal.encoder.layers.2.linear1.weight",
+        "face_temporal.encoder.layers.2.linear1.bias",
+        "face_temporal.encoder.layers.2.linear2.weight",
+        "face_temporal.encoder.layers.2.linear2.bias",
+        "face_temporal.encoder.layers.2.norm1.weight",
+        "face_temporal.encoder.layers.2.norm1.bias",
+        "face_temporal.encoder.layers.2.norm2.weight",
+        "face_temporal.encoder.layers.2.norm2.bias",
+        "face_temporal.attention_pool.weight",
+        "face_temporal.attention_pool.bias",
+        "face_temporal.output.0.weight",
+        "face_temporal.output.0.bias",
+        "face_temporal.output.1.weight",
+        "face_temporal.output.1.bias",
+        "fusion.layers.0.self_attn.in_proj_weight",
+        "fusion.layers.0.self_attn.in_proj_bias",
+        "fusion.layers.0.self_attn.out_proj.weight",
+        "fusion.layers.0.self_attn.out_proj.bias",
+        "fusion.layers.0.linear1.weight",
+        "fusion.layers.0.linear1.bias",
+        "fusion.layers.0.linear2.weight",
+        "fusion.layers.0.linear2.bias",
+        "fusion.layers.0.norm1.weight",
+        "fusion.layers.0.norm1.bias",
+        "fusion.layers.0.norm2.weight",
+        "fusion.layers.0.norm2.bias",
+        "fusion.layers.1.self_attn.in_proj_weight",
+        "fusion.layers.1.self_attn.in_proj_bias",
+        "fusion.layers.1.self_attn.out_proj.weight",
+        "fusion.layers.1.self_attn.out_proj.bias",
+        "fusion.layers.1.linear1.weight",
+        "fusion.layers.1.linear1.bias",
+        "fusion.layers.1.linear2.weight",
+        "fusion.layers.1.linear2.bias",
+        "fusion.layers.1.norm1.weight",
+        "fusion.layers.1.norm1.bias",
+        "fusion.layers.1.norm2.weight",
+        "fusion.layers.1.norm2.bias",
+        "shared_affect_projector.0.weight",
+        "shared_affect_projector.0.bias",
+        "shared_affect_projector.2.weight",
+        "shared_affect_projector.2.bias",
+        "shared_affect_projector.3.weight",
+        "shared_affect_projector.3.bias",
+        "ssl_predictor.0.weight",
+        "ssl_predictor.0.bias",
+        "ssl_predictor.2.weight",
+        "ssl_predictor.2.bias",
+        "affect_weight.weight",
+        "affect_weight.bias",
+        "event_head.0.weight",
+        "event_head.0.bias",
+        "event_head.1.weight",
+        "event_head.1.bias",
+        "action_head.0.weight",
+        "action_head.0.bias",
+        "action_head.1.weight",
+        "action_head.1.bias",
+        "reliability_head.0.weight",
+        "reliability_head.0.bias"
+      ],
+      "epoch": null,
+      "global_step": null,
+      "metrics": null,
+      "config": null,
+      "modelkeys": [
+        "cls_token",
+        "modality_embedding",
+        "audio_adapter.adapters.0.layers.0.weight",
+        "audio_adapter.adapters.0.layers.0.bias",
+        "audio_adapter.adapters.0.layers.1.weight",
+        "audio_adapter.adapters.0.layers.1.bias",
+        "audio_adapter.adapters.1.layers.0.weight",
+        "audio_adapter.adapters.1.layers.0.bias",
+        "audio_adapter.adapters.1.layers.1.weight",
+        "audio_adapter.adapters.1.layers.1.bias",
+        "audio_adapter.adapters.2.layers.0.weight",
+        "audio_adapter.adapters.2.layers.0.bias",
+        "audio_adapter.adapters.2.layers.1.weight",
+        "audio_adapter.adapters.2.layers.1.bias",
+        "face_adapter.adapters.0.layers.0.weight",
+        "face_adapter.adapters.0.layers.0.bias",
+        "face_adapter.adapters.0.layers.1.weight",
+        "face_adapter.adapters.0.layers.1.bias",
+        "face_adapter.adapters.1.layers.0.weight",
+        "face_adapter.adapters.1.layers.0.bias",
+        "face_adapter.adapters.1.layers.1.weight",
+        "face_adapter.adapters.1.layers.1.bias",
+        "face_adapter.adapters.2.layers.0.weight",
+        "face_adapter.adapters.2.layers.0.bias",
+        "face_adapter.adapters.2.layers.1.weight",
+        "face_adapter.adapters.2.layers.1.bias",
+        "text_adapter.adapters.0.layers.0.weight",
+        "text_adapter.adapters.0.layers.0.bias",
+        "text_adapter.adapters.0.layers.1.weight",
+        "text_adapter.adapters.0.layers.1.bias",
+        "text_adapter.adapters.1.layers.0.weight",
+        "text_adapter.adapters.1.layers.0.bias",
+        "text_adapter.adapters.1.layers.1.weight",
+        "text_adapter.adapters.1.layers.1.bias",
+        "text_adapter.adapters.2.layers.0.weight",
+        "text_adapter.adapters.2.layers.0.bias",
+        "text_adapter.adapters.2.layers.1.weight",
+        "text_adapter.adapters.2.layers.1.bias",
+        "face_temporal.input.0.weight",
+        "face_temporal.input.0.bias",
+        "face_temporal.input.1.weight",
+        "face_temporal.input.1.bias",
+        "face_temporal.encoder.layers.0.self_attn.in_proj_weight",
+        "face_temporal.encoder.layers.0.self_attn.in_proj_bias",
+        "face_temporal.encoder.layers.0.self_attn.out_proj.weight",
+        "face_temporal.encoder.layers.0.self_attn.out_proj.bias",
+        "face_temporal.encoder.layers.0.linear1.weight",
+        "face_temporal.encoder.layers.0.linear1.bias",
+        "face_temporal.encoder.layers.0.linear2.weight",
+        "face_temporal.encoder.layers.0.linear2.bias",
+        "face_temporal.encoder.layers.0.norm1.weight",
+        "face_temporal.encoder.layers.0.norm1.bias",
+        "face_temporal.encoder.layers.0.norm2.weight",
+        "face_temporal.encoder.layers.0.norm2.bias",
+        "face_temporal.encoder.layers.1.self_attn.in_proj_weight",
+        "face_temporal.encoder.layers.1.self_attn.in_proj_bias",
+        "face_temporal.encoder.layers.1.self_attn.out_proj.weight",
+        "face_temporal.encoder.layers.1.self_attn.out_proj.bias",
+        "face_temporal.encoder.layers.1.linear1.weight",
+        "face_temporal.encoder.layers.1.linear1.bias",
+        "face_temporal.encoder.layers.1.linear2.weight",
+        "face_temporal.encoder.layers.1.linear2.bias",
+        "face_temporal.encoder.layers.1.norm1.weight",
+        "face_temporal.encoder.layers.1.norm1.bias",
+        "face_temporal.encoder.layers.1.norm2.weight",
+        "face_temporal.encoder.layers.1.norm2.bias",
+        "face_temporal.encoder.layers.2.self_attn.in_proj_weight",
+        "face_temporal.encoder.layers.2.self_attn.in_proj_bias",
+        "face_temporal.encoder.layers.2.self_attn.out_proj.weight",
+        "face_temporal.encoder.layers.2.self_attn.out_proj.bias",
+        "face_temporal.encoder.layers.2.linear1.weight",
+        "face_temporal.encoder.layers.2.linear1.bias",
+        "face_temporal.encoder.layers.2.linear2.weight",
+        "face_temporal.encoder.layers.2.linear2.bias",
+        "face_temporal.encoder.layers.2.norm1.weight",
+        "face_temporal.encoder.layers.2.norm1.bias",
+        "face_temporal.encoder.layers.2.norm2.weight",
+        "face_temporal.encoder.layers.2.norm2.bias",
+        "face_temporal.attention_pool.weight",
+        "face_temporal.attention_pool.bias",
+        "face_temporal.output.0.weight",
+        "face_temporal.output.0.bias",
+        "face_temporal.output.1.weight",
+        "face_temporal.output.1.bias",
+        "fusion.layers.0.self_attn.in_proj_weight",
+        "fusion.layers.0.self_attn.in_proj_bias",
+        "fusion.layers.0.self_attn.out_proj.weight",
+        "fusion.layers.0.self_attn.out_proj.bias",
+        "fusion.layers.0.linear1.weight",
+        "fusion.layers.0.linear1.bias",
+        "fusion.layers.0.linear2.weight",
+        "fusion.layers.0.linear2.bias",
+        "fusion.layers.0.norm1.weight",
+        "fusion.layers.0.norm1.bias",
+        "fusion.layers.0.norm2.weight",
+        "fusion.layers.0.norm2.bias",
+        "fusion.layers.1.self_attn.in_proj_weight",
+        "fusion.layers.1.self_attn.in_proj_bias",
+        "fusion.layers.1.self_attn.out_proj.weight",
+        "fusion.layers.1.self_attn.out_proj.bias",
+        "fusion.layers.1.linear1.weight",
+        "fusion.layers.1.linear1.bias",
+        "fusion.layers.1.linear2.weight",
+        "fusion.layers.1.linear2.bias",
+        "fusion.layers.1.norm1.weight",
+        "fusion.layers.1.norm1.bias",
+        "fusion.layers.1.norm2.weight",
+        "fusion.layers.1.norm2.bias",
+        "shared_affect_projector.0.weight",
+        "shared_affect_projector.0.bias",
+        "shared_affect_projector.2.weight",
+        "shared_affect_projector.2.bias",
+        "shared_affect_projector.3.weight",
+        "shared_affect_projector.3.bias",
+        "ssl_predictor.0.weight",
+        "ssl_predictor.0.bias",
+        "ssl_predictor.2.weight",
+        "ssl_predictor.2.bias",
+        "affect_weight.weight",
+        "affect_weight.bias",
+        "event_head.0.weight",
+        "event_head.0.bias",
+        "event_head.1.weight",
+        "event_head.1.bias",
+        "action_head.0.weight",
+        "action_head.0.bias",
+        "action_head.1.weight",
+        "action_head.1.bias",
+        "reliability_head.0.weight",
+        "reliability_head.0.bias"
+      ]
+    },
+    "runs/phase_b_coupling/fold5/phase_b_best_numpy1_compat.pt": {
+      "keys": [
+        "epoch",
+        "global_step",
+        "models",
+        "optimizer",
+        "scheduler",
+        "scaler",
+        "metrics",
+        "config",
+        "rng_state"
+      ],
+      "epoch": 4,
+      "global_step": 424,
+      "metrics": {
+        "epoch": 4,
+        "cf_ranking_accuracy": 0,
+        "correction": 0.05675078403064102,
+        "counterfactual": 0.19917965588985748,
+        "h1": 1.173416702814822,
+        "h16": 1.1435414153449939,
+        "h16_count": 112.52830188679246,
+        "h1_count": 231.56132075471697,
+        "h2": 1.1376854108189636,
+        "h2_count": 223.56132075471697,
+        "h32": 1.0523265671898734,
+        "h32_count": 5.636792452830189,
+        "h4": 1.1555871614870035,
+        "h4_count": 207.56132075471697,
+        "h8": 1.1552098688651933,
+        "h8_count": 175.57075471698113,
+        "next_state": 1.173416702814822,
+        "total": 1.7805252218583845,
+        "trajectory": 1.1288701028756376,
+        "val_cf_ranking_accuracy": 0,
+        "val_correction": 0.055044260770082475,
+        "val_counterfactual": 0.048505656719207764,
+        "val_h1": 1.4699422752857207,
+        "val_h16": 1.4235443103313445,
+        "val_h16_count": 124.28,
+        "val_h1_count": 242.1,
+        "val_h2": 1.4228460538387298,
+        "val_h2_count": 234.22,
+        "val_h32": 1.565122806429863,
+        "val_h32_count": 6.96,
+        "val_h4": 1.4331196451187134,
+        "val_h4_count": 218.45999999999998,
+        "val_h8": 1.4223041009902955,
+        "val_h8_count": 186.94,
+        "val_next_state": 1.4699422752857207,
+        "val_partner_gain": 0.028084067106246946,
+        "val_total": 2.2090893507003786,
+        "val_trajectory": 1.4533874428272249
+      },
+      "config": "COUNTERFACTUAL:\n  INTENSITY_TOLERANCE: 0.2\n  MAX_ACTION_COSINE: 0.8\n  TOP_K: 8\n  TURN_TOLERANCE: 0.15\nDATA:\n  DOMAIN_RATIO:\n  - 2\n  - 1\n  DUALTALK_ROOT: datasets/dualtalk\n  EMOTIONTALK_ROOT: datasets/emotiontalk/processed\n  IEMOCAP_FEATURE_ROOT: artifacts/features/iemocap\n  IEMOCAP_FOLD: 5\n  IEMOCAP_RAW_ROOT: datasets/iemocap/raw\n  NUM_WORKERS: 8\n  PIN_MEMORY: true\n  ROOT: datasets\n  WINDOW_LENGTH: 33\n  WINDOW_STRIDE: 4\nDETERMINISTIC: false\nDEVICE: cuda\nDUALTALK:\n  AUDIO_MODEL: facebook/wav2vec2-base-960h\n  BASELINE_CHECKPOINT: ''\n  BLENDSHAPE_DIM: 56\n  CHUNK_FRAMES: 200\n  FEATURE_DIM: 256\n  FILM_SCALE: 0.1\n  FPS: 25\n  FREEZE_STATE_EPOCHS: 10\n  JOINT_FINETUNE_LR_SCALE: 0.1\n  LOCAL_FILES_ONLY: false\n  PHASE_B_CHECKPOINT: ''\n  RENDER_COMMAND: ''\nDYNAMICS:\n  CORRECTION_MODE: teacher_forced\n  DISABLE_LONG_TIMESCALES: false\n  ENABLE_PARTNER: true\n  FIXED_RELATION: false\n  HORIZONS:\n  - 1\n  - 2\n  - 4\n  - 8\n  - 16\n  - 32\n  RANDOM_PARTNER: false\n  RANDOM_ROLE_SWAP: true\n  SYMMETRIC_COUPLING: false\nLOSS:\n  CORRECTION: 0.05\n  COUNTERFACTUAL: 0.2\n  COUNTERFACTUAL_MARGIN: 0.2\n  DECORRELATION: 0.01\n  DOMAIN: 0.05\n  EMOTION: 1.0\n  GENERATION_STATE: 0.1\n  INTENSITY: 0.5\n  NEXT_STATE: 1.0\n  RELIABILITY: 0.1\n  SMOOTH_L1: 1.0\n  SPEAKER: 0.05\n  TRAJECTORY: 0.5\n  UNIFY: 1.0\n  VAD: 0.5\nMODEL:\n  AUDIO_DIM: 768\n  DROPOUT: 0.1\n  FACE_DIM: 35\n  INFLUENCE_CHANNELS: 32\n  INFLUENCE_DIM: 128\n  MODEL_DIM: 256\n  NUM_DOMAINS: 2\n  NUM_HEADS: 4\n  NUM_LAYERS: 2\n  NUM_TIMESCALES: 8\n  OBSERVATION_DIM: 128\n  RELATION_DIM: 64\n  SPEAKER_DELTA_SCALE: 0.1\n  STATE_DIM: 128\n  TAU_MAX: 300.0\n  TAU_MIN: 0.5\n  TEXT_DIM: 768\nPREPROCESS:\n  AUDIO_MODEL: facebook/wav2vec2-base-960h\n  BATCH_SIZE: 32\n  CONFIDENCE_THRESHOLD: 0.8\n  DEVICE: cuda:0\n  FFMPEG_BIN: ffmpeg\n  LOCAL_FILES_ONLY: false\n  OPENFACE_BIN: FeatureExtraction\n  SKIP_OPENFACE: false\n  TEXT_MODEL: roberta-base\nSEED: 6666\nTRAIN:\n  AMP: true\n  BATCH_SIZE: 128\n  DRY_RUN: false\n  DRY_RUN_TRAIN_BATCHES: 2\n  DRY_RUN_VAL_BATCHES: 1\n  EMA_DECAY: 0.996\n  EMA_TEACHER_CHECKPOINT: runs/phase_a_observation/fold5/ema_teacher.pt\n  EMOTION_HEADS_CHECKPOINT: runs/phase_a_observation/fold5/emotion_heads.pt\n  EPOCHS: 50\n  EXPERIMENT_NAME: fold5\n  FINETUNE_OBSERVATION: true\n  GRAD_ACCUMULATION: 1\n  GRAD_CLIP: 5.0\n  GRL_WARMUP_EPOCHS: 10.0\n  LOG_INTERVAL: 20\n  LR: 0.0003\n  OBSERVATION_CHECKPOINT: runs/phase_a_observation/fold5/observation_encoder.pt\n  OUTPUT_ROOT: runs\n  PHASE_A_CHECKPOINT: runs/phase_a_dynamics/fold5/phase_a_best.pt\n  PHASE_B_CHECKPOINT: ''\n  RESUME: ''\n  SAVE_EVERY: 1\n  SEQUENCE_BATCH_SIZE: 8\n  STATE_LR_SCALE: 0.1\n  WEIGHT_DECAY: 0.0001\n",
+      "modelkeys": [
+        "bundle",
+        "teacher"
+      ],
+      "bundle_selected_shapes": {
+        "encoder.audio_adapter.adapters.0.layers.0.weight": [
+          256,
+          768
+        ],
+        "encoder.audio_adapter.adapters.0.layers.0.bias": [
+          256
+        ],
+        "encoder.audio_adapter.adapters.0.layers.1.weight": [
+          256
+        ],
+        "encoder.audio_adapter.adapters.0.layers.1.bias": [
+          256
+        ],
+        "encoder.audio_adapter.adapters.1.layers.0.weight": [
+          256,
+          768
+        ],
+        "encoder.audio_adapter.adapters.1.layers.0.bias": [
+          256
+        ],
+        "encoder.audio_adapter.adapters.1.layers.1.weight": [
+          256
+        ],
+        "encoder.audio_adapter.adapters.1.layers.1.bias": [
+          256
+        ],
+        "encoder.aff_head.0.weight": [
+          128,
+          256
+        ],
+        "encoder.aff_head.0.bias": [
+          128
+        ],
+        "encoder.aff_head.1.weight": [
+          128
+        ],
+        "encoder.aff_head.1.bias": [
+          128
+        ],
+        "state_model.self_input.0.weight": [
+          128,
+          256
+        ],
+        "state_model.self_input.0.bias": [
+          128
+        ],
+        "state_model.self_input.2.weight": [
+          128,
+          128
+        ],
+        "state_model.self_input.2.bias": [
+          128
+        ]
+      },
+      "teacher_selected_shapes": {
+        "audio_adapter.adapters.0.layers.0.weight": [
+          256,
+          768
+        ],
+        "audio_adapter.adapters.0.layers.0.bias": [
+          256
+        ],
+        "audio_adapter.adapters.0.layers.1.weight": [
+          256
+        ],
+        "audio_adapter.adapters.0.layers.1.bias": [
+          256
+        ],
+        "audio_adapter.adapters.1.layers.0.weight": [
+          256,
+          768
+        ],
+        "audio_adapter.adapters.1.layers.0.bias": [
+          256
+        ],
+        "audio_adapter.adapters.1.layers.1.weight": [
+          256
+        ],
+        "audio_adapter.adapters.1.layers.1.bias": [
+          256
+        ],
+        "aff_head.0.weight": [
+          128,
+          256
+        ],
+        "aff_head.0.bias": [
+          128
+        ],
+        "aff_head.1.weight": [
+          128
+        ],
+        "aff_head.1.bias": [
+          128
+        ]
+      }
+    },
+    "runs/comparison_epoch24/dualtalk_emotion_best_epoch22.pt": {
+      "keys": [
+        "epoch",
+        "global_step",
+        "models",
+        "optimizer",
+        "scheduler",
+        "scaler",
+        "metrics",
+        "config",
+        "rng_state"
+      ],
+      "epoch": 22,
+      "global_step": 65120,
+      "metrics": {
+        "epoch": 22,
+        "expression": 0.06669389774859254,
+        "jaw": 0.00044166485095416106,
+        "neck": 0.0039991868302840395,
+        "state_consistency": 0.00011605235018037461,
+        "total": 0.08654058365012846,
+        "velocity": 0.01539422900780148,
+        "val_expression": 0.32064306641418494,
+        "val_jaw": 0.0009938718100922146,
+        "val_neck": 0.01703347478313487,
+        "val_state_consistency": 0.000006811007073051051,
+        "val_total": 0.35717628624048026,
+        "val_velocity": 0.018505193400859904
+      },
+      "config": "COUNTERFACTUAL:\n  INTENSITY_TOLERANCE: 0.2\n  MAX_ACTION_COSINE: 0.8\n  TOP_K: 8\n  TURN_TOLERANCE: 0.15\nDATA:\n  DOMAIN_RATIO:\n  - 2\n  - 1\n  DUALTALK_ROOT: datasets/dualtalk\n  EMOTIONTALK_ROOT: datasets/emotiontalk/processed\n  IEMOCAP_FEATURE_ROOT: artifacts/features/iemocap\n  IEMOCAP_FOLD: 5\n  IEMOCAP_RAW_ROOT: datasets/iemocap/raw\n  NUM_WORKERS: 8\n  PIN_MEMORY: true\n  ROOT: datasets\n  WINDOW_LENGTH: 33\n  WINDOW_STRIDE: 4\nDETERMINISTIC: false\nDEVICE: cuda\nDUALTALK:\n  AUDIO_MODEL: facebook/wav2vec2-base-960h\n  BASELINE_CHECKPOINT: model/dualtalk_baseline.pth\n  BLENDSHAPE_DIM: 56\n  CHUNK_FRAMES: 200\n  FEATURE_DIM: 256\n  FILM_SCALE: 0.1\n  FPS: 25\n  FREEZE_STATE_EPOCHS: 10\n  JOINT_FINETUNE_LR_SCALE: 0.1\n  LOCAL_FILES_ONLY: false\n  PHASE_B_CHECKPOINT: runs/phase_b_coupling/fold5/phase_b_best.pt\n  RENDER_COMMAND: ''\nDYNAMICS:\n  CORRECTION_MODE: teacher_forced\n  DISABLE_LONG_TIMESCALES: false\n  ENABLE_PARTNER: true\n  FIXED_RELATION: false\n  HORIZONS:\n  - 1\n  - 2\n  - 4\n  - 8\n  - 16\n  - 32\n  RANDOM_PARTNER: false\n  RANDOM_ROLE_SWAP: true\n  SYMMETRIC_COUPLING: false\nLOSS:\n  CORRECTION: 0.05\n  COUNTERFACTUAL: 0.2\n  COUNTERFACTUAL_MARGIN: 0.2\n  DECORRELATION: 0.01\n  DOMAIN: 0.05\n  EMOTION: 1.0\n  GENERATION_STATE: 0.1\n  INTENSITY: 0.5\n  NEXT_STATE: 1.0\n  RELIABILITY: 0.1\n  SMOOTH_L1: 1.0\n  SPEAKER: 0.05\n  TRAJECTORY: 0.5\n  UNIFY: 1.0\n  VAD: 0.5\nMODEL:\n  AUDIO_DIM: 768\n  DROPOUT: 0.1\n  FACE_DIM: 35\n  INFLUENCE_CHANNELS: 32\n  INFLUENCE_DIM: 128\n  MODEL_DIM: 256\n  NUM_DOMAINS: 2\n  NUM_HEADS: 4\n  NUM_LAYERS: 2\n  NUM_TIMESCALES: 8\n  OBSERVATION_DIM: 128\n  RELATION_DIM: 64\n  SPEAKER_DELTA_SCALE: 0.1\n  STATE_DIM: 128\n  TAU_MAX: 300.0\n  TAU_MIN: 0.5\n  TEXT_DIM: 768\nPREPROCESS:\n  AUDIO_MODEL: facebook/wav2vec2-base-960h\n  BATCH_SIZE: 32\n  CONFIDENCE_THRESHOLD: 0.8\n  DEVICE: cuda:0\n  FFMPEG_BIN: ffmpeg\n  LOCAL_FILES_ONLY: false\n  OPENFACE_BIN: FeatureExtraction\n  SKIP_OPENFACE: false\n  TEXT_MODEL: roberta-base\nSEED: 6666\nTRAIN:\n  AMP: true\n  BATCH_SIZE: 128\n  DRY_RUN: false\n  DRY_RUN_TRAIN_BATCHES: 2\n  DRY_RUN_VAL_BATCHES: 1\n  EMA_DECAY: 0.996\n  EMA_TEACHER_CHECKPOINT: ''\n  EMOTION_HEADS_CHECKPOINT: ''\n  EPOCHS: 100\n  EXPERIMENT_NAME: fold5\n  FINETUNE_OBSERVATION: false\n  GRAD_ACCUMULATION: 1\n  GRAD_CLIP: 5.0\n  GRL_WARMUP_EPOCHS: 10.0\n  LOG_INTERVAL: 20\n  LR: 0.0001\n  OBSERVATION_CHECKPOINT: runs/phase_a_observation/fold5/observation_encoder.pt\n  OUTPUT_ROOT: runs\n  PHASE_A_CHECKPOINT: ''\n  PHASE_B_CHECKPOINT: runs/phase_b_coupling/fold5/phase_b_best.pt\n  RESUME: ''\n  SAVE_EVERY: 1\n  SEQUENCE_BATCH_SIZE: 4\n  STATE_LR_SCALE: 0.1\n  WEIGHT_DECAY: 0.0001\n",
+      "modelkeys": [
+        "system"
+      ],
+      "system_selected_shapes": {
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.0.layers.0.weight": [
+          256,
+          768
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.0.layers.0.bias": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.0.layers.1.weight": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.0.layers.1.bias": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.1.layers.0.weight": [
+          256,
+          768
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.1.layers.0.bias": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.1.layers.1.weight": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.1.layers.1.bias": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.aff_head.0.weight": [
+          128,
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.aff_head.0.bias": [
+          128
+        ],
+        "conditioner.audio_observer.observation_encoder.aff_head.1.weight": [
+          128
+        ],
+        "conditioner.audio_observer.observation_encoder.aff_head.1.bias": [
+          128
+        ],
+        "conditioner.state_model.self_input.0.weight": [
+          128,
+          256
+        ],
+        "conditioner.state_model.self_input.0.bias": [
+          128
+        ],
+        "conditioner.state_model.self_input.2.weight": [
+          128,
+          128
+        ],
+        "conditioner.state_model.self_input.2.bias": [
+          128
+        ],
+        "projector.layers.0.weight": [
+          128,
+          56
+        ],
+        "projector.layers.0.bias": [
+          128
+        ],
+        "projector.layers.2.weight": [
+          128,
+          128
+        ],
+        "projector.layers.2.bias": [
+          128
+        ]
+      }
+    },
+    "runs/dualtalk_conditioned/fold5/dualtalk_emotion_best.pt": {
+      "keys": [
+        "epoch",
+        "global_step",
+        "models",
+        "optimizer",
+        "scheduler",
+        "scaler",
+        "metrics",
+        "config",
+        "rng_state"
+      ],
+      "epoch": 3,
+      "global_step": 8880,
+      "metrics": {
+        "epoch": 3,
+        "expression": 0.1597550138076012,
+        "jaw": 0.0007275811819896704,
+        "neck": 0.009662291782159308,
+        "state_consistency": 0.042573091433056306,
+        "total": 0.19162804856581764,
+        "velocity": 0.01722585260966396,
+        "val_expression": 0.3259858864448941,
+        "val_jaw": 0.0010660333668078936,
+        "val_neck": 0.017120109578549873,
+        "val_state_consistency": 0.03998757963394602,
+        "val_total": 0.3663516861989218,
+        "val_velocity": 0.018180899745525197
+      },
+      "config": "COUNTERFACTUAL:\n  INTENSITY_TOLERANCE: 0.2\n  MAX_ACTION_COSINE: 0.8\n  TOP_K: 8\n  TURN_TOLERANCE: 0.15\nDATA:\n  DOMAIN_RATIO:\n  - 2\n  - 1\n  DUALTALK_ROOT: datasets/dualtalk\n  EMOTIONTALK_ROOT: datasets/emotiontalk/processed\n  IEMOCAP_FEATURE_ROOT: artifacts/features/iemocap\n  IEMOCAP_FOLD: 5\n  IEMOCAP_RAW_ROOT: datasets/iemocap/raw\n  NUM_WORKERS: 8\n  PIN_MEMORY: true\n  ROOT: datasets\n  WINDOW_LENGTH: 33\n  WINDOW_STRIDE: 4\nDETERMINISTIC: false\nDEVICE: cuda\nDUALTALK:\n  AUDIO_MODEL: facebook/wav2vec2-base-960h\n  BASELINE_CHECKPOINT: model/dualtalk_baseline.pth\n  BLENDSHAPE_DIM: 56\n  CHUNK_FRAMES: 200\n  FEATURE_DIM: 256\n  FILM_SCALE: 0.1\n  FPS: 25\n  FREEZE_STATE_EPOCHS: 10\n  JOINT_FINETUNE_LR_SCALE: 0.1\n  LOCAL_FILES_ONLY: false\n  PHASE_B_CHECKPOINT: runs/phase_b_coupling/fold5/phase_b_best.pt\n  RENDER_COMMAND: ''\nDYNAMICS:\n  CORRECTION_MODE: teacher_forced\n  DISABLE_LONG_TIMESCALES: false\n  ENABLE_PARTNER: true\n  FIXED_RELATION: false\n  HORIZONS:\n  - 1\n  - 2\n  - 4\n  - 8\n  - 16\n  - 32\n  RANDOM_PARTNER: false\n  RANDOM_ROLE_SWAP: true\n  SYMMETRIC_COUPLING: false\nLOSS:\n  CORRECTION: 0.05\n  COUNTERFACTUAL: 0.2\n  COUNTERFACTUAL_MARGIN: 0.2\n  DECORRELATION: 0.01\n  DOMAIN: 0.05\n  EMOTION: 1.0\n  GENERATION_STATE: 0.1\n  INTENSITY: 0.5\n  NEXT_STATE: 1.0\n  RELIABILITY: 0.1\n  SMOOTH_L1: 1.0\n  SPEAKER: 0.05\n  TRAJECTORY: 0.5\n  UNIFY: 1.0\n  VAD: 0.5\nMODEL:\n  AUDIO_DIM: 768\n  DROPOUT: 0.1\n  FACE_DIM: 35\n  INFLUENCE_CHANNELS: 32\n  INFLUENCE_DIM: 128\n  MODEL_DIM: 256\n  NUM_DOMAINS: 2\n  NUM_HEADS: 4\n  NUM_LAYERS: 2\n  NUM_TIMESCALES: 8\n  OBSERVATION_DIM: 128\n  RELATION_DIM: 64\n  SPEAKER_DELTA_SCALE: 0.1\n  STATE_DIM: 128\n  TAU_MAX: 300.0\n  TAU_MIN: 0.5\n  TEXT_DIM: 768\nPREPROCESS:\n  AUDIO_MODEL: facebook/wav2vec2-base-960h\n  BATCH_SIZE: 32\n  CONFIDENCE_THRESHOLD: 0.8\n  DEVICE: cuda:0\n  FFMPEG_BIN: ffmpeg\n  LOCAL_FILES_ONLY: false\n  OPENFACE_BIN: FeatureExtraction\n  SKIP_OPENFACE: false\n  TEXT_MODEL: roberta-base\nSEED: 6666\nTRAIN:\n  AMP: true\n  BATCH_SIZE: 128\n  DRY_RUN: false\n  DRY_RUN_TRAIN_BATCHES: 2\n  DRY_RUN_VAL_BATCHES: 1\n  EMA_DECAY: 0.996\n  EMA_TEACHER_CHECKPOINT: ''\n  EMOTION_HEADS_CHECKPOINT: ''\n  EPOCHS: 100\n  EXPERIMENT_NAME: fold5\n  FINETUNE_OBSERVATION: false\n  GRAD_ACCUMULATION: 1\n  GRAD_CLIP: 5.0\n  GRL_WARMUP_EPOCHS: 10.0\n  LOG_INTERVAL: 20\n  LR: 0.0001\n  OBSERVATION_CHECKPOINT: runs/phase_a_observation/fold5/observation_encoder.pt\n  OUTPUT_ROOT: runs\n  PHASE_A_CHECKPOINT: ''\n  PHASE_B_CHECKPOINT: runs/phase_b_coupling/fold5/phase_b_best.pt\n  RESUME: ''\n  SAVE_EVERY: 1\n  SEQUENCE_BATCH_SIZE: 4\n  STATE_LR_SCALE: 0.1\n  WEIGHT_DECAY: 0.0001\n",
+      "modelkeys": [
+        "system"
+      ],
+      "system_selected_shapes": {
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.0.layers.0.weight": [
+          256,
+          768
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.0.layers.0.bias": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.0.layers.1.weight": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.0.layers.1.bias": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.1.layers.0.weight": [
+          256,
+          768
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.1.layers.0.bias": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.1.layers.1.weight": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.1.layers.1.bias": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.aff_head.0.weight": [
+          128,
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.aff_head.0.bias": [
+          128
+        ],
+        "conditioner.audio_observer.observation_encoder.aff_head.1.weight": [
+          128
+        ],
+        "conditioner.audio_observer.observation_encoder.aff_head.1.bias": [
+          128
+        ],
+        "conditioner.state_model.self_input.0.weight": [
+          128,
+          256
+        ],
+        "conditioner.state_model.self_input.0.bias": [
+          128
+        ],
+        "conditioner.state_model.self_input.2.weight": [
+          128,
+          128
+        ],
+        "conditioner.state_model.self_input.2.bias": [
+          128
+        ],
+        "projector.layers.0.weight": [
+          128,
+          56
+        ],
+        "projector.layers.0.bias": [
+          128
+        ],
+        "projector.layers.2.weight": [
+          128,
+          128
+        ],
+        "projector.layers.2.bias": [
+          128
+        ]
+      }
+    },
+    "runs/comparison_current_baseline/dualtalk_emotion_best_epoch7_default200.pt": {
+      "keys": [
+        "epoch",
+        "global_step",
+        "models",
+        "optimizer",
+        "scheduler",
+        "scaler",
+        "metrics",
+        "config",
+        "rng_state"
+      ],
+      "epoch": 7,
+      "global_step": 8057,
+      "metrics": {
+        "epoch": 7,
+        "expression": 0.20470756925496844,
+        "jaw": 0.0006906987287761659,
+        "neck": 0.009925565394929139,
+        "state_anchor": 0,
+        "state_consistency": 0.01114773355241538,
+        "total": 0.23366292029599797,
+        "velocity": 0.017224313363960443,
+        "val_expression": 0.3636586363390675,
+        "val_jaw": 0.0010614967385928448,
+        "val_neck": 0.017159859153009424,
+        "val_state_anchor": 0,
+        "val_state_consistency": 0.008932536180079805,
+        "val_total": 0.4026317389051276,
+        "val_velocity": 0.01985849307182678
+      },
+      "config": "COUNTERFACTUAL:\n  INTENSITY_TOLERANCE: 0.2\n  MAX_ACTION_COSINE: 0.8\n  TOP_K: 8\n  TURN_TOLERANCE: 0.15\nDATA:\n  DOMAIN_RATIO:\n  - 2\n  - 1\n  DUALTALK_ROOT: datasets/dualtalk\n  EMOTIONTALK_ROOT: datasets/emotiontalk/processed\n  IEMOCAP_FEATURE_ROOT: artifacts/features/iemocap\n  IEMOCAP_FOLD: 5\n  IEMOCAP_RAW_ROOT: datasets/iemocap/raw\n  NUM_WORKERS: 6\n  PIN_MEMORY: true\n  ROOT: datasets\n  SOURCES:\n  - emotiontalk\n  - iemocap\n  WINDOW_LENGTH: 33\n  WINDOW_STRIDE: 4\nDETERMINISTIC: false\nDEVICE: cuda\nDUALTALK:\n  ADAPTER_DOMAIN_ID: 2\n  ADAPTER_INIT_SOURCE: 0\n  AUDIO_FEATURE_BATCH_SIZE: 16\n  AUDIO_MODEL: facebook/wav2vec2-base-960h\n  BASELINE_CHECKPOINT: model/dualtalk_baseline.pth\n  BLENDSHAPE_DIM: 56\n  CAUSAL_STATE_CONTEXT: true\n  CHUNK_FRAMES: 200\n  FEATURE_DIM: 256\n  FILM_SCALE: 0.1\n  FPS: 25\n  FREEZE_BASELINE_EPOCHS: 10\n  FREEZE_STATE_EPOCHS: 10\n  JOINT_FINETUNE_LR_SCALE: 0.1\n  LOCAL_FILES_ONLY: false\n  PHASE_B_CHECKPOINT: runs/phase_b_coupling/fold5/phase_b_best.pt\n  RENDER_COMMAND: ''\n  SPEECH_RMS_THRESHOLD: 0.0001\n  STATE_BPTT_CHUNKS: 4\n  SYNTHESIS_FINETUNE_LR_SCALE: 0.1\nDYNAMICS:\n  AFFECT_LR_SCALE: 0.05\n  CORRECTION_MODE: teacher_forced\n  DISABLE_LONG_TIMESCALES: false\n  ENABLE_PARTNER: true\n  FIXED_RELATION: false\n  FREEZE_AFFECT_EPOCHS: 5\n  HORIZONS:\n  - 1\n  - 2\n  - 4\n  - 8\n  - 16\n  - 32\n  OPEN_LOOP_DT: 1.0\n  RANDOM_PARTNER: false\n  RANDOM_ROLE_SWAP: true\n  ROLLOUT_MODE: conditional\n  SYMMETRIC_COUPLING: false\nLOSS:\n  CORRECTION: 0.05\n  COUNTERFACTUAL: 0.2\n  COUNTERFACTUAL_MARGIN: 0.2\n  DECORRELATION: 0.01\n  DOMAIN: 0.05\n  DUALTALK_STATE_ANCHOR: 0.01\n  EMOTION: 1.0\n  GENERATION_STATE: 0.1\n  INTENSITY: 0.5\n  NEXT_STATE: 1.0\n  OBSERVATION_ANCHOR: 0.1\n  OPEN_LOOP_TRAJECTORY: 0.5\n  RELIABILITY: 0.1\n  SMOOTH_L1: 1.0\n  SPEAKER: 0.05\n  TRAJECTORY: 0.5\n  UNIFY: 1.0\n  VAD: 0.5\n  VICREG: 0.01\nMODEL:\n  AUDIO_DIM: 768\n  AU_NUM_HEADS: 4\n  AU_NUM_LAYERS: 3\n  DROPOUT: 0.1\n  FACE_DIM: 35\n  INFLUENCE_CHANNELS: 32\n  INFLUENCE_DIM: 128\n  MODEL_DIM: 256\n  NUM_DOMAINS: 3\n  NUM_HEADS: 4\n  NUM_LAYERS: 2\n  NUM_TIMESCALES: 8\n  OBSERVATION_DIM: 128\n  RELATION_DIM: 64\n  SPEAKER_DELTA_SCALE: 0.1\n  STATE_DIM: 128\n  TAU_MAX: 300.0\n  TAU_MIN: 0.5\n  TEXT_DIM: 768\nPREPROCESS:\n  AUDIO_MODEL: facebook/wav2vec2-base-960h\n  BATCH_SIZE: 32\n  CONFIDENCE_THRESHOLD: 0.8\n  DEVICE: cuda:0\n  FFMPEG_BIN: ffmpeg\n  LOCAL_FILES_ONLY: false\n  OPENFACE_BIN: FeatureExtraction\n  SKIP_OPENFACE: false\n  TEXT_MODEL: roberta-base\nSEED: 6666\nTRAIN:\n  AMP: true\n  AUGMENT:\n    AUDIO_MASK_RATIO: 0.1\n    AUDIO_NOISE_STD: 0.01\n    ENABLED: true\n    FACE_MASK_RATIO: 0.15\n    MODALITY_DROPOUT: 0.15\n    RELIABILITY_JITTER: 0.1\n    TEXT_DROPOUT: 0.1\n  BATCH_SIZE: 128\n  DRY_RUN: false\n  DRY_RUN_TRAIN_BATCHES: 2\n  DRY_RUN_VAL_BATCHES: 1\n  EMA_DECAY: 0.996\n  EMA_TEACHER_CHECKPOINT: ''\n  EMOTION_HEADS_CHECKPOINT: ''\n  EPOCHS: 100\n  EXPERIMENT_NAME: fold5_default200\n  FINETUNE_OBSERVATION: false\n  GRAD_ACCUMULATION: 1\n  GRAD_CLIP: 5.0\n  GRL_WARMUP_EPOCHS: 10.0\n  LOG_INTERVAL: 20\n  LR: 0.0001\n  OBSERVATION_CHECKPOINT: runs/phase_a_observation/fold5/observation_encoder.pt\n  OUTPUT_ROOT: runs\n  PHASE_A_CHECKPOINT: ''\n  PHASE_B_CHECKPOINT: runs/phase_b_coupling/fold5/phase_b_best.pt\n  RESUME: ''\n  SAVE_EVERY: 1\n  SEQUENCE_BATCH_SIZE: 4\n  SSL_ONLY_EPOCHS: 10\n  STATE_LR_SCALE: 0.1\n  STOP_AFTER_EPOCHS: 0\n  WEIGHT_DECAY: 0.0001\n",
+      "modelkeys": [
+        "system"
+      ],
+      "system_selected_shapes": {
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.0.layers.0.weight": [
+          256,
+          768
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.0.layers.0.bias": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.0.layers.1.weight": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.0.layers.1.bias": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.1.layers.0.weight": [
+          256,
+          768
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.1.layers.0.bias": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.1.layers.1.weight": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.1.layers.1.bias": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.2.layers.0.weight": [
+          256,
+          768
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.2.layers.0.bias": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.2.layers.1.weight": [
+          256
+        ],
+        "conditioner.audio_observer.observation_encoder.audio_adapter.adapters.2.layers.1.bias": [
+          256
+        ],
+        "conditioner.state_model.event_to_delta.0.weight": [
+          128,
+          128
+        ],
+        "conditioner.state_model.event_to_delta.0.bias": [
+          128
+        ],
+        "conditioner.state_model.event_to_delta.2.weight": [
+          128,
+          128
+        ],
+        "conditioner.state_model.event_to_delta.2.bias": [
+          128
+        ],
+        "projector.layers.0.weight": [
+          128,
+          56
+        ],
+        "projector.layers.0.bias": [
+          128
+        ],
+        "projector.layers.2.weight": [
+          128,
+          128
+        ],
+        "projector.layers.2.bias": [
+          128
+        ]
+      }
+    }
+  },
+  "server2_timeline": {
+    "runs/dualtalk_conditioned/all_three/metrics.jsonl": [
+      {
+        "epoch": 1,
+        "expression": 0.248809890515487,
+        "val_expression": 0.3534570272347724,
+        "state_consistency": 0.06327045222801285,
+        "val_state_consistency": 0.0480007014533346,
+        "val_total": 0.39361052639031596
+      },
+      {
+        "epoch": 3,
+        "expression": 0.18148580450313584,
+        "val_expression": 0.3364033309410709,
+        "state_consistency": 0.03871465321731535,
+        "val_state_consistency": 0.03743041557397029,
+        "val_total": 0.3767511188810648
+      },
+      {
+        "epoch": 9,
+        "expression": 0.12248114055723174,
+        "val_expression": 0.3270539612906386,
+        "state_consistency": 0.012418757503126505,
+        "val_state_consistency": 0.013514099241227142,
+        "val_total": 0.3650060677453298
+      },
+      {
+        "epoch": 10,
+        "expression": 0.1161705452747161,
+        "val_expression": 0.33082101227816685,
+        "state_consistency": 0.012171141958039387,
+        "val_state_consistency": 0.01250311693017797,
+        "val_total": 0.36917812431794267
+      },
+      {
+        "epoch": 11,
+        "expression": 0.11141160703434838,
+        "val_expression": 0.32687007373906385,
+        "state_consistency": 0.0035444499974797614,
+        "val_state_consistency": 0.0003278015657912853,
+        "val_total": 0.36347524824357313
+      },
+      {
+        "epoch": 12,
+        "expression": 0.10690463805126693,
+        "val_expression": 0.33038628407746784,
+        "state_consistency": 0.0010080749074302601,
+        "val_state_consistency": 0.00007319898568382559,
+        "val_total": 0.36747156839326833
+      },
+      {
+        "epoch": 15,
+        "expression": 0.09680390891409357,
+        "val_expression": 0.32623699593624866,
+        "state_consistency": 0.0002901579475628325,
+        "val_state_consistency": 0.000011331836382548015,
+        "val_total": 0.36284961692353557
+      },
+      {
+        "epoch": 18,
+        "expression": 0.08732944273142457,
+        "val_expression": 0.3182169640653355,
+        "state_consistency": 0.0001482710813553908,
+        "val_state_consistency": 0.000006944449372993883,
+        "val_total": 0.3544436641846054
+      },
+      {
+        "epoch": 23,
+        "expression": 0.07547611552621716,
+        "val_expression": 0.31528993468991545,
+        "state_consistency": 0.00006257862310678527,
+        "val_state_consistency": 0.000004248956377192061,
+        "val_total": 0.3518466009938902
+      },
+      {
+        "epoch": 27,
+        "expression": 0.06838345133492324,
+        "val_expression": 0.31723968705465627,
+        "state_consistency": 0.000037361323340199644,
+        "val_state_consistency": 0.0000028905018355495246,
+        "val_total": 0.3543855156171922
+      }
+    ],
+    "time": "2026-09-06T10:56:43.369372+08:00",
+    "all_three_ckpt_mtimes": {
+      "runs/phase_a_observation/fold5/observation_encoder.pt": "2026-09-05T18:52:03.663919+08:00",
+      "emotion_ssm/train/dualtalk.py": "2026-09-05T18:07:50.857062+08:00"
+    },
+    "probe_label_counts": {
+      "neutral": 15,
+      "xxx": 31,
+      "fru": 32,
+      "angry": 15,
+      "sad": 8,
+      "happy": 27
+    }
+  },
+  "cpu_observation_probe": {
+    "probe": "CPU, 1 thread, precomputed IEMOCAP fold5 test audio, no waveform backbone; same inputs for all encoders",
+    "samples": 128,
+    "sources": [
+      {
+        "dialogue": "Ses05F_impro01",
+        "count": 16
+      },
+      {
+        "dialogue": "Ses05F_impro05",
+        "count": 16
+      },
+      {
+        "dialogue": "Ses05F_script01_1",
+        "count": 16
+      },
+      {
+        "dialogue": "Ses05F_script02_2",
+        "count": 16
+      },
+      {
+        "dialogue": "Ses05M_impro03",
+        "count": 16
+      },
+      {
+        "dialogue": "Ses05M_impro07",
+        "count": 16
+      },
+      {
+        "dialogue": "Ses05M_script01_2",
+        "count": 16
+      },
+      {
+        "dialogue": "Ses05M_script03_2",
+        "count": 16
+      }
+    ],
+    "checkpoints": {
+      "phase_b_teacher": {
+        "aff": {
+          "pair_cos_mean": 0.9425299167633057,
+          "pair_cos_p05": 0.8367641568183899,
+          "direction_std_mean": 0.01970936730504036,
+          "norm_mean": 11.354228019714355,
+          "effective_rank": 3.6383321285247803
+        },
+        "event": {
+          "pair_cos_mean": 0.9925445914268494,
+          "pair_cos_p05": 0.9774675965309143,
+          "direction_std_mean": 0.006903139874339104,
+          "norm_mean": 10.793232917785645,
+          "effective_rank": 3.2852675914764404
+        },
+        "action": {
+          "pair_cos_mean": 0.9937558174133301,
+          "pair_cos_p05": 0.9819177389144897,
+          "direction_std_mean": 0.006427020765841007,
+          "norm_mean": 10.802938461303711,
+          "effective_rank": 3.714871883392334
+        },
+        "hidden": {
+          "pair_cos_mean": 0.9169223308563232,
+          "pair_cos_p05": 0.7709603309631348,
+          "direction_std_mean": 0.016866648569703102,
+          "norm_mean": 40.97596740722656,
+          "effective_rank": 4.265879154205322
+        }
+      },
+      "phase_b_encoder": {
+        "aff": {
+          "pair_cos_mean": 0.9258908629417419,
+          "pair_cos_p05": 0.8006980419158936,
+          "direction_std_mean": 0.022580038756132126,
+          "norm_mean": 11.372142791748047,
+          "effective_rank": 4.3164963722229
+        },
+        "event": {
+          "pair_cos_mean": 0.9916805624961853,
+          "pair_cos_p05": 0.9753686189651489,
+          "direction_std_mean": 0.007400807924568653,
+          "norm_mean": 10.75150203704834,
+          "effective_rank": 4.094446182250977
+        },
+        "action": {
+          "pair_cos_mean": 0.9917436242103577,
+          "pair_cos_p05": 0.9749491810798645,
+          "direction_std_mean": 0.007463325746357441,
+          "norm_mean": 10.758480072021484,
+          "effective_rank": 4.522331714630127
+        },
+        "hidden": {
+          "pair_cos_mean": 0.8945139050483704,
+          "pair_cos_p05": 0.7327824234962463,
+          "direction_std_mean": 0.019253544509410858,
+          "norm_mean": 39.91558074951172,
+          "effective_rank": 5.347902297973633
+        }
+      },
+      "conditioned_epoch3": {
+        "aff": {
+          "pair_cos_mean": 0.9258908629417419,
+          "pair_cos_p05": 0.8006980419158936,
+          "direction_std_mean": 0.022580038756132126,
+          "norm_mean": 11.372142791748047,
+          "effective_rank": 4.3164963722229
+        },
+        "event": {
+          "pair_cos_mean": 0.9916805624961853,
+          "pair_cos_p05": 0.9753686189651489,
+          "direction_std_mean": 0.007400807924568653,
+          "norm_mean": 10.75150203704834,
+          "effective_rank": 4.094446182250977
+        },
+        "action": {
+          "pair_cos_mean": 0.9917436242103577,
+          "pair_cos_p05": 0.9749491810798645,
+          "direction_std_mean": 0.007463325746357441,
+          "norm_mean": 10.758480072021484,
+          "effective_rank": 4.522331714630127
+        },
+        "hidden": {
+          "pair_cos_mean": 0.8945139050483704,
+          "pair_cos_p05": 0.7327824234962463,
+          "direction_std_mean": 0.019253544509410858,
+          "norm_mean": 39.91558074951172,
+          "effective_rank": 5.347902297973633
+        }
+      },
+      "conditioned_epoch22": {
+        "aff": {
+          "pair_cos_mean": 0.9999980926513672,
+          "pair_cos_p05": 0.999995231628418,
+          "direction_std_mean": 0.00011672979599097744,
+          "norm_mean": 11.65756607055664,
+          "effective_rank": 5.8782243728637695
+        },
+        "event": {
+          "pair_cos_mean": 0.9999862909317017,
+          "pair_cos_p05": 0.9999620318412781,
+          "direction_std_mean": 0.0002990912471432239,
+          "norm_mean": 10.74030876159668,
+          "effective_rank": 3.8956239223480225
+        },
+        "action": {
+          "pair_cos_mean": 0.9999872446060181,
+          "pair_cos_p05": 0.999965250492096,
+          "direction_std_mean": 0.0002894408244173974,
+          "norm_mean": 10.732121467590332,
+          "effective_rank": 4.208377838134766
+        },
+        "hidden": {
+          "pair_cos_mean": 0.9998437166213989,
+          "pair_cos_p05": 0.9996315836906433,
+          "direction_std_mean": 0.0007448886753991246,
+          "norm_mean": 41.95186996459961,
+          "effective_rank": 6.876286506652832
+        }
+      },
+      "all_three_epoch23": {
+        "aff": {
+          "pair_cos_mean": 0.9999995231628418,
+          "pair_cos_p05": 0.9999985098838806,
+          "direction_std_mean": 0.0000630677241133526,
+          "norm_mean": 11.743865966796875,
+          "effective_rank": 6.03705358505249
+        },
+        "event": {
+          "pair_cos_mean": 0.9999942183494568,
+          "pair_cos_p05": 0.9999842047691345,
+          "direction_std_mean": 0.0001939305802807212,
+          "norm_mean": 10.737932205200195,
+          "effective_rank": 4.530372142791748
+        },
+        "action": {
+          "pair_cos_mean": 0.9999950528144836,
+          "pair_cos_p05": 0.9999866485595703,
+          "direction_std_mean": 0.00018277110939379781,
+          "norm_mean": 10.729456901550293,
+          "effective_rank": 5.080804824829102
+        },
+        "hidden": {
+          "pair_cos_mean": 0.9999173879623413,
+          "pair_cos_p05": 0.999797523021698,
+          "direction_std_mean": 0.0005415602936409414,
+          "norm_mean": 33.64734649658203,
+          "effective_rank": 6.7730302810668945
+        }
+      }
+    }
+  },
+  "server1": {
+    "root": "/home/s21_yhr/lzh/MyDualTalk",
+    "time": "2026-09-06T10:44:26.990616",
+    "runs": [
+      {
+        "dir": "runs/dualtalk_conditioned/fold5",
+        "cfg": {
+          "DATA": {},
+          "DUALTALK": {
+            "CHUNK_FRAMES": 200,
+            "FPS": 25,
+            "FREEZE_STATE_EPOCHS": 10,
+            "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best.pt"
+          },
+          "TRAIN": {
+            "EPOCHS": 100,
+            "FINETUNE_OBSERVATION": false,
+            "GRAD_ACCUMULATION": 1,
+            "LR": 0.0001,
+            "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/fold5/observation_encoder.pt",
+            "PHASE_A_CHECKPOINT": "",
+            "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best.pt",
+            "SEQUENCE_BATCH_SIZE": 4
+          },
+          "LOSS": {
+            "GENERATION_STATE": 0.1
+          },
+          "DYNAMICS": {}
+        },
+        "segments": [
+          {
+            "count": 34,
+            "first": {
+              "epoch": 1,
+              "expression": 0.22937415351059187,
+              "jaw": 0.0008304117214720464,
+              "neck": 0.011801281804454864,
+              "state_consistency": 0.07404198653341548,
+              "total": 0.26685024159142395,
+              "velocity": 0.01744019595266641,
+              "val_expression": 0.33602755154618535,
+              "val_jaw": 0.0010341061673273264,
+              "val_neck": 0.016540479967579673,
+              "val_state_consistency": 0.052772592787772146,
+              "val_total": 0.3767685634848134,
+              "val_velocity": 0.017889166926970883
+            },
+            "last": {
+              "epoch": 34,
+              "expression": 0.051607205106474055,
+              "jaw": 0.0003799378538170041,
+              "neck": 0.0029817770438623136,
+              "state_consistency": 0.00003240825356663884,
+              "total": 0.06933899587775405,
+              "velocity": 0.014366835061259367,
+              "val_expression": 0.3200801256063738,
+              "val_jaw": 0.000977725781353559,
+              "val_neck": 0.016909708159733507,
+              "val_state_consistency": 0.0000020614810772355496,
+              "val_total": 0.3570051519171372,
+              "val_velocity": 0.019037386445017193
+            },
+            "best": {
+              "epoch": 25,
+              "expression": 0.06229058344426842,
+              "jaw": 0.00042431061720595313,
+              "neck": 0.0036957526238414152,
+              "state_consistency": 0.00007781454588513116,
+              "total": 0.08154691801614103,
+              "velocity": 0.015128489896046263,
+              "val_expression": 0.3167760217844886,
+              "val_jaw": 0.0009939975000299072,
+              "val_neck": 0.017146351511140377,
+              "val_state_consistency": 0.0000029078716464086955,
+              "val_total": 0.3536223772878617,
+              "val_velocity": 0.0187057152177112
+            }
+          }
+        ]
+      },
+      {
+        "dir": "runs/dualtalk_conditioned/fold5_default200",
+        "cfg": {
+          "DATA": {
+            "SOURCES": [
+              "emotiontalk",
+              "iemocap"
+            ]
+          },
+          "DUALTALK": {
+            "ADAPTER_INIT_SOURCE": 0,
+            "CAUSAL_STATE_CONTEXT": true,
+            "CHUNK_FRAMES": 200,
+            "FPS": 25,
+            "FREEZE_BASELINE_EPOCHS": 10,
+            "FREEZE_STATE_EPOCHS": 10,
+            "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best.pt"
+          },
+          "TRAIN": {
+            "EPOCHS": 100,
+            "FINETUNE_OBSERVATION": false,
+            "GRAD_ACCUMULATION": 1,
+            "LR": 0.0001,
+            "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/fold5/observation_encoder.pt",
+            "PHASE_A_CHECKPOINT": "",
+            "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best.pt",
+            "SEQUENCE_BATCH_SIZE": 4,
+            "STOP_AFTER_EPOCHS": 0
+          },
+          "LOSS": {
+            "GENERATION_STATE": 0.1
+          },
+          "DYNAMICS": {
+            "ROLLOUT_MODE": "conditional"
+          }
+        },
+        "segments": [
+          {
+            "count": 44,
+            "first": {
+              "epoch": 1,
+              "expression": 0.21111618104163432,
+              "jaw": 0.0006998761937124465,
+              "neck": 0.010255880714467987,
+              "state_consistency": 0.07708869288334838,
+              "total": 0.24813290704349195,
+              "velocity": 0.018352099638683096,
+              "val_expression": 0.3713594311041626,
+              "val_jaw": 0.0010721657800306676,
+              "val_neck": 0.01749288087974735,
+              "val_state_consistency": 0.01698505743883374,
+              "val_total": 0.41239479492147135,
+              "val_velocity": 0.020771811532927308
+            },
+            "last": {
+              "epoch": 44,
+              "expression": 0.187220426924449,
+              "jaw": 0.0006492127937776118,
+              "neck": 0.009192186758330992,
+              "state_consistency": 0.00013024948744085513,
+              "total": 0.21464559546373235,
+              "velocity": 0.01756996424669654,
+              "val_expression": 0.34268915723627946,
+              "val_jaw": 0.0010022374517288917,
+              "val_neck": 0.01612382036666789,
+              "val_state_consistency": 0.00004179842151313819,
+              "val_total": 0.3784666570328822,
+              "val_velocity": 0.01864648476430017
+            },
+            "best": {
+              "epoch": 39,
+              "expression": 0.188176733778254,
+              "jaw": 0.0006485901344497242,
+              "neck": 0.009218374004451595,
+              "state_consistency": 0.00013688705234037653,
+              "total": 0.21554027675698753,
+              "velocity": 0.01748217267371054,
+              "val_expression": 0.342081638478388,
+              "val_jaw": 0.0010020187825049772,
+              "val_neck": 0.016077651338849773,
+              "val_state_consistency": 0.000045900610376255525,
+              "val_total": 0.3777713498437968,
+              "val_velocity": 0.018604735736588503
+            }
+          }
+        ],
+        "progress_tail": [
+          "{\"phase\": \"train_progress\", \"epoch\": 45, \"batch\": 840, \"total_batches\": 1151, \"percent\": 72.98001737619461, \"elapsed_sec\": 653.594989918056, \"sec_per_batch\": 0.7780892737119713, \"eta_sec\": 241.9857641244231, \"loss\": 0.2592715919017792}",
+          "{\"phase\": \"train_progress\", \"epoch\": 45, \"batch\": 860, \"total_batches\": 1151, \"percent\": 74.71763683753258, \"elapsed_sec\": 669.3992658200441, \"sec_per_batch\": 0.7783712393256327, \"eta_sec\": 226.50603064375912, \"loss\": 0.2900961935520172}"
+        ]
+      },
+      {
+        "dir": "runs/dualtalk_conditioned/fold5_joint",
+        "cfg": {
+          "DATA": {
+            "SOURCES": [
+              "emotiontalk",
+              "iemocap"
+            ]
+          },
+          "DUALTALK": {
+            "ADAPTER_INIT_SOURCE": 0,
+            "CAUSAL_STATE_CONTEXT": true,
+            "CHUNK_FRAMES": 25,
+            "FPS": 25,
+            "FREEZE_BASELINE_EPOCHS": 10,
+            "FREEZE_STATE_EPOCHS": 10,
+            "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best.pt"
+          },
+          "TRAIN": {
+            "EPOCHS": 100,
+            "FINETUNE_OBSERVATION": false,
+            "GRAD_ACCUMULATION": 1,
+            "LR": 0.0001,
+            "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/fold5/observation_encoder.pt",
+            "PHASE_A_CHECKPOINT": "",
+            "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best.pt",
+            "SEQUENCE_BATCH_SIZE": 4,
+            "STOP_AFTER_EPOCHS": 0
+          },
+          "LOSS": {
+            "GENERATION_STATE": 0.1
+          },
+          "DYNAMICS": {
+            "ROLLOUT_MODE": "conditional"
+          }
+        },
+        "segments": [
+          {
+            "count": 1,
+            "first": {
+              "epoch": 1,
+              "expression": 0.4576037504694134,
+              "jaw": 0.0013498688523811368,
+              "neck": 0.018692010581748283,
+              "state_consistency": 0.1047399503049139,
+              "total": 0.5167403760176499,
+              "velocity": 0.02862075088382142,
+              "val_expression": 0.4715184391990527,
+              "val_jaw": 0.001337741494353395,
+              "val_neck": 0.019706989900876225,
+              "val_state_consistency": 0.06212918463149178,
+              "val_total": 0.5200304499090607,
+              "val_velocity": 0.02125436211970927
+            },
+            "last": {
+              "epoch": 1,
+              "expression": 0.4576037504694134,
+              "jaw": 0.0013498688523811368,
+              "neck": 0.018692010581748283,
+              "state_consistency": 0.1047399503049139,
+              "total": 0.5167403760176499,
+              "velocity": 0.02862075088382142,
+              "val_expression": 0.4715184391990527,
+              "val_jaw": 0.001337741494353395,
+              "val_neck": 0.019706989900876225,
+              "val_state_consistency": 0.06212918463149178,
+              "val_total": 0.5200304499090607,
+              "val_velocity": 0.02125436211970927
+            },
+            "best": {
+              "epoch": 1,
+              "expression": 0.4576037504694134,
+              "jaw": 0.0013498688523811368,
+              "neck": 0.018692010581748283,
+              "state_consistency": 0.1047399503049139,
+              "total": 0.5167403760176499,
+              "velocity": 0.02862075088382142,
+              "val_expression": 0.4715184391990527,
+              "val_jaw": 0.001337741494353395,
+              "val_neck": 0.019706989900876225,
+              "val_state_consistency": 0.06212918463149178,
+              "val_total": 0.5200304499090607,
+              "val_velocity": 0.02125436211970927
+            }
+          }
+        ]
+      },
+      {
+        "dir": "runs/dualtalk_conditioned/fold5_joint_batchopt",
+        "cfg": {
+          "DATA": {
+            "SOURCES": [
+              "emotiontalk",
+              "iemocap"
+            ]
+          },
+          "DUALTALK": {
+            "ADAPTER_INIT_SOURCE": 0,
+            "CAUSAL_STATE_CONTEXT": true,
+            "CHUNK_FRAMES": 25,
+            "FPS": 25,
+            "FREEZE_BASELINE_EPOCHS": 10,
+            "FREEZE_STATE_EPOCHS": 10,
+            "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best.pt"
+          },
+          "TRAIN": {
+            "EPOCHS": 100,
+            "FINETUNE_OBSERVATION": false,
+            "GRAD_ACCUMULATION": 1,
+            "LR": 0.0001,
+            "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/fold5/observation_encoder.pt",
+            "PHASE_A_CHECKPOINT": "",
+            "PHASE_B_CHECKPOINT": "runs/phase_b_coupling/fold5/phase_b_best.pt",
+            "SEQUENCE_BATCH_SIZE": 4,
+            "STOP_AFTER_EPOCHS": 0
+          },
+          "LOSS": {
+            "GENERATION_STATE": 0.1
+          },
+          "DYNAMICS": {
+            "ROLLOUT_MODE": "conditional"
+          }
+        },
+        "segments": [
+          {
+            "count": 13,
+            "first": {
+              "epoch": 1,
+              "expression": 0.4514402319590414,
+              "jaw": 0.0013297530370902635,
+              "neck": 0.018555988235551147,
+              "state_consistency": 0.1101507518842804,
+              "total": 0.5105479323817301,
+              "velocity": 0.02820688366286475,
+              "val_expression": 0.4689058686481483,
+              "val_jaw": 0.0013259420048231745,
+              "val_neck": 0.01968232450881667,
+              "val_state_consistency": 0.06850111951578908,
+              "val_total": 0.5184443311682387,
+              "val_velocity": 0.02168008475390666
+            },
+            "last": {
+              "epoch": 13,
+              "expression": 0.4139282554388046,
+              "jaw": 0.0012338294188810823,
+              "neck": 0.01688348910362849,
+              "state_consistency": 0.013486613210264566,
+              "total": 0.4561526878796033,
+              "velocity": 0.022758326928345493,
+              "val_expression": 0.4417509100775221,
+              "val_jaw": 0.0012407397462355682,
+              "val_neck": 0.018107832880315387,
+              "val_state_consistency": 0.012013944550486867,
+              "val_total": 0.48137365164819046,
+              "val_velocity": 0.019072611877041408
+            },
+            "best": {
+              "epoch": 13,
+              "expression": 0.4139282554388046,
+              "jaw": 0.0012338294188810823,
+              "neck": 0.01688348910362849,
+              "state_consistency": 0.013486613210264566,
+              "total": 0.4561526878796033,
+              "velocity": 0.022758326928345493,
+              "val_expression": 0.4417509100775221,
+              "val_jaw": 0.0012407397462355682,
+              "val_neck": 0.018107832880315387,
+              "val_state_consistency": 0.012013944550486867,
+              "val_total": 0.48137365164819046,
+              "val_velocity": 0.019072611877041408
+            }
+          }
+        ],
+        "progress_tail": [
+          "{\"phase\": \"train_progress\", \"epoch\": 14, \"batch\": 740, \"total_batches\": 1213, \"percent\": 61.00577081615828, \"elapsed_sec\": 1469.5955395699712, \"sec_per_batch\": 1.9859399183377988, \"eta_sec\": 939.3495813737788, \"loss\": 0.4462061822414398}",
+          "{\"phase\": \"train_progress\", \"epoch\": 14, \"batch\": 760, \"total_batches\": 1213, \"percent\": 62.654575432811214, \"elapsed_sec\": 1509.337129274034, \"sec_per_batch\": 1.9859699069395182, \"eta_sec\": 899.6443678436018, \"loss\": 0.4012942910194397}"
+        ]
+      },
+      {
+        "dir": "runs/phase_a_dynamics/fold5",
+        "cfg": {
+          "DATA": {},
+          "DUALTALK": {
+            "CHUNK_FRAMES": 200,
+            "FPS": 25,
+            "FREEZE_STATE_EPOCHS": 10,
+            "PHASE_B_CHECKPOINT": ""
+          },
+          "TRAIN": {
+            "EPOCHS": 50,
+            "FINETUNE_OBSERVATION": false,
+            "GRAD_ACCUMULATION": 1,
+            "LR": 0.0003,
+            "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/fold5/observation_encoder.pt",
+            "PHASE_A_CHECKPOINT": "",
+            "PHASE_B_CHECKPOINT": "",
+            "SEQUENCE_BATCH_SIZE": 8
+          },
+          "LOSS": {
+            "GENERATION_STATE": 0.1
+          },
+          "DYNAMICS": {}
+        },
+        "segments": [
+          {
+            "count": 50,
+            "first": {
+              "epoch": 1,
+              "total": 2.966423413101232,
+              "val_cf_ranking_accuracy": 0,
+              "val_total": 2.5340670371055602
+            },
+            "last": {
+              "epoch": 50,
+              "total": 1.8214908900125972,
+              "val_cf_ranking_accuracy": 0,
+              "val_total": 2.252182562351227
+            },
+            "best": {
+              "epoch": 42,
+              "total": 1.826378584470389,
+              "val_cf_ranking_accuracy": 0,
+              "val_total": 2.232362608909607
+            }
+          }
+        ]
+      },
+      {
+        "dir": "runs/phase_a_dynamics/fold5_joint",
+        "cfg": {
+          "DATA": {
+            "SOURCES": [
+              "emotiontalk",
+              "iemocap"
+            ]
+          },
+          "DUALTALK": {
+            "ADAPTER_INIT_SOURCE": 0,
+            "CAUSAL_STATE_CONTEXT": true,
+            "CHUNK_FRAMES": 200,
+            "FPS": 25,
+            "FREEZE_BASELINE_EPOCHS": 10,
+            "FREEZE_STATE_EPOCHS": 10,
+            "PHASE_B_CHECKPOINT": ""
+          },
+          "TRAIN": {
+            "EPOCHS": 50,
+            "FINETUNE_OBSERVATION": false,
+            "GRAD_ACCUMULATION": 1,
+            "LR": 0.0003,
+            "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/fold5/observation_encoder.pt",
+            "PHASE_A_CHECKPOINT": "",
+            "PHASE_B_CHECKPOINT": "",
+            "SEQUENCE_BATCH_SIZE": 8,
+            "STOP_AFTER_EPOCHS": 0
+          },
+          "LOSS": {
+            "GENERATION_STATE": 0.1
+          },
+          "DYNAMICS": {
+            "ROLLOUT_MODE": "joint"
+          }
+        },
+        "segments": [
+          {
+            "count": 50,
+            "first": {
+              "epoch": 1,
+              "conditional_h1": 2.2075777857933403,
+              "total": 5.146273126017372,
+              "val_cf_ranking_accuracy": 0,
+              "val_conditional_h1": 2.052924213409424,
+              "val_open_loop_h32": 2.8167686104774474,
+              "val_total": 4.762569699287415
+            },
+            "last": {
+              "epoch": 50,
+              "conditional_h1": 1.37836791434378,
+              "total": 3.1801265140749373,
+              "val_cf_ranking_accuracy": 0,
+              "val_conditional_h1": 1.6806726717948912,
+              "val_open_loop_h32": 2.7737444663047794,
+              "val_total": 3.941089825630188
+            },
+            "best": {
+              "epoch": 32,
+              "conditional_h1": 1.4033436274753428,
+              "total": 3.2426026069893026,
+              "val_cf_ranking_accuracy": 0,
+              "val_conditional_h1": 1.6659158325195311,
+              "val_open_loop_h32": 2.765320611000061,
+              "val_total": 3.903175702095032
+            }
+          }
+        ]
+      },
+      {
+        "dir": "runs/phase_a_observation/fold5",
+        "cfg": {
+          "DATA": {
+            "SOURCES": [
+              "emotiontalk",
+              "iemocap"
+            ]
+          },
+          "DUALTALK": {
+            "ADAPTER_INIT_SOURCE": 0,
+            "CAUSAL_STATE_CONTEXT": true,
+            "CHUNK_FRAMES": 200,
+            "FPS": 25,
+            "FREEZE_BASELINE_EPOCHS": 10,
+            "FREEZE_STATE_EPOCHS": 10,
+            "PHASE_B_CHECKPOINT": ""
+          },
+          "TRAIN": {
+            "EPOCHS": 50,
+            "FINETUNE_OBSERVATION": false,
+            "GRAD_ACCUMULATION": 1,
+            "LR": 0.0003,
+            "OBSERVATION_CHECKPOINT": "",
+            "PHASE_A_CHECKPOINT": "",
+            "PHASE_B_CHECKPOINT": "",
+            "SEQUENCE_BATCH_SIZE": 8,
+            "STOP_AFTER_EPOCHS": 0
+          },
+          "LOSS": {
+            "GENERATION_STATE": 0.1
+          },
+          "DYNAMICS": {
+            "ROLLOUT_MODE": "conditional"
+          }
+        },
+        "segments": [
+          {
+            "count": 1,
+            "first": {
+              "epoch": 1,
+              "consistency": 0.6568681746721268,
+              "total": 4.092149794101715,
+              "A_macro_f1": 0.08563195168972015,
+              "V_macro_f1": 0.13726551830768585,
+              "T_macro_f1": 0.07212205231189728,
+              "AVT_macro_f1": 0.11757789552211761,
+              "mean_subset_f1": 0.09818966048104423
+            },
+            "last": {
+              "epoch": 1,
+              "consistency": 0.6568681746721268,
+              "total": 4.092149794101715,
+              "A_macro_f1": 0.08563195168972015,
+              "V_macro_f1": 0.13726551830768585,
+              "T_macro_f1": 0.07212205231189728,
+              "AVT_macro_f1": 0.11757789552211761,
+              "mean_subset_f1": 0.09818966048104423
+            },
+            "best": {
+              "epoch": 1,
+              "consistency": 0.6568681746721268,
+              "total": 4.092149794101715,
+              "A_macro_f1": 0.08563195168972015,
+              "V_macro_f1": 0.13726551830768585,
+              "T_macro_f1": 0.07212205231189728,
+              "AVT_macro_f1": 0.11757789552211761,
+              "mean_subset_f1": 0.09818966048104423
+            }
+          },
+          {
+            "count": 50,
+            "first": {
+              "epoch": 1,
+              "consistency": 0.4345365520999875,
+              "total": 2.862268025098845,
+              "A_macro_f1": 0.2944346070289612,
+              "V_macro_f1": 0.26147398352622986,
+              "T_macro_f1": 0.3522273600101471,
+              "AVT_macro_f1": 0.47445249557495117,
+              "mean_subset_f1": 0.3713361067431314
+            },
+            "last": {
+              "epoch": 50,
+              "consistency": 0.062446033473798006,
+              "total": 0.7707746073950168,
+              "A_macro_f1": 0.37026336789131165,
+              "V_macro_f1": 0.25141671299934387,
+              "T_macro_f1": 0.45096680521965027,
+              "AVT_macro_f1": 0.5249938368797302,
+              "mean_subset_f1": 0.4238347453730447
+            },
+            "best": {
+              "epoch": 10,
+              "consistency": 0.03581356852813515,
+              "total": 1.2737146643705146,
+              "A_macro_f1": 0.395694762468338,
+              "V_macro_f1": 0.23346148431301117,
+              "T_macro_f1": 0.4829247295856476,
+              "AVT_macro_f1": 0.5515896677970886,
+              "mean_subset_f1": 0.4456356316804886
+            }
+          },
+          {
+            "count": 50,
+            "first": {
+              "epoch": 1,
+              "training_stage": "ssl",
+              "consistency": 0.37519796504530795,
+              "total": 0.5721217303775077,
+              "vicreg": 0.5844340722921282,
+              "A_macro_f1": 0.08068482577800751,
+              "V_macro_f1": 0.09985363483428955,
+              "T_macro_f1": 0.06236054375767708,
+              "AVT_macro_f1": 0.07769812643527985,
+              "mean_subset_f1": 0.08000578145895686
+            },
+            "last": {
+              "epoch": 50,
+              "training_stage": "supervised",
+              "consistency": 0.13535975820796434,
+              "total": 1.1344010518040768,
+              "vicreg": 0.19900104022303294,
+              "A_macro_f1": 0.38878461718559265,
+              "V_macro_f1": 0.259816974401474,
+              "T_macro_f1": 0.47265109419822693,
+              "AVT_macro_f1": 0.45271188020706177,
+              "mean_subset_f1": 0.4041484424046108
+            },
+            "best": {
+              "epoch": 17,
+              "training_stage": "supervised",
+              "consistency": 0.11426381992046222,
+              "total": 1.7399302312107974,
+              "vicreg": 0.21683557175619658,
+              "A_macro_f1": 0.3840484619140625,
+              "V_macro_f1": 0.29112571477890015,
+              "T_macro_f1": 0.45140594244003296,
+              "AVT_macro_f1": 0.5286809802055359,
+              "mean_subset_f1": 0.436443567276001
+            }
+          }
+        ]
+      },
+      {
+        "dir": "runs/phase_b_coupling/fold5",
+        "cfg": {
+          "DATA": {
+            "SOURCES": [
+              "emotiontalk",
+              "iemocap"
+            ]
+          },
+          "DUALTALK": {
+            "ADAPTER_INIT_SOURCE": 0,
+            "CAUSAL_STATE_CONTEXT": true,
+            "CHUNK_FRAMES": 200,
+            "FPS": 25,
+            "FREEZE_BASELINE_EPOCHS": 10,
+            "FREEZE_STATE_EPOCHS": 10,
+            "PHASE_B_CHECKPOINT": ""
+          },
+          "TRAIN": {
+            "EPOCHS": 50,
+            "FINETUNE_OBSERVATION": true,
+            "GRAD_ACCUMULATION": 1,
+            "LR": 0.0003,
+            "OBSERVATION_CHECKPOINT": "runs/phase_a_observation/fold5/observation_encoder.pt",
+            "PHASE_A_CHECKPOINT": "runs/phase_a_dynamics/fold5_joint/phase_a_best.pt",
+            "PHASE_B_CHECKPOINT": "",
+            "SEQUENCE_BATCH_SIZE": 8,
+            "STOP_AFTER_EPOCHS": 0
+          },
+          "LOSS": {
+            "GENERATION_STATE": 0.1
+          },
+          "DYNAMICS": {
+            "ROLLOUT_MODE": "joint"
+          }
+        },
+        "segments": [
+          {
+            "count": 50,
+            "first": {
+              "epoch": 1,
+              "total": 1.9731705852274626,
+              "val_cf_ranking_accuracy": 0,
+              "val_partner_gain": 0.004388482570648194,
+              "val_total": 2.3050937795639035
+            },
+            "last": {
+              "epoch": 50,
+              "total": 0.9744025280453124,
+              "val_cf_ranking_accuracy": 0.01889763092622161,
+              "val_partner_gain": 0.046488630771636966,
+              "val_total": 2.514820957183838
+            },
+            "best": {
+              "epoch": 4,
+              "total": 1.7805252218583845,
+              "val_cf_ranking_accuracy": 0,
+              "val_partner_gain": 0.028084067106246946,
+              "val_total": 2.2090893507003786
+            }
+          },
+          {
+            "count": 50,
+            "first": {
+              "epoch": 1,
+              "conditional_h1": 1.5103160699583449,
+              "total": 3.5503890238842875,
+              "val_cf_ranking_accuracy": 0,
+              "val_conditional_h1": 1.6806635177135467,
+              "val_open_loop_h32": 2.7310850286483763,
+              "val_partner_gain": 0.0159182596206665,
+              "val_total": 3.9677571153640745
+            },
+            "last": {
+              "epoch": 50,
+              "conditional_h1": 0.7137644955853246,
+              "total": 1.8715764447203223,
+              "val_cf_ranking_accuracy": 0.027683645887300372,
+              "val_conditional_h1": 1.9133484160900116,
+              "val_open_loop_h32": 2.477499449253082,
+              "val_partner_gain": -0.25757890462875366,
+              "val_total": 4.459797573089599
+            },
+            "best": {
+              "epoch": 8,
+              "conditional_h1": 1.2597303691337693,
+              "total": 2.9944360531725973,
+              "val_cf_ranking_accuracy": 0.0049543865211308,
+              "val_conditional_h1": 1.5762758576869964,
+              "val_open_loop_h32": 2.68922581076622,
+              "val_partner_gain": 0.14388198614120484,
+              "val_total": 3.7327569961547855
+            }
+          }
+        ]
+      }
+    ],
+    "evaluations": [],
+    "code": {
+      "emotion_ssm/train/dualtalk.py": "f352fb6415ff3a80b8cd94ac6b3488620f28784f9cfff9ffb58823ee95715559",
+      "emotion_ssm/train/dualtalk_baseline_control.py": "b835f53113dfd68b0e3a16c0b968d39644a2f7bde4709dbaaa21aca3899570e1",
+      "emotion_ssm/evaluate_dualtalk.py": "26c8a0ae2c37e7f63f79b8ad83c0f4c1dc7845a845b3fd95abfff341d78ee7e7",
+      "emotion_ssm/models/conditioned_dualtalk.py": "cfaf1d959676414b87e103432b0eb3c0853641d92e413d9c6c3d0e775d08756e",
+      "emotion_ssm/models/dynamics.py": "4b20e72cf80730fe332c70e703f0b3bb1fa61343ad91314dbb7e3f44fe6da1b8",
+      "emotion_ssm/train/dynamics_core.py": "8a7214f85a9edd58984913b27b76ded26d52d36523ed09186f400a676b983ae2",
+      "scripts/run_data_source_ablations.sh": "a3b7b21ac0c590576dbefb8e95ff1898a85f0e56f7fd91190062c90a42591fb7"
+    }
+  },
+  "server1_data": {
+    "roots": {
+      "emotiontalk": {
+        "path": "/home/s21_yhr/lzh/MyDualTalk/datasets/emotiontalk/processed",
+        "resolved": "/home/s21_yhr/lzh/MyDualTalk/datasets/emotiontalk/processed",
+        "entries": [
+          "windows",
+          "metadata",
+          "splits",
+          "dialogues",
+          "openface_csv"
+        ]
+      },
+      "iemocap": {
+        "path": "/home/s21_yhr/lzh/MyDualTalk/artifacts/features/iemocap",
+        "resolved": "/home/s21_yhr/lzh/MyDualTalk/artifacts/features/iemocap",
+        "entries": [
+          "metadata",
+          "splits",
+          "dialogues",
+          "openface_csv"
+        ]
+      },
+      "dualtalk": {
+        "path": "/home/s21_yhr/lzh/MyDualTalk/datasets/dualtalk",
+        "resolved": "/home/s21_yhr/lzh/MyDualTalk/datasets/dualtalk",
+        "entries": [
+          "test",
+          "train",
+          "ood"
+        ]
+      }
+    },
+    "labels": {
+      "emotiontalk": {
+        "dialogues": 742,
+        "counts": {
+          "utterances": 19250,
+          "has_start_time": 19250,
+          "has_end_time": 19250,
+          "has_startTime": 0,
+          "has_vad": 0,
+          "has_intensity_abs": 19250,
+          "has_sentiment_score": 19250,
+          "has_emotion_id": 19250
+        },
+        "length_median": 25,
+        "length_max": 63,
+        "one_role_dialogues": 8,
+        "dt_median": 3.851442934278758,
+        "dt_nonpositive": 2,
+        "samples": [
+          {
+            "file": "/home/s21_yhr/lzh/MyDualTalk/datasets/emotiontalk/processed/dialogues/G00001_02/labels.json",
+            "keys": [
+              "group_id",
+              "dialogue_id",
+              "utterance_id",
+              "utterance_number",
+              "speaker_id",
+              "audio",
+              "video",
+              "raw_text",
+              "text",
+              "emotion",
+              "emotion_id",
+              "sentiment_score",
+              "intensity_abs",
+              "start_time",
+              "end_time",
+              "duration",
+              "wav_duration",
+              "sample_rate",
+              "channels",
+              "audio_emotion",
+              "text_emotion",
+              "video_emotion",
+              "emo_caption",
+              "speaker_caption",
+              "style_caption",
+              "source_json",
+              "turn_id",
+              "turn_position",
+              "speaker",
+              "partner_id",
+              "partner",
+              "delta_t",
+              "gap_sec",
+              "overlap_sec",
+              "previous_utterance_id",
+              "next_utterance_id"
+            ],
+            "first": {
+              "emotion": "angry",
+              "emotion_id": 0,
+              "sentiment_score": -0.8,
+              "intensity_abs": 0.8,
+              "start_time": 1.39475941861112,
+              "end_time": 3.10130907923091,
+              "speaker": "B"
+            }
+          },
+          {
+            "file": "/home/s21_yhr/lzh/MyDualTalk/datasets/emotiontalk/processed/dialogues/G00001_03/labels.json",
+            "keys": [
+              "group_id",
+              "dialogue_id",
+              "utterance_id",
+              "utterance_number",
+              "speaker_id",
+              "audio",
+              "video",
+              "raw_text",
+              "text",
+              "emotion",
+              "emotion_id",
+              "sentiment_score",
+              "intensity_abs",
+              "start_time",
+              "end_time",
+              "duration",
+              "wav_duration",
+              "sample_rate",
+              "channels",
+              "audio_emotion",
+              "text_emotion",
+              "video_emotion",
+              "emo_caption",
+              "speaker_caption",
+              "style_caption",
+              "source_json",
+              "turn_id",
+              "turn_position",
+              "speaker",
+              "partner_id",
+              "partner",
+              "delta_t",
+              "gap_sec",
+              "overlap_sec",
+              "previous_utterance_id",
+              "next_utterance_id"
+            ],
+            "first": {
+              "emotion": "happy",
+              "emotion_id": 3,
+              "sentiment_score": -0.4,
+              "intensity_abs": 0.4,
+              "start_time": 0,
+              "end_time": 3.32773136297332,
+              "speaker": "A"
+            }
+          }
+        ]
+      },
+      "iemocap": {
+        "dialogues": 151,
+        "counts": {
+          "utterances": 10039,
+          "has_start_time": 10039,
+          "has_end_time": 10039,
+          "has_startTime": 0,
+          "has_vad": 10039,
+          "has_intensity_abs": 0,
+          "has_sentiment_score": 0,
+          "has_emotion_id": 10039
+        },
+        "length_median": 67,
+        "length_max": 167,
+        "one_role_dialogues": 0,
+        "dt_median": 3.069999999999993,
+        "dt_nonpositive": 1,
+        "samples": [
+          {
+            "file": "/home/s21_yhr/lzh/MyDualTalk/artifacts/features/iemocap/dialogues/Ses01F_impro01/labels.json",
+            "keys": [
+              "utterance_id",
+              "speaker_id",
+              "speaker",
+              "active_role",
+              "text",
+              "emotion_code",
+              "emotion_id",
+              "emotion",
+              "vad",
+              "vad_mask",
+              "intensity",
+              "start_time",
+              "end_time",
+              "turn_id",
+              "turn_position"
+            ],
+            "first": {
+              "speaker": "A",
+              "active_role": 0,
+              "emotion_id": 4,
+              "emotion": "neutral",
+              "vad": [
+                -0.25,
+                -0.25,
+                -0.25
+              ],
+              "vad_mask": [
+                true,
+                true,
+                true
+              ],
+              "intensity": 0.375,
+              "start_time": 6.2901,
+              "end_time": 8.2357
+            }
+          },
+          {
+            "file": "/home/s21_yhr/lzh/MyDualTalk/artifacts/features/iemocap/dialogues/Ses01F_impro02/labels.json",
+            "keys": [
+              "utterance_id",
+              "speaker_id",
+              "speaker",
+              "active_role",
+              "text",
+              "emotion_code",
+              "emotion_id",
+              "emotion",
+              "vad",
+              "vad_mask",
+              "intensity",
+              "start_time",
+              "end_time",
+              "turn_id",
+              "turn_position"
+            ],
+            "first": {
+              "speaker": "A",
+              "active_role": 0,
+              "emotion_id": 5,
+              "emotion": "sad",
+              "vad": [
+                -0.25,
+                -0.5,
+                -0.75
+              ],
+              "vad_mask": [
+                true,
+                true,
+                true
+              ],
+              "intensity": 0.25,
+              "start_time": 7.2688,
+              "end_time": 16.6
+            }
+          }
+        ]
+      }
+    },
+    "metadata_files": {
+      "/home/s21_yhr/lzh/MyDualTalk/datasets/emotiontalk/processed/metadata/manifest_summary.json": {
+        "num_utterances": 19250,
+        "num_dialogues": 742,
+        "num_speakers": 19,
+        "emotion_counts": {
+          "angry": 3698,
+          "neutral": 6853,
+          "sad": 1153,
+          "happy": 3592,
+          "disgusted": 1371,
+          "surprise": 1661,
+          "fear": 922
+        },
+        "speaker_utterance_counts": {
+          "10": 553,
+          "11": 1748,
+          "12": 1618,
+          "13": 945,
+          "14": 1776,
+          "15": 502,
+          "16": 681,
+          "17": 702,
+          "18": 728,
+          "19": 751,
+          "20": 525,
+          "21": 611,
+          "02": 803,
+          "01": 451,
+          "07": 1929,
+          "08": 1205,
+          "09": 1548,
+          "05": 1209,
+          "06": 965
+        }
+      },
+      "/home/s21_yhr/lzh/MyDualTalk/datasets/emotiontalk/processed/metadata/final_validation_report.json": {
+        "status": "passed",
+        "num_dialogues": 742,
+        "num_utterances": 19250,
+        "num_unique_utterances": 19250,
+        "num_speakers": 19,
+        "split_dialogue_counts": {
+          "train": 630,
+          "val": 55,
+          "test": 57
+        },
+        "split_utterance_counts": {
+          "train": 16388,
+          "val": 1383,
+          "test": 1479
+        },
+        "emotion_counts": {
+          "angry": 3698,
+          "neutral": 6853,
+          "sad": 1153,
+          "happy": 3592,
+          "disgusted": 1371,
+          "surprise": 1661,
+          "fear": 922
+        },
+        "audio_dimension": 768,
+        "text_dimension": 768,
+        "face_au_dimension": 35,
+        "face_encoder_dimension": 256,
+        "total_face_frames": 2548299,
+        "valid_face_frames": 2544269,
+        "invalid_face_frames": 4030,
+        "invalid_face_utterances": 0,
+        "window_length": 16,
+        "stride": 4,
+        "window_counts": {
+          "train": 2469,
+          "val": 200,
+          "test": 220
+        },
+        "total_windows": 2889,
+        "speaker_overlap": {
+          "train_val": [],
+          "train_test": [],
+          "val_test": []
+        },
+        "feature_error_reports": {
+          "audio_feature_errors_shard_0.jsonl": 0,
+          "audio_feature_errors_shard_1.jsonl": 0,
+          "text_feature_errors_shard_0.jsonl": 0,
+          "text_feature_errors_shard_1.jsonl": 0,
+          "openface_command_errors.jsonl": 0,
+          "face_au_parse_errors.jsonl": 0
+        },
+        "num_validation_errors": 0,
+        "elapsed_seconds": 13.140423059463501
+      },
+      "/home/s21_yhr/lzh/MyDualTalk/datasets/emotiontalk/processed/metadata/face_au_train_stats.json": {
+        "au_columns": [
+          "AU01_r",
+          "AU02_r",
+          "AU04_r",
+          "AU05_r",
+          "AU06_r",
+          "AU07_r",
+          "AU09_r",
+          "AU10_r",
+          "AU12_r",
+          "AU14_r",
+          "AU15_r",
+          "AU17_r",
+          "AU20_r",
+          "AU23_r",
+          "AU25_r",
+          "AU26_r",
+          "AU45_r",
+          "AU01_c",
+          "AU02_c",
+          "AU04_c",
+          "AU05_c",
+          "AU06_c",
+          "AU07_c",
+          "AU09_c",
+          "AU10_c",
+          "AU12_c",
+          "AU14_c",
+          "AU15_c",
+          "AU17_c",
+          "AU20_c",
+          "AU23_c",
+          "AU25_c",
+          "AU26_c",
+          "AU28_c",
+          "AU45_c"
+        ],
+        "mean": [
+          0.25263048623629963,
+          0.10491766597881928,
+          0.5365202787376254,
+          0.05308146869766013,
+          0.2829745919471944,
+          0.6640625758352985,
+          0.08203815337880295,
+          0.8563860496434882,
+          0.47222641034406854,
+          0.4710684521967989,
+          0.1837048033267394,
+          0.5208482308219621,
+          0.13070893207655235,
+          0.1621342133265247,
+          0.554896354768967,
+          0.41476155853603197,
+          0.2740224145417483,
+          0.2181070145640102,
+          0.21331740427814963,
+          0.4600263628284119,
+          0.28257338970233786,
+          0.19685970054949795,
+          0.3518080415704765,
+          0.07909620162843119,
+          0.392387642514963,
+          0.18342409929272452,
+          0.3337221790003368,
+          0.15759551759292126,
+          0.3513055682396911,
+          0.134362821149452,
+          0.11140882265097123,
+          0.29648059871944193,
+          0.1721300239389733,
+          0.004572189576333733,
+          0.24510758013019823
+        ],
+        "std": [
+          0.47920228787055424,
+          0.27368660167404646,
+          0.7203396371246641,
+          0.14826169806914377,
+          0.5130310840981733,
+          0.7452428025330577,
+          0.20015542950338067,
+          0.815740535495974,
+          0.5276309615385226,
+          0.62125343954112,
+          0.36995621638738924,
+          0.5232430320920674,
+          0.2744252914259993,
+          0.3470581211531335,
+          0.598038248493003,
+          0.47118389249545495,
+          0.5134480296444293,
+          0.41296046392116625,
+          0.40964995949002864,
+          0.4983995468810884,
+          0.4502506736635366,
+          0.39762540015579984,
+          0.4775344421681251,
+          0.26988885215285524,
+          0.48828227544783215,
+          0.38701382286861186,
+          0.4715418181281528,
+          0.36436131851163966,
+          0.477378221082067,
+          0.3410417180378558,
+          0.31463772324134254,
+          0.45670543384374485,
+          0.37749341556872457,
+          0.06746320966876537,
+          0.4301509668627012
+        ],
+        "valid_frame_count": 2203102,
+        "confidence_threshold": 0.8
+      },
+      "/home/s21_yhr/lzh/MyDualTalk/datasets/emotiontalk/processed/metadata/audio_feature_summary_shard_1.json": {
+        "shard_id": 1,
+        "num_shards": 2,
+        "physical_gpu_mask": "2",
+        "gpu_name": "NVIDIA GeForce RTX 4090",
+        "model_path": "/home/s21_yhr/lzh/Emotiontalk_work/models/chinese-hubert-base",
+        "assigned_dialogues": 371,
+        "completed_dialogues": 371,
+        "skipped_dialogues": 0,
+        "completed_utterances": 9679,
+        "num_errors": 0,
+        "elapsed_seconds": 181.45420908927917
+      },
+      "/home/s21_yhr/lzh/MyDualTalk/datasets/emotiontalk/processed/metadata/openface_command_summary.json": {
+        "num_utterances": 19250,
+        "workers": 16,
+        "completed": 16338,
+        "skipped": 2912,
+        "num_errors": 0,
+        "elapsed_seconds": 13459.017879962921,
+        "openface_bin": "/home/s21_yhr/lzh/Emotiontalk_work/tools/OpenFace/build/bin/FeatureExtraction"
+      },
+      "/home/s21_yhr/lzh/MyDualTalk/datasets/emotiontalk/processed/metadata/face_au_summary.json": {
+        "num_dialogues": 742,
+        "num_utterances": 19250,
+        "au_dim": 35,
+        "total_frames": 2548299,
+        "valid_frames": 2544269,
+        "invalid_frames": 4030,
+        "valid_utterances": 19250,
+        "invalid_utterances": 0,
+        "train_valid_frames": 2203102,
+        "confidence_threshold": 0.8,
+        "num_parse_errors": 0,
+        "elapsed_seconds": 78.4717948436737
+      },
+      "/home/s21_yhr/lzh/MyDualTalk/datasets/emotiontalk/processed/metadata/text_feature_summary_shard_1.json": {
+        "shard_id": 1,
+        "num_shards": 2,
+        "physical_gpu_mask": "2",
+        "gpu_name": "NVIDIA GeForce RTX 4090",
+        "model_path": "/home/s21_yhr/lzh/Emotiontalk_work/models/chinese-macbert-base",
+        "assigned_dialogues": 371,
+        "completed_dialogues": 371,
+        "skipped_dialogues": 0,
+        "completed_utterances": 9679,
+        "num_errors": 0,
+        "elapsed_seconds": 8.11973237991333
+      },
+      "/home/s21_yhr/lzh/MyDualTalk/datasets/emotiontalk/processed/metadata/audio_feature_summary_shard_0.json": {
+        "shard_id": 0,
+        "num_shards": 2,
+        "physical_gpu_mask": "1",
+        "gpu_name": "NVIDIA GeForce RTX 4090",
+        "model_path": "/home/s21_yhr/lzh/Emotiontalk_work/models/chinese-hubert-base",
+        "assigned_dialogues": 371,
+        "completed_dialogues": 371,
+        "skipped_dialogues": 0,
+        "completed_utterances": 9571,
+        "num_errors": 0,
+        "elapsed_seconds": 184.09255123138428
+      },
+      "/home/s21_yhr/lzh/MyDualTalk/datasets/emotiontalk/processed/metadata/text_feature_summary_shard_0.json": {
+        "shard_id": 0,
+        "num_shards": 2,
+        "physical_gpu_mask": "1",
+        "gpu_name": "NVIDIA GeForce RTX 4090",
+        "model_path": "/home/s21_yhr/lzh/Emotiontalk_work/models/chinese-macbert-base",
+        "assigned_dialogues": 371,
+        "completed_dialogues": 371,
+        "skipped_dialogues": 0,
+        "completed_utterances": 9571,
+        "num_errors": 0,
+        "elapsed_seconds": 8.63314938545227
+      },
+      "/home/s21_yhr/lzh/MyDualTalk/artifacts/features/iemocap/metadata/preprocess_summary.json": {
+        "completed_dialogues": 151,
+        "errors": [
+          {
+            "dialogue_id": "._Ses01F_impro01",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01F_impro02",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01F_impro03",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01F_impro04",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01F_impro05",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01F_impro06",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01F_impro07",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01F_script01_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01F_script01_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01F_script01_3",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01F_script02_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01F_script02_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01F_script03_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01F_script03_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01M_impro01",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01M_impro02",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01M_impro03",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01M_impro04",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01M_impro05",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01M_impro06",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01M_impro07",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01M_script01_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01M_script01_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01M_script01_3",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01M_script02_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01M_script02_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01M_script03_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses01M_script03_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02F_impro01",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02F_impro02",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02F_impro03",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02F_impro04",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02F_impro05",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02F_impro06",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02F_impro07",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02F_impro08",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02F_script01_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02F_script01_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02F_script01_3",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02F_script02_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02F_script02_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02F_script03_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02F_script03_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02M_impro01",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02M_impro02",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02M_impro03",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02M_impro04",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02M_impro05",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02M_impro06",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02M_impro07",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02M_impro08",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02M_script01_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02M_script01_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02M_script01_3",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02M_script02_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02M_script02_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02M_script03_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses02M_script03_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03F_impro01",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03F_impro02",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03F_impro03",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03F_impro04",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03F_impro05",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03F_impro06",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03F_impro07",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03F_impro08",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03F_script01_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03F_script01_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03F_script01_3",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03F_script02_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03F_script02_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03F_script03_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03F_script03_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03M_impro01",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03M_impro02",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03M_impro03",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03M_impro04",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03M_impro05a",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03M_impro05b",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03M_impro06",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03M_impro07",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03M_impro08a",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03M_impro08b",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03M_script01_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03M_script01_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03M_script01_3",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03M_script02_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03M_script02_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03M_script03_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses03M_script03_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04F_impro01",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04F_impro02",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04F_impro03",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04F_impro04",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04F_impro05",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04F_impro06",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04F_impro07",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04F_impro08",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04F_script01_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04F_script01_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04F_script01_3",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04F_script02_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04F_script02_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04F_script03_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04F_script03_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04M_impro01",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04M_impro02",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04M_impro03",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04M_impro04",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04M_impro05",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04M_impro06",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04M_impro07",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04M_impro08",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04M_script01_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04M_script01_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04M_script01_3",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04M_script02_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04M_script02_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04M_script03_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses04M_script03_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05F_impro01",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05F_impro02",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05F_impro03",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05F_impro04",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05F_impro05",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05F_impro06",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05F_impro07",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05F_impro08",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05F_script01_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05F_script01_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05F_script01_3",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05F_script02_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05F_script02_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05F_script03_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05F_script03_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05M_impro01",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05M_impro02",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05M_impro03",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05M_impro04",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05M_impro05",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05M_impro06",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05M_impro07",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05M_impro08",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05M_script01_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05M_script01_1b",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05M_script01_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05M_script01_3",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05M_script02_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05M_script02_2",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05M_script03_1",
+            "error": "ValueError('No evaluable utterances')"
+          },
+          {
+            "dialogue_id": "._Ses05M_script03_2",
+            "error": "ValueError('No evaluable utterances')"
+          }
+        ]
+      }
+    }
+  },
+  "server1_chunks": {
+    "train": {
+      "npz_files": 9706,
+      "directed_pairs": 9706,
+      "chunk200_histogram": {
+        "0": 494,
+        "1": 956,
+        "2": 2046,
+        "3": 6204,
+        "4": 6
+      },
+      "eligible_directed_dialogues": 9212,
+      "total_chunks": 23684,
+      "chunks_with_previous_state": 14472,
+      "history_chunk_fraction": 0.6110454315149468,
+      "frame_min": 124,
+      "frame_median": 701,
+      "frame_max": 989
+    },
+    "test": {
+      "npz_files": 1066,
+      "directed_pairs": 1066,
+      "chunk200_histogram": {
+        "0": 56,
+        "1": 110,
+        "2": 230,
+        "3": 670
+      },
+      "eligible_directed_dialogues": 1010,
+      "total_chunks": 2580,
+      "chunks_with_previous_state": 1570,
+      "history_chunk_fraction": 0.6085271317829457,
+      "frame_min": 124,
+      "frame_median": 690,
+      "frame_max": 750
+    },
+    "ood": {
+      "npz_files": 754,
+      "directed_pairs": 754,
+      "chunk200_histogram": {
+        "0": 26,
+        "1": 58,
+        "2": 192,
+        "3": 478
+      },
+      "eligible_directed_dialogues": 728,
+      "total_chunks": 1876,
+      "chunks_with_previous_state": 1148,
+      "history_chunk_fraction": 0.6119402985074627,
+      "frame_min": 126,
+      "frame_median": 688,
+      "frame_max": 762
+    }
+  }
+}

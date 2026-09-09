@@ -1,0 +1,1113 @@
+{
+  "version": 1,
+  "created_at": "2026-09-08 12:30:01 +0800",
+  "split": "test",
+  "selection_seed": 6666,
+  "inventory": {
+    "paired_clips": 533,
+    "history_eligible_pairs": 437,
+    "pairs_with_any_aligned_words": 200,
+    "lexicon_eligible_pairs": 19
+  },
+  "rows": [
+    {
+      "name": "-uaFgyxn2kw_sub_video_40_001_speaker1",
+      "source": "-uaFgyxn2kw",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 14,
+        "word": "scared",
+        "role": "speaker2",
+        "available_at": 14.903978638184245,
+        "confidence": 0.9457569420337677
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "-uaFgyxn2kw_sub_video_40_001_speaker2",
+      "source": "-uaFgyxn2kw",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 14,
+        "word": "scared",
+        "role": "speaker2",
+        "available_at": 14.903978638184245,
+        "confidence": 0.9457569420337677
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "0KnChOxBB_Y_sub_video_15_speaker1",
+      "source": "0KnChOxBB_Y",
+      "history": true,
+      "donor": "UkOBXxxk9oY_sub_video_4_speaker1",
+      "event": null,
+      "full_seconds": 25
+    },
+    {
+      "name": "0KnChOxBB_Y_sub_video_15_speaker2",
+      "source": "0KnChOxBB_Y",
+      "history": true,
+      "donor": "UkOBXxxk9oY_sub_video_4_speaker2",
+      "event": null,
+      "full_seconds": 25
+    },
+    {
+      "name": "2bDX4Uzy8Wc_sub_video_35_speaker1",
+      "source": "2bDX4Uzy8Wc",
+      "history": true,
+      "donor": "IqQOzI4IB5Y_sub_video_33_speaker1",
+      "event": null,
+      "full_seconds": 20
+    },
+    {
+      "name": "2bDX4Uzy8Wc_sub_video_35_speaker2",
+      "source": "2bDX4Uzy8Wc",
+      "history": true,
+      "donor": "IqQOzI4IB5Y_sub_video_33_speaker2",
+      "event": null,
+      "full_seconds": 20
+    },
+    {
+      "name": "2voGGZvKOZ8_sub_video_97_001_speaker1",
+      "source": "2voGGZvKOZ8",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 6,
+        "word": "happy",
+        "role": "speaker1",
+        "available_at": 6.261111505681819,
+        "confidence": 0.9995931267738343
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "2voGGZvKOZ8_sub_video_97_001_speaker2",
+      "source": "2voGGZvKOZ8",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 6,
+        "word": "happy",
+        "role": "speaker1",
+        "available_at": 6.261111505681819,
+        "confidence": 0.9995931267738343
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "5Tt21oWNDAE_sub_video_31_speaker1",
+      "source": "5Tt21oWNDAE",
+      "history": true,
+      "donor": "Zrer1sqWzOQ_sub_video_28_000_speaker1",
+      "event": null,
+      "full_seconds": 28
+    },
+    {
+      "name": "5Tt21oWNDAE_sub_video_31_speaker2",
+      "source": "5Tt21oWNDAE",
+      "history": true,
+      "donor": "Zrer1sqWzOQ_sub_video_28_000_speaker2",
+      "event": null,
+      "full_seconds": 28
+    },
+    {
+      "name": "9I1Z-0GIXGY_sub_video_38_000_speaker1",
+      "source": "9I1Z-0GIXGY",
+      "history": true,
+      "donor": "owxgUAkJ_08_sub_video_20_speaker1",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "9I1Z-0GIXGY_sub_video_38_000_speaker2",
+      "source": "9I1Z-0GIXGY",
+      "history": true,
+      "donor": "owxgUAkJ_08_sub_video_20_speaker2",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "AnJC_bduosQ_sub_video_68_000_speaker1",
+      "source": "AnJC_bduosQ",
+      "history": true,
+      "donor": "UkOBXxxk9oY_sub_video_4_speaker1",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "AnJC_bduosQ_sub_video_68_000_speaker2",
+      "source": "AnJC_bduosQ",
+      "history": true,
+      "donor": "UkOBXxxk9oY_sub_video_4_speaker2",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "D-xTlXEMXoY_sub_video_28_001_speaker1",
+      "source": "D-xTlXEMXoY",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 8,
+        "word": "wonderful",
+        "role": "speaker1",
+        "available_at": 8.046700000000001,
+        "confidence": 0.9796716173489889
+      },
+      "full_seconds": 19
+    },
+    {
+      "name": "D-xTlXEMXoY_sub_video_28_001_speaker2",
+      "source": "D-xTlXEMXoY",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 8,
+        "word": "wonderful",
+        "role": "speaker1",
+        "available_at": 8.046700000000001,
+        "confidence": 0.9796716173489889
+      },
+      "full_seconds": 19
+    },
+    {
+      "name": "D4wu8CRZkJ0_sub_video_16_001_speaker1",
+      "source": "D4wu8CRZkJ0",
+      "history": true,
+      "donor": "9I1Z-0GIXGY_sub_video_38_000_speaker1",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "D4wu8CRZkJ0_sub_video_16_001_speaker2",
+      "source": "D4wu8CRZkJ0",
+      "history": true,
+      "donor": "9I1Z-0GIXGY_sub_video_38_000_speaker2",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "D8K1AAxkg0g_sub_video_77_000_speaker1",
+      "source": "D8K1AAxkg0g",
+      "history": true,
+      "donor": "JZmkBdHEzwA_sub_video_45_001_speaker1",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "D8K1AAxkg0g_sub_video_77_000_speaker2",
+      "source": "D8K1AAxkg0g",
+      "history": true,
+      "donor": "JZmkBdHEzwA_sub_video_45_001_speaker2",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "FzCjvLU7u7Q_sub_video_46_speaker1",
+      "source": "FzCjvLU7u7Q",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 3,
+        "word": "happy",
+        "role": "speaker2",
+        "available_at": 3.8430229007633585,
+        "confidence": 0.9960152387619019
+      },
+      "full_seconds": 28
+    },
+    {
+      "name": "FzCjvLU7u7Q_sub_video_46_speaker2",
+      "source": "FzCjvLU7u7Q",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 3,
+        "word": "happy",
+        "role": "speaker2",
+        "available_at": 3.8430229007633585,
+        "confidence": 0.9960152387619019
+      },
+      "full_seconds": 28
+    },
+    {
+      "name": "GJtqigeWHV8_sub_video_103_000_speaker1",
+      "source": "GJtqigeWHV8",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 14,
+        "word": "happy",
+        "role": "speaker2",
+        "available_at": 14.986004008016033,
+        "confidence": 0.9856269121170044
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "GJtqigeWHV8_sub_video_103_000_speaker2",
+      "source": "GJtqigeWHV8",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 14,
+        "word": "happy",
+        "role": "speaker2",
+        "available_at": 14.986004008016033,
+        "confidence": 0.9856269121170044
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "GtFI2YQNzFQ_sub_video_59_speaker1",
+      "source": "GtFI2YQNzFQ",
+      "history": true,
+      "donor": "kqFNJ1NhOQM_sub_video_36_speaker1",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "GtFI2YQNzFQ_sub_video_59_speaker2",
+      "source": "GtFI2YQNzFQ",
+      "history": true,
+      "donor": "kqFNJ1NhOQM_sub_video_36_speaker2",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "H_xMzAWWsNU_sub_video_7_speaker1",
+      "source": "H_xMzAWWsNU",
+      "history": true,
+      "donor": "Z-zBG63U2KE_sub_video_29_speaker1",
+      "event": null,
+      "full_seconds": 28
+    },
+    {
+      "name": "H_xMzAWWsNU_sub_video_7_speaker2",
+      "source": "H_xMzAWWsNU",
+      "history": true,
+      "donor": "Z-zBG63U2KE_sub_video_29_speaker2",
+      "event": null,
+      "full_seconds": 28
+    },
+    {
+      "name": "IH6KWbTogT0_sub_video_28_001_speaker1",
+      "source": "IH6KWbTogT0",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 18,
+        "word": "scared",
+        "role": "speaker2",
+        "available_at": 18.76333096590909,
+        "confidence": 0.9741657078266144
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "IH6KWbTogT0_sub_video_28_001_speaker2",
+      "source": "IH6KWbTogT0",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 18,
+        "word": "scared",
+        "role": "speaker2",
+        "available_at": 18.76333096590909,
+        "confidence": 0.9741657078266144
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "IqQOzI4IB5Y_sub_video_33_speaker1",
+      "source": "IqQOzI4IB5Y",
+      "history": true,
+      "donor": "jZdqe7X4IZ4_sub_video_38_000_speaker1",
+      "event": null,
+      "full_seconds": 27
+    },
+    {
+      "name": "IqQOzI4IB5Y_sub_video_33_speaker2",
+      "source": "IqQOzI4IB5Y",
+      "history": true,
+      "donor": "jZdqe7X4IZ4_sub_video_38_000_speaker2",
+      "event": null,
+      "full_seconds": 27
+    },
+    {
+      "name": "JZmkBdHEzwA_sub_video_45_001_speaker1",
+      "source": "JZmkBdHEzwA",
+      "history": true,
+      "donor": "PXnMR-wXGpw_sub_video_44_000_speaker1",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "JZmkBdHEzwA_sub_video_45_001_speaker2",
+      "source": "JZmkBdHEzwA",
+      "history": true,
+      "donor": "PXnMR-wXGpw_sub_video_44_000_speaker2",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "LxkeABQfXJU_sub_video_25_000_speaker1",
+      "source": "LxkeABQfXJU",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 15,
+        "word": "love",
+        "role": "speaker1",
+        "available_at": 15.746308617234469,
+        "confidence": 0.9954277127981186
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "LxkeABQfXJU_sub_video_25_000_speaker2",
+      "source": "LxkeABQfXJU",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 15,
+        "word": "love",
+        "role": "speaker1",
+        "available_at": 15.746308617234469,
+        "confidence": 0.9954277127981186
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "N4OWxXnujQw_sub_video_23_speaker1",
+      "source": "N4OWxXnujQw",
+      "history": true,
+      "donor": "kqFNJ1NhOQM_sub_video_36_speaker1",
+      "event": null,
+      "full_seconds": 26
+    },
+    {
+      "name": "N4OWxXnujQw_sub_video_23_speaker2",
+      "source": "N4OWxXnujQw",
+      "history": true,
+      "donor": "kqFNJ1NhOQM_sub_video_36_speaker2",
+      "event": null,
+      "full_seconds": 26
+    },
+    {
+      "name": "P4ul1tuvi9c_sub_video_39_008_speaker1",
+      "source": "P4ul1tuvi9c",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 11,
+        "word": "sorry",
+        "role": "speaker1",
+        "available_at": 11.690848409542744,
+        "confidence": 0.9994600057601929
+      },
+      "full_seconds": 20
+    },
+    {
+      "name": "P4ul1tuvi9c_sub_video_39_008_speaker2",
+      "source": "P4ul1tuvi9c",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 11,
+        "word": "sorry",
+        "role": "speaker1",
+        "available_at": 11.690848409542744,
+        "confidence": 0.9994600057601929
+      },
+      "full_seconds": 20
+    },
+    {
+      "name": "PXnMR-wXGpw_sub_video_44_000_speaker1",
+      "source": "PXnMR-wXGpw",
+      "history": true,
+      "donor": "RdXafwOVJkU_sub_video_29_speaker1",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "PXnMR-wXGpw_sub_video_44_000_speaker2",
+      "source": "PXnMR-wXGpw",
+      "history": true,
+      "donor": "RdXafwOVJkU_sub_video_29_speaker2",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "PhK23f3Ne0g_sub_video_28_001_speaker1",
+      "source": "PhK23f3Ne0g",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 11,
+        "word": "love",
+        "role": "speaker2",
+        "available_at": 11.702077414772727,
+        "confidence": 0.9990259408950806
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "PhK23f3Ne0g_sub_video_28_001_speaker2",
+      "source": "PhK23f3Ne0g",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 11,
+        "word": "love",
+        "role": "speaker2",
+        "available_at": 11.702077414772727,
+        "confidence": 0.9990259408950806
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "RdXafwOVJkU_sub_video_29_speaker1",
+      "source": "RdXafwOVJkU",
+      "history": true,
+      "donor": "H_xMzAWWsNU_sub_video_7_speaker1",
+      "event": null,
+      "full_seconds": 23
+    },
+    {
+      "name": "RdXafwOVJkU_sub_video_29_speaker2",
+      "source": "RdXafwOVJkU",
+      "history": true,
+      "donor": "H_xMzAWWsNU_sub_video_7_speaker2",
+      "event": null,
+      "full_seconds": 23
+    },
+    {
+      "name": "RkTj8X5DWjI_sub_video_21_000_speaker1",
+      "source": "RkTj8X5DWjI",
+      "history": true,
+      "donor": "PXnMR-wXGpw_sub_video_44_000_speaker1",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "RkTj8X5DWjI_sub_video_21_000_speaker2",
+      "source": "RkTj8X5DWjI",
+      "history": true,
+      "donor": "PXnMR-wXGpw_sub_video_44_000_speaker2",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "Ta80nbePlpg_sub_video_15_001_speaker1",
+      "source": "Ta80nbePlpg",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 10,
+        "word": "love",
+        "role": "speaker1",
+        "available_at": 10.871788815789472,
+        "confidence": 0.9570068717002869
+      },
+      "full_seconds": 20
+    },
+    {
+      "name": "Ta80nbePlpg_sub_video_15_001_speaker2",
+      "source": "Ta80nbePlpg",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 10,
+        "word": "love",
+        "role": "speaker1",
+        "available_at": 10.871788815789472,
+        "confidence": 0.9570068717002869
+      },
+      "full_seconds": 20
+    },
+    {
+      "name": "UkOBXxxk9oY_sub_video_11_000_speaker1",
+      "source": "UkOBXxxk9oY",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 18,
+        "word": "fear",
+        "role": "speaker2",
+        "available_at": 18.587446893787575,
+        "confidence": 0.9381783604621887
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "UkOBXxxk9oY_sub_video_11_000_speaker2",
+      "source": "UkOBXxxk9oY",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 18,
+        "word": "fear",
+        "role": "speaker2",
+        "available_at": 18.587446893787575,
+        "confidence": 0.9381783604621887
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "UkOBXxxk9oY_sub_video_4_speaker1",
+      "source": "UkOBXxxk9oY",
+      "history": true,
+      "donor": "RdXafwOVJkU_sub_video_29_speaker1",
+      "event": null,
+      "full_seconds": 25
+    },
+    {
+      "name": "UkOBXxxk9oY_sub_video_4_speaker2",
+      "source": "UkOBXxxk9oY",
+      "history": true,
+      "donor": "RdXafwOVJkU_sub_video_29_speaker2",
+      "event": null,
+      "full_seconds": 25
+    },
+    {
+      "name": "Uss6Myqradw_sub_video_26_speaker1",
+      "source": "Uss6Myqradw",
+      "history": true,
+      "donor": "Vpt6tZBvXQU_sub_video_7_000_speaker1",
+      "event": null,
+      "full_seconds": 28
+    },
+    {
+      "name": "Uss6Myqradw_sub_video_26_speaker2",
+      "source": "Uss6Myqradw",
+      "history": true,
+      "donor": "Vpt6tZBvXQU_sub_video_7_000_speaker2",
+      "event": null,
+      "full_seconds": 28
+    },
+    {
+      "name": "Vpt6tZBvXQU_sub_video_7_000_speaker1",
+      "source": "Vpt6tZBvXQU",
+      "history": true,
+      "donor": "mU4XNYhEJNY_sub_video_11_000_speaker1",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "Vpt6tZBvXQU_sub_video_7_000_speaker2",
+      "source": "Vpt6tZBvXQU",
+      "history": true,
+      "donor": "mU4XNYhEJNY_sub_video_11_000_speaker2",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "Z-zBG63U2KE_sub_video_29_speaker1",
+      "source": "Z-zBG63U2KE",
+      "history": true,
+      "donor": "owxgUAkJ_08_sub_video_20_speaker1",
+      "event": null,
+      "full_seconds": 24
+    },
+    {
+      "name": "Z-zBG63U2KE_sub_video_29_speaker2",
+      "source": "Z-zBG63U2KE",
+      "history": true,
+      "donor": "owxgUAkJ_08_sub_video_20_speaker2",
+      "event": null,
+      "full_seconds": 24
+    },
+    {
+      "name": "ZV9K28EmGIE_sub_video_18_speaker1",
+      "source": "ZV9K28EmGIE",
+      "history": true,
+      "donor": "mU4XNYhEJNY_sub_video_11_000_speaker1",
+      "event": null,
+      "full_seconds": 23
+    },
+    {
+      "name": "ZV9K28EmGIE_sub_video_18_speaker2",
+      "source": "ZV9K28EmGIE",
+      "history": true,
+      "donor": "mU4XNYhEJNY_sub_video_11_000_speaker2",
+      "event": null,
+      "full_seconds": 23
+    },
+    {
+      "name": "Zrer1sqWzOQ_sub_video_28_000_speaker1",
+      "source": "Zrer1sqWzOQ",
+      "history": true,
+      "donor": "9I1Z-0GIXGY_sub_video_38_000_speaker1",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "Zrer1sqWzOQ_sub_video_28_000_speaker2",
+      "source": "Zrer1sqWzOQ",
+      "history": true,
+      "donor": "9I1Z-0GIXGY_sub_video_38_000_speaker2",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "Zu98LC8k98M_sub_video_46_001_speaker1",
+      "source": "Zu98LC8k98M",
+      "history": true,
+      "donor": "JZmkBdHEzwA_sub_video_45_001_speaker1",
+      "event": null,
+      "full_seconds": 28
+    },
+    {
+      "name": "Zu98LC8k98M_sub_video_46_001_speaker2",
+      "source": "Zu98LC8k98M",
+      "history": true,
+      "donor": "JZmkBdHEzwA_sub_video_45_001_speaker2",
+      "event": null,
+      "full_seconds": 28
+    },
+    {
+      "name": "agVI1BNoVhM_sub_video_31_001_speaker1",
+      "source": "agVI1BNoVhM",
+      "history": true,
+      "donor": "owxgUAkJ_08_sub_video_20_speaker1",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "agVI1BNoVhM_sub_video_31_001_speaker2",
+      "source": "agVI1BNoVhM",
+      "history": true,
+      "donor": "owxgUAkJ_08_sub_video_20_speaker2",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "b2xl6gnLNbs_sub_video_20_000_speaker1",
+      "source": "b2xl6gnLNbs",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 7,
+        "word": "crying",
+        "role": "speaker1",
+        "available_at": 7.3029258517034075,
+        "confidence": 0.9961134095986685
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "b2xl6gnLNbs_sub_video_20_000_speaker2",
+      "source": "b2xl6gnLNbs",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 7,
+        "word": "crying",
+        "role": "speaker1",
+        "available_at": 7.3029258517034075,
+        "confidence": 0.9961134095986685
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "fJ2BOxlucBQ_sub_video_28_000_speaker1",
+      "source": "fJ2BOxlucBQ",
+      "history": true,
+      "donor": "qBk5elRe_eE_sub_video_41_speaker1",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "fJ2BOxlucBQ_sub_video_28_000_speaker2",
+      "source": "fJ2BOxlucBQ",
+      "history": true,
+      "donor": "qBk5elRe_eE_sub_video_41_speaker2",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "fJ2BOxlucBQ_sub_video_32_000_speaker1",
+      "source": "fJ2BOxlucBQ",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 4,
+        "word": "love",
+        "role": "speaker2",
+        "available_at": 4.9419799599198395,
+        "confidence": 0.9999234676361084
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "fJ2BOxlucBQ_sub_video_32_000_speaker2",
+      "source": "fJ2BOxlucBQ",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 4,
+        "word": "love",
+        "role": "speaker2",
+        "available_at": 4.9419799599198395,
+        "confidence": 0.9999234676361084
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "jZdqe7X4IZ4_sub_video_38_000_speaker1",
+      "source": "jZdqe7X4IZ4",
+      "history": true,
+      "donor": "qBk5elRe_eE_sub_video_41_speaker1",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "jZdqe7X4IZ4_sub_video_38_000_speaker2",
+      "source": "jZdqe7X4IZ4",
+      "history": true,
+      "donor": "qBk5elRe_eE_sub_video_41_speaker2",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "kqFNJ1NhOQM_sub_video_36_speaker1",
+      "source": "kqFNJ1NhOQM",
+      "history": true,
+      "donor": "2bDX4Uzy8Wc_sub_video_35_speaker1",
+      "event": null,
+      "full_seconds": 23
+    },
+    {
+      "name": "kqFNJ1NhOQM_sub_video_36_speaker2",
+      "source": "kqFNJ1NhOQM",
+      "history": true,
+      "donor": "2bDX4Uzy8Wc_sub_video_35_speaker2",
+      "event": null,
+      "full_seconds": 23
+    },
+    {
+      "name": "mU4XNYhEJNY_sub_video_11_000_speaker1",
+      "source": "mU4XNYhEJNY",
+      "history": true,
+      "donor": "fJ2BOxlucBQ_sub_video_28_000_speaker1",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "mU4XNYhEJNY_sub_video_11_000_speaker2",
+      "source": "mU4XNYhEJNY",
+      "history": true,
+      "donor": "fJ2BOxlucBQ_sub_video_28_000_speaker2",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "owxgUAkJ_08_sub_video_20_speaker1",
+      "source": "owxgUAkJ_08",
+      "history": true,
+      "donor": "Zrer1sqWzOQ_sub_video_28_000_speaker1",
+      "event": {
+        "index": 3,
+        "word": "worry",
+        "role": "speaker1",
+        "available_at": 3.0816784741144416,
+        "confidence": 0.9923149347305298
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "owxgUAkJ_08_sub_video_20_speaker2",
+      "source": "owxgUAkJ_08",
+      "history": true,
+      "donor": "Zrer1sqWzOQ_sub_video_28_000_speaker2",
+      "event": {
+        "index": 3,
+        "word": "worry",
+        "role": "speaker1",
+        "available_at": 3.0816784741144416,
+        "confidence": 0.9923149347305298
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "qBk5elRe_eE_sub_video_41_speaker1",
+      "source": "qBk5elRe_eE",
+      "history": true,
+      "donor": "AnJC_bduosQ_sub_video_68_000_speaker1",
+      "event": null,
+      "full_seconds": 21
+    },
+    {
+      "name": "qBk5elRe_eE_sub_video_41_speaker2",
+      "source": "qBk5elRe_eE",
+      "history": true,
+      "donor": "AnJC_bduosQ_sub_video_68_000_speaker2",
+      "event": null,
+      "full_seconds": 21
+    },
+    {
+      "name": "qFhuJX9kXB0_sub_video_59_000_speaker1",
+      "source": "qFhuJX9kXB0",
+      "history": true,
+      "donor": "Zrer1sqWzOQ_sub_video_28_000_speaker1",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "qFhuJX9kXB0_sub_video_59_000_speaker2",
+      "source": "qFhuJX9kXB0",
+      "history": true,
+      "donor": "Zrer1sqWzOQ_sub_video_28_000_speaker2",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "qSymgMQuVaM_sub_video_18_speaker1",
+      "source": "qSymgMQuVaM",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 11,
+        "word": "love",
+        "role": "speaker1",
+        "available_at": 11.12845627376426,
+        "confidence": 0.9614874124526978
+      },
+      "full_seconds": 21
+    },
+    {
+      "name": "qSymgMQuVaM_sub_video_18_speaker2",
+      "source": "qSymgMQuVaM",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 11,
+        "word": "love",
+        "role": "speaker1",
+        "available_at": 11.12845627376426,
+        "confidence": 0.9614874124526978
+      },
+      "full_seconds": 21
+    },
+    {
+      "name": "rXHmySD2DXE_sub_video_39_speaker1",
+      "source": "rXHmySD2DXE",
+      "history": true,
+      "donor": "D8K1AAxkg0g_sub_video_77_000_speaker1",
+      "event": null,
+      "full_seconds": 27
+    },
+    {
+      "name": "rXHmySD2DXE_sub_video_39_speaker2",
+      "source": "rXHmySD2DXE",
+      "history": true,
+      "donor": "D8K1AAxkg0g_sub_video_77_000_speaker2",
+      "event": null,
+      "full_seconds": 27
+    },
+    {
+      "name": "sCdn0hyfxYw_sub_video_13_000_speaker1",
+      "source": "sCdn0hyfxYw",
+      "history": true,
+      "donor": "H_xMzAWWsNU_sub_video_7_speaker1",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "sCdn0hyfxYw_sub_video_13_000_speaker2",
+      "source": "sCdn0hyfxYw",
+      "history": true,
+      "donor": "H_xMzAWWsNU_sub_video_7_speaker2",
+      "event": null,
+      "full_seconds": 29
+    },
+    {
+      "name": "v0339jvjRLQ_sub_video_13_001_speaker1",
+      "source": "v0339jvjRLQ",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 7,
+        "word": "great",
+        "role": "speaker1",
+        "available_at": 7.484871697651664,
+        "confidence": 0.9990780711174011
+      },
+      "full_seconds": 20
+    },
+    {
+      "name": "v0339jvjRLQ_sub_video_13_001_speaker2",
+      "source": "v0339jvjRLQ",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 7,
+        "word": "great",
+        "role": "speaker1",
+        "available_at": 7.484871697651664,
+        "confidence": 0.9990780711174011
+      },
+      "full_seconds": 20
+    },
+    {
+      "name": "vMDhbHWUFb8_sub_video_33_000_speaker1",
+      "source": "vMDhbHWUFb8",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 18,
+        "word": "great",
+        "role": "speaker2",
+        "available_at": 18.18728657314629,
+        "confidence": 0.9982101440429687
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "vMDhbHWUFb8_sub_video_33_000_speaker2",
+      "source": "vMDhbHWUFb8",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 18,
+        "word": "great",
+        "role": "speaker2",
+        "available_at": 18.18728657314629,
+        "confidence": 0.9982101440429687
+      },
+      "full_seconds": 29
+    },
+    {
+      "name": "vZoZ1Ttak6E_sub_video_19_speaker1",
+      "source": "vZoZ1Ttak6E",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 6,
+        "word": "excited",
+        "role": "speaker2",
+        "available_at": 6.765033507073716,
+        "confidence": 0.9988670945167542
+      },
+      "full_seconds": 26
+    },
+    {
+      "name": "vZoZ1Ttak6E_sub_video_19_speaker2",
+      "source": "vZoZ1Ttak6E",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 6,
+        "word": "excited",
+        "role": "speaker2",
+        "available_at": 6.765033507073716,
+        "confidence": 0.9988670945167542
+      },
+      "full_seconds": 26
+    },
+    {
+      "name": "zLW8ZP9zSg4_sub_video_22_001_speaker1",
+      "source": "zLW8ZP9zSg4",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 15,
+        "word": "hurt",
+        "role": "speaker2",
+        "available_at": 15.044606431852985,
+        "confidence": 0.9683052450418472
+      },
+      "full_seconds": 26
+    },
+    {
+      "name": "zLW8ZP9zSg4_sub_video_22_001_speaker2",
+      "source": "zLW8ZP9zSg4",
+      "history": false,
+      "donor": null,
+      "event": {
+        "index": 15,
+        "word": "hurt",
+        "role": "speaker2",
+        "available_at": 15.044606431852985,
+        "confidence": 0.9683052450418472
+      },
+      "full_seconds": 26
+    }
+  ],
+  "feature_digest": "a62ebe1257cfbfa3cbfe923d8a83a4db0d88b275d4308d1ba11fc83af20fb400",
+  "lexicon": [
+    "afraid",
+    "amazing",
+    "angry",
+    "cry",
+    "crying",
+    "excited",
+    "fear",
+    "glad",
+    "great",
+    "happiness",
+    "happy",
+    "hate",
+    "hated",
+    "hurt",
+    "love",
+    "loved",
+    "sad",
+    "scared",
+    "sorry",
+    "terrible",
+    "upset",
+    "wonderful",
+    "worried",
+    "worry"
+  ],
+  "protocol": {
+    "checkpoint_steps": 1000,
+    "chunk_frames": 25,
+    "history_seconds": 3,
+    "history_reset_before_index": 8,
+    "history_score_indices": [
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18
+    ],
+    "event_relative_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "repeat_relative_indices": [
+      0,
+      2,
+      4
+    ],
+    "event_min_alignment_confidence": 0.8,
+    "bootstrap_seed": 6666,
+    "bootstrap_replicates": 2000,
+    "uncertainty_unit": "original video source",
+    "event_label": "fixed English lexicon candidate; not a human emotion label",
+    "primary_quality": "one-second mean expression MSE against real target, full natural inputs",
+    "history": "reset only persistent z/relation at 8s; identical AV and cached dialogue text; score after 3s flush",
+    "partner": "shuffle partner SSM observations from a different source; retain original fast affect and all raw AV/text",
+    "coupling_off": "same checkpoint and observations, disable dyadic influence and relation update",
+    "pulse": "zero/single/three repetitions of one real text-event embedding; identical natural suffix observations; suffix is not assumed neutral",
+    "no_counterfactual_ground_truth": true
+  },
+  "digest": "4d4a3ff577fc64920263199a5c2d736d82ee4a0a41acfeea65b3d2ba15a2d9c4"
+}

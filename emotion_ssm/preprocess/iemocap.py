@@ -94,6 +94,8 @@ def parse_evaluations(path: Path, transcript: Mapping[str, str]) -> List[Dict]:
                 "vad": vad,
                 "vad_mask": [True, True, True],
                 "intensity": (vad[1] + 1.0) / 2.0,
+                "intensity_mask": False,
+                "intensity_source": "arousal_proxy_for_candidate_matching_only",
                 "start_time": float(match.group("start")),
                 "end_time": float(match.group("end")),
             }
@@ -122,10 +124,10 @@ def find_video(session_root: Path, dialogue_id: str) -> Optional[Path]:
     return sorted(candidates)[0] if candidates else None
 
 
-def run_openface(binary: str, video: Path, output_dir: Path) -> Optional[Path]:
+def run_openface(binary: str, video: Path, output_dir: Path, rebuild: bool = False) -> Optional[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     expected = output_dir / f"{video.stem}.csv"
-    if expected.exists():
+    if expected.exists() and not rebuild:
         return expected
     command = [binary, "-f", str(video), "-out_dir", str(output_dir), "-aus"]
     subprocess.run(command, check=True)
@@ -157,6 +159,7 @@ def read_openface_csv(path: Optional[Path]) -> List[Dict[str, object]]:
                 frames.append(
                     {
                         "timestamp": float(row.get("timestamp", "0") or 0.0),
+                        "face_id": str(row.get("face_id", "0")),
                         "confidence": float(row.get("confidence", "0") or 0.0),
                         "success": int(float(row.get("success", "0") or 0.0)),
                         "au": values,
@@ -172,10 +175,14 @@ def slice_face_frames(
     start: float,
     end: float,
     confidence_threshold: float,
+    face_id: Optional[str] = None,
+    require_identity: bool = False,
 ) -> Tuple[Tensor, Tensor, Tensor]:
     # 多人 CSV 同一时间戳可能有多行；保留置信度最高的一张脸。
     best_by_timestamp: Dict[float, Mapping[str, object]] = {}
     for frame in frames:
+        if require_identity and (face_id is None or str(frame.get("face_id", "")) != str(face_id)):
+            continue
         timestamp = float(frame["timestamp"])
         if timestamp < start or timestamp > end:
             continue
@@ -201,11 +208,14 @@ def slice_face_frames(
 
 
 def slice_face_timestamps(
-    frames: Sequence[Mapping[str, object]], start: float, end: float
+    frames: Sequence[Mapping[str, object]], start: float, end: float,
+    face_id: Optional[str] = None, require_identity: bool = False,
 ) -> Tensor:
     """Return timestamps in the same deduplicated order as AU frame slicing."""
     best_by_timestamp: Dict[float, Mapping[str, object]] = {}
     for frame in frames:
+        if require_identity and (face_id is None or str(frame.get("face_id", "")) != str(face_id)):
+            continue
         timestamp = float(frame["timestamp"])
         if timestamp < start or timestamp > end:
             continue
@@ -219,19 +229,17 @@ def slice_face_timestamps(
 
 class FeatureExtractors:
     def __init__(self, cfg) -> None:
-        from transformers import AutoModel, AutoTokenizer, Wav2Vec2Model, Wav2Vec2Processor
+        from transformers import AutoModel, AutoTokenizer
 
         self.device = torch.device(cfg.PREPROCESS.DEVICE)
         local_only = bool(cfg.PREPROCESS.LOCAL_FILES_ONLY)
-        self.audio_processor = Wav2Vec2Processor.from_pretrained(
-            cfg.PREPROCESS.AUDIO_MODEL, local_files_only=local_only
-        )
-        self.audio_model = Wav2Vec2Model.from_pretrained(
+        self.audio_model = AutoModel.from_pretrained(
             cfg.PREPROCESS.AUDIO_MODEL, local_files_only=local_only
         ).to(self.device).eval()
         self.text_tokenizer = AutoTokenizer.from_pretrained(
             cfg.PREPROCESS.TEXT_MODEL, local_files_only=local_only
         )
+        self.text_tokenizer.truncation_side = "left"
         self.text_model = AutoModel.from_pretrained(
             cfg.PREPROCESS.TEXT_MODEL, local_files_only=local_only
         ).to(self.device).eval()
@@ -240,26 +248,18 @@ class FeatureExtractors:
     @torch.no_grad()
     def encode_audio(self, paths: Sequence[Path]) -> Tensor:
         outputs = []
+        self.audio_valid = []
         for start in range(0, len(paths), self.batch_size):
             waves = [librosa.load(str(path), sr=16000)[0] for path in paths[start:start + self.batch_size]]
-            inputs = self.audio_processor(
-                waves, sampling_rate=16000, return_tensors="pt", padding=True
-            )
-            input_values = inputs.input_values.to(self.device)
-            attention_mask = getattr(inputs, "attention_mask", None)
-            model_output = self.audio_model(
-                input_values,
-                attention_mask=None if attention_mask is None else attention_mask.to(self.device),
-            ).last_hidden_state
-            if attention_mask is not None and hasattr(
-                self.audio_model, "_get_feature_vector_attention_mask"
-            ):
-                mask = self.audio_model._get_feature_vector_attention_mask(
-                    model_output.shape[1], attention_mask.to(self.device)
-                )
-                pooled = (model_output * mask[:, :, None]).sum(1) / mask.sum(1, keepdim=True).clamp_min(1)
-            else:
-                pooled = model_output.mean(dim=1)
+            from emotion_ssm.data.dualtalk import speech_is_active
+            from emotion_ssm.utils.audio import minimum_waveform_length
+            self.audio_valid.extend(len(wave) >= minimum_waveform_length(self.audio_model) and speech_is_active(wave, 1e-4) for wave in waves)
+            values = [torch.from_numpy(wave) for wave in waves]
+            values = [(v-v.mean()) / v.std(unbiased=False).clamp_min(1e-6) for v in values]
+            input_values = torch.nn.utils.rnn.pad_sequence(values, batch_first=True).to(self.device)
+            from emotion_ssm.utils.audio import pooled_audio
+            lengths = torch.tensor([len(wave) for wave in waves], device=self.device)
+            pooled = pooled_audio(self.audio_model, input_values, lengths)
             outputs.append(pooled.cpu())
         result = torch.cat(outputs)
         if result.shape[-1] != 768:
@@ -350,6 +350,14 @@ def compute_fold_face_stats(output_root: Path, fold: int) -> None:
 
 
 def preprocess(cfg) -> None:
+    from emotion_ssm.data.protocol import FeatureSource, fingerprint
+    source = FeatureSource(cfg.PREPROCESS.AUDIO_MODEL, cfg.PREPROCESS.TEXT_MODEL).to_dict()
+    role_map = (json.loads(Path(cfg.PREPROCESS.FACE_ROLE_MAP).read_text(encoding="utf-8"))
+                if cfg.PREPROCESS.FACE_ROLE_MAP else {})
+    pipeline_id = fingerprint({"source": source, "face_roles": role_map,
+                               "openface": cfg.PREPROCESS.OPENFACE_BIN,
+                               "skip_openface": cfg.PREPROCESS.SKIP_OPENFACE,
+                               "confidence": cfg.PREPROCESS.CONFIDENCE_THRESHOLD})
     raw_root = Path(cfg.DATA.IEMOCAP_RAW_ROOT)
     if not raw_root.is_dir():
         raise FileNotFoundError(f"IEMOCAP raw root does not exist: {raw_root}")
@@ -366,22 +374,43 @@ def preprocess(cfg) -> None:
     if not cfg.PREPROCESS.SKIP_OPENFACE:
         openface_binary = require_external_tool(openface_binary, "OpenFace")
         require_external_tool(str(cfg.PREPROCESS.FFMPEG_BIN), "FFmpeg")
+        binary_stat = Path(openface_binary).stat()
+        pipeline_id = fingerprint({"pipeline": pipeline_id, "binary": str(Path(openface_binary).resolve()),
+                                   "size": binary_stat.st_size, "modified": binary_stat.st_mtime_ns})
     extractors = FeatureExtractors(cfg)
+    from emotion_ssm.data.protocol import model_revision
+    source["audio_revision"] = model_revision(source["audio_model"], extractors.audio_model.config)
+    source["text_revision"] = model_revision(source["text_model"], extractors.text_model.config)
+    pipeline_id = fingerprint({"pipeline": pipeline_id, "resolved_source": source})
     errors = []
     completed = []
     for evaluation_file in find_evaluation_files(raw_root):
         dialogue_id = evaluation_file.stem
         session_root = evaluation_file.parents[2]
+        transcript_input = session_root / "dialog" / "transcriptions" / f"{dialogue_id}.txt"
+        input_paths = [evaluation_file, transcript_input]
+        input_paths += sorted((session_root / "sentences" / "wav" / dialogue_id).glob("*.wav"))
+        input_paths += sorted((session_root / "dialog" / "avi" / "DivX").glob(f"{dialogue_id}*.avi"))
+        cache_id = fingerprint({"pipeline": pipeline_id,
+            "labels": evaluation_file.read_text(encoding="utf-8"),
+            "transcript": transcript_input.read_text(encoding="utf-8") if transcript_input.exists() else None,
+            "files": [(str(p.relative_to(raw_root)), p.stat().st_size, p.stat().st_mtime_ns)
+                      for p in input_paths if p.exists()]})
         output_dialogue = output_root / "dialogues" / dialogue_id
         required = [
             output_dialogue / "audio_features.pt",
             output_dialogue / "text_features.pt",
+            output_dialogue / "event_text_features.pt",
             output_dialogue / "face_au_features.pt",
             output_dialogue / "labels.json",
         ]
         if all(path.exists() for path in required):
-            completed.append(dialogue_id)
-            continue
+            provenance = output_dialogue / "provenance.json"
+            if not cfg.PREPROCESS.REBUILD:
+                if not provenance.exists() or json.loads(provenance.read_text(encoding="utf-8")).get("cache_id") != cache_id:
+                    raise ValueError(f"Stale features for {dialogue_id}; use PREPROCESS.REBUILD True")
+                completed.append(dialogue_id)
+                continue
         try:
             transcript_path = session_root / "dialog" / "transcriptions" / f"{dialogue_id}.txt"
             transcript = parse_transcript(transcript_path)
@@ -396,7 +425,13 @@ def preprocess(cfg) -> None:
             if missing:
                 raise FileNotFoundError(f"Missing utterance WAV files: {missing[:3]}")
             audio = extractors.encode_audio(wav_paths)
-            text = extractors.encode_text([str(item["text"]) for item in utterances])
+            from emotion_ssm.preprocess.emotion_features import causal_texts
+            contexts, events, text_masks = causal_texts(utterances, dialogue_id)
+            text = extractors.encode_text(contexts)
+            event_text = extractors.encode_text(events)
+            for index, (item, (context_valid, event_valid)) in enumerate(zip(utterances, text_masks)):
+                item.update(audio_present=extractors.audio_valid[index], context_present=context_valid, event_present=event_valid,
+                            text_available_at=item["end_time"])
 
             openface_csv = None
             if not cfg.PREPROCESS.SKIP_OPENFACE:
@@ -405,7 +440,8 @@ def preprocess(cfg) -> None:
                     openface_csv = run_openface(
                         openface_binary,
                         video,
-                        output_root / "openface_csv" / dialogue_id,
+                        output_root / "openface_csv" / dialogue_id / cache_id,
+                        rebuild=cfg.PREPROCESS.REBUILD,
                     )
             frames = read_openface_csv(openface_csv)
             au_sequences = []
@@ -413,24 +449,31 @@ def preprocess(cfg) -> None:
             frame_valid_masks = []
             timestamp_sequences = []
             for item in utterances:
+                face_id = role_map.get(dialogue_id, {}).get(item["speaker_id"])
                 au, confidence, valid = slice_face_frames(
                     frames,
                     float(item["start_time"]),
                     float(item["end_time"]),
                     float(cfg.PREPROCESS.CONFIDENCE_THRESHOLD),
+                    face_id=face_id, require_identity=True,
                 )
                 au_sequences.append(au)
                 confidence_sequences.append(confidence)
                 frame_valid_masks.append(valid)
                 timestamp_sequences.append(
                     slice_face_timestamps(
-                        frames, float(item["start_time"]), float(item["end_time"])
+                        frames, float(item["start_time"]), float(item["end_time"]),
+                        face_id=face_id, require_identity=True,
                     )
                 )
 
             output_dialogue.mkdir(parents=True, exist_ok=True)
+            (output_dialogue / "provenance.json").write_text(
+                json.dumps({"cache_id": cache_id, "feature_source": source,
+                            "face_identity_verified": bool(role_map.get(dialogue_id))}), encoding="utf-8")
             torch.save(audio, output_dialogue / "audio_features.pt")
             torch.save(text, output_dialogue / "text_features.pt")
+            torch.save(event_text, output_dialogue / "event_text_features.pt")
             torch.save(
                 {
                     "dialogue_id": dialogue_id,
@@ -455,6 +498,10 @@ def preprocess(cfg) -> None:
             (output_dialogue / "labels.json").write_text(
                 json.dumps(labels, ensure_ascii=False, indent=2), encoding="utf-8"
             )
+            (output_dialogue / "provenance.json").write_text(json.dumps({
+                "cache_id": cache_id, "feature_source": source, "labels_digest": fingerprint(labels),
+                "face_identity_verified": bool(role_map.get(dialogue_id)),
+                "text_protocol": "offline_transcript_endpoint"}, indent=2), encoding="utf-8")
             completed.append(dialogue_id)
         except Exception as error:
             errors.append({"dialogue_id": dialogue_id, "error": repr(error)})
@@ -466,6 +513,7 @@ def preprocess(cfg) -> None:
         compute_fold_face_stats(output_root, fold)
     metadata = output_root / "metadata"
     metadata.mkdir(parents=True, exist_ok=True)
+    (metadata / "feature_source.json").write_text(json.dumps(source, indent=2), encoding="utf-8")
     (metadata / "preprocess_summary.json").write_text(
         json.dumps(
             {"completed_dialogues": len(completed), "errors": errors},

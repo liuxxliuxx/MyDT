@@ -3,33 +3,47 @@ DEVICE: cuda
 DATA:
   ROOT: datasets
   DUALTALK_ROOT: datasets/dualtalk
-  NUM_WORKERS: 8
+  NUM_WORKERS: 6
 TRAIN:
   OUTPUT_ROOT: runs
   EXPERIMENT_NAME: fold5
   SEQUENCE_BATCH_SIZE: 4
   EPOCHS: 100
   LR: 0.0001
+  AMP: false
+  MAX_STEPS: 30000
+  GLOBAL_CHUNKS_PER_STEP: 32
+  VAL_EVERY_STEPS: 1000
   OBSERVATION_CHECKPOINT: runs/phase_a_observation/fold5/observation_encoder.pt
   PHASE_B_CHECKPOINT: runs/phase_b_coupling/fold5/phase_b_best.pt
 LOSS:
-  DUALTALK_STATE_ANCHOR: 0.01
+  DUALTALK_STATE_ANCHOR: 0.0
+  GENERATION_STATE: 0.0
 DUALTALK:
   BASELINE_CHECKPOINT: checkpoints/dualtalk_baseline.pth
   PHASE_B_CHECKPOINT: runs/phase_b_coupling/fold5/phase_b_best.pt
   AUDIO_MODEL: facebook/wav2vec2-base-960h
+  AUDIO_FEATURE_BATCH_SIZE: 16
   FEATURE_DIM: 256
   BLENDSHAPE_DIM: 56
   FILM_SCALE: 0.1
-  FREEZE_STATE_EPOCHS: 10
-  FREEZE_BASELINE_EPOCHS: 10
+  FREEZE_STATE_EPOCHS: 1000000
+  FREEZE_BASELINE_EPOCHS: 0
   JOINT_FINETUNE_LR_SCALE: 0.1
   SYNTHESIS_FINETUNE_LR_SCALE: 0.1
-  # State values carry across adjacent chunks; truncate credit assignment every 4 chunks.
+  # Legacy-only setting. In v2 the calibrated observer and SSM are fixed.
   STATE_BPTT_CHUNKS: 4
-  ADAPTER_INIT_SOURCE: 0
+  ADAPTER_INIT_SOURCE: -1
   ADAPTER_DOMAIN_ID: 2
   SPEECH_RMS_THRESHOLD: 0.0001
   CAUSAL_STATE_CONTEXT: true
   FPS: 25
   CHUNK_FRAMES: 25
+  PROTOCOL_VERSION: 2
+  VARIANT: dyadic
+  HISTORY_SECONDS: 3.0
+  TEXT_MAX_TOKENS: 256
+  SOURCE_MANIFEST: artifacts/feature_sources.json
+  SPLIT_MANIFEST: artifacts/dualtalk_v2/splits.json
+  TIMED_FEATURE_ROOT: artifacts/dualtalk_v2
+  CALIBRATION_CHECKPOINT: runs/dualtalk_calibration/fold5/observer.pt

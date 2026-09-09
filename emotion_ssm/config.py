@@ -16,9 +16,9 @@ def get_cfg_defaults() -> CN:
 
     cfg.DATA = CN()
     cfg.DATA.ROOT = "datasets"
-    cfg.DATA.EMOTIONTALK_ROOT = "datasets/emotiontalk/processed"
+    cfg.DATA.EMOTIONTALK_ROOT = "artifacts/features/emotiontalk_v2"
     cfg.DATA.IEMOCAP_RAW_ROOT = "datasets/iemocap/raw"
-    cfg.DATA.IEMOCAP_FEATURE_ROOT = "artifacts/features/iemocap"
+    cfg.DATA.IEMOCAP_FEATURE_ROOT = "artifacts/features/iemocap_v2"
     cfg.DATA.DUALTALK_ROOT = "datasets/dualtalk"
     cfg.DATA.IEMOCAP_FOLD = 5
     cfg.DATA.WINDOW_LENGTH = 33
@@ -27,6 +27,7 @@ def get_cfg_defaults() -> CN:
     cfg.DATA.PIN_MEMORY = True
     cfg.DATA.DOMAIN_RATIO = [2, 1]
     cfg.DATA.SOURCES = ["emotiontalk", "iemocap"]
+    cfg.DATA.ALLOW_LEGACY_FEATURES = False
 
     cfg.PREPROCESS = CN()
     cfg.PREPROCESS.AUDIO_MODEL = "facebook/wav2vec2-base-960h"
@@ -81,7 +82,7 @@ def get_cfg_defaults() -> CN:
     cfg.LOSS.CORRECTION = 0.05
     cfg.LOSS.COUNTERFACTUAL = 0.2
     cfg.LOSS.COUNTERFACTUAL_MARGIN = 0.2
-    cfg.LOSS.GENERATION_STATE = 0.1
+    cfg.LOSS.GENERATION_STATE = 0.0
     cfg.LOSS.OPEN_LOOP_TRAJECTORY = 0.5
     cfg.LOSS.DUALTALK_STATE_ANCHOR = 0.01
 
@@ -113,6 +114,9 @@ def get_cfg_defaults() -> CN:
     cfg.TRAIN.DRY_RUN = False
     cfg.TRAIN.DRY_RUN_TRAIN_BATCHES = 2
     cfg.TRAIN.DRY_RUN_VAL_BATCHES = 1
+    cfg.TRAIN.MAX_STEPS = 30000
+    cfg.TRAIN.GLOBAL_CHUNKS_PER_STEP = 32
+    cfg.TRAIN.VAL_EVERY_STEPS = 1000
 
     cfg.TRAIN.AUGMENT = CN()
     cfg.TRAIN.AUGMENT.ENABLED = True
@@ -126,7 +130,7 @@ def get_cfg_defaults() -> CN:
     cfg.DYNAMICS = CN()
     cfg.DYNAMICS.HORIZONS = [1, 2, 4, 8, 16, 32]
     cfg.DYNAMICS.CORRECTION_MODE = "teacher_forced"
-    cfg.DYNAMICS.ROLLOUT_MODE = "conditional"
+    cfg.DYNAMICS.ROLLOUT_MODE = "joint"
     cfg.DYNAMICS.OPEN_LOOP_DT = 1.0
     cfg.DYNAMICS.ENABLE_PARTNER = True
     cfg.DYNAMICS.FIXED_RELATION = False
@@ -136,12 +140,17 @@ def get_cfg_defaults() -> CN:
     cfg.DYNAMICS.RANDOM_PARTNER = False
     cfg.DYNAMICS.FREEZE_AFFECT_EPOCHS = 5
     cfg.DYNAMICS.AFFECT_LR_SCALE = 0.05
+    cfg.DYNAMICS.KEEP_AFFECT_FROZEN = True
+    cfg.DYNAMICS.BPTT_EVENTS = 32
+    cfg.DYNAMICS.FULL_DIALOGUES = True
+    cfg.DYNAMICS.MODALITY_SUBSETS = True
 
     cfg.COUNTERFACTUAL = CN()
     cfg.COUNTERFACTUAL.TOP_K = 8
     cfg.COUNTERFACTUAL.INTENSITY_TOLERANCE = 0.2
     cfg.COUNTERFACTUAL.TURN_TOLERANCE = 0.15
     cfg.COUNTERFACTUAL.MAX_ACTION_COSINE = 0.8
+    cfg.COUNTERFACTUAL.EVAL_DIALOGUES_PER_POOL = 4
 
     cfg.DUALTALK = CN()
     cfg.DUALTALK.BASELINE_CHECKPOINT = ""
@@ -152,18 +161,36 @@ def get_cfg_defaults() -> CN:
     cfg.DUALTALK.FREEZE_STATE_EPOCHS = 10
     cfg.DUALTALK.FREEZE_BASELINE_EPOCHS = 10
     cfg.DUALTALK.FPS = 25
-    cfg.DUALTALK.CHUNK_FRAMES = 200
+    cfg.DUALTALK.CHUNK_FRAMES = 25
     cfg.DUALTALK.AUDIO_MODEL = "facebook/wav2vec2-base-960h"
     cfg.DUALTALK.LOCAL_FILES_ONLY = False
+    # Number of flattened dialogue chunks sent through each frozen audio
+    # backbone call. This changes only extraction batching, not optimizer
+    # batch size or state update order.
+    cfg.DUALTALK.AUDIO_FEATURE_BATCH_SIZE = 16
     cfg.DUALTALK.JOINT_FINETUNE_LR_SCALE = 0.1
     cfg.DUALTALK.SYNTHESIS_FINETUNE_LR_SCALE = 0.1
     # Keep causal state across adjacent chunks while bounding activation memory.
     cfg.DUALTALK.STATE_BPTT_CHUNKS = 4
-    cfg.DUALTALK.ADAPTER_INIT_SOURCE = 0
+    cfg.DUALTALK.ADAPTER_INIT_SOURCE = -1
     cfg.DUALTALK.ADAPTER_DOMAIN_ID = 2
     cfg.DUALTALK.SPEECH_RMS_THRESHOLD = 1e-4
     cfg.DUALTALK.CAUSAL_STATE_CONTEXT = True
     cfg.DUALTALK.RENDER_COMMAND = ""
+    cfg.DUALTALK.PROTOCOL_VERSION = 2
+    cfg.DUALTALK.VARIANT = "dyadic"
+    cfg.DUALTALK.HISTORY_SECONDS = 3.0
+    cfg.DUALTALK.TEXT_MAX_TOKENS = 256
+    cfg.DUALTALK.SPLIT_MANIFEST = "artifacts/dualtalk_v2/splits.json"
+    cfg.DUALTALK.SPLIT_SEED = 6666
+    cfg.DUALTALK.TIMED_FEATURE_ROOT = "artifacts/dualtalk_v2"
+    cfg.DUALTALK.CALIBRATION_CHECKPOINT = ""
+    cfg.DUALTALK.PROJECTOR_CHECKPOINT = ""
+    cfg.DUALTALK.SOURCE_MANIFEST = ""
+    # Only explicit CLI path overrides may relocate a resumed experiment.
+    cfg.TRAIN.RESUME_PATH_OVERRIDES = []
+    cfg.PREPROCESS.FACE_ROLE_MAP = ""
+    cfg.PREPROCESS.REBUILD = False
 
     return cfg
 
@@ -192,6 +219,11 @@ def parse_config_args(description: str) -> Tuple[CN, argparse.Namespace]:
     cfg.merge_from_file(str(args.config))
     if args.opts:
         cfg.merge_from_list(args.opts)
+        path_keys = {"DATA.ROOT", "DATA.EMOTIONTALK_ROOT", "DATA.IEMOCAP_FEATURE_ROOT",
+                     "DATA.IEMOCAP_RAW_ROOT", "DATA.DUALTALK_ROOT", "TRAIN.OUTPUT_ROOT",
+                     "DUALTALK.TIMED_FEATURE_ROOT", "DUALTALK.SPLIT_MANIFEST"}
+        cfg.TRAIN.RESUME_PATH_OVERRIDES = sorted(set(cfg.TRAIN.RESUME_PATH_OVERRIDES)
+                                                | (set(args.opts[::2]) & path_keys))
     cfg.defrost()
     if args.resume is not None:
         cfg.TRAIN.RESUME = str(args.resume)

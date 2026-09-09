@@ -131,6 +131,19 @@ class DialogueRecord:
     end_time: Tensor
     dt_to_next: Tensor
     utterance_ids: List[str]
+    event_text: Tensor = None
+    event_present: Tensor = None
+    intensity_mask: Tensor = None
+
+    def __post_init__(self):
+        # Legacy records retain sentence-level event semantics only when the
+        # caller explicitly opts into legacy feature loading.
+        if self.event_text is None:
+            self.event_text = self.text.clone()
+        if self.event_present is None:
+            self.event_present = self.modality_mask[:, 2].clone()
+        if self.intensity_mask is None:
+            self.intensity_mask = torch.ones(len(self.intensity), dtype=torch.bool)
 
     def __len__(self) -> int:
         return len(self.emotion)

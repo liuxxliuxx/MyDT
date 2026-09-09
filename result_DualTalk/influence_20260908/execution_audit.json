@@ -1,0 +1,35 @@
+{
+  "date": "2026-09-08",
+  "checks": {
+    "variants": 4,
+    "directed_clips_per_variant": 100,
+    "history_valid_frames": 12800,
+    "event_valid_frames": 8550,
+    "parity_exact": true,
+    "complete_launcher": true,
+    "no_tracebacks": true
+  },
+  "source_sha256": {
+    "emotion_ssm/evaluate_influence.py": "7b65aa93e31acd05158a833046cfbd7e377bc9f4c67a347d88896961dc23567e",
+    "scripts/run_influence_experiments.py": "6335dcdd628310fde7fdde53d3626361b99117a3c7c71c3a7985859cd147f186",
+    "scripts/report_influence_experiments.py": "1d3b2e271962ab3c0e18691656e3e23519df89f192207395f4b3251db5207e0e",
+    "tests/test_influence_experiments.py": "c8d1b09f2ef183398ddf0343f4eb063267b51b1807755fc8e846a09f3516e368"
+  },
+  "result_sha256": {
+    "affect.json": "b33b3cf8c16daf6d9bec4d49edc24cd5e2f8fcb861330cec1cce476270a1a534",
+    "chart_contract.json": "6933c666ec3c9f36767a263014f4f581b42421fe40e0c09b4c63b2d2340d9e89",
+    "dyadic.json": "03b39ca98aed1c1545a44934358f29de3d417967292a403f7ed33790110ef1c7",
+    "extended_summary.json": "f473b556d51ec178e2792d7c401742919f0aa239c67ce01c0ed8763b615d57eb",
+    "manifest.json": "91f500b6610055be3d95d2bb5ddeb6d19ef1e522c98a054f2949102850cfbafa",
+    "none.json": "e228faf0b7fb3cd05f41b85dfc0f93f7a085f5ded64b7d6f90c1409cc1c0f3b1",
+    "self.json": "243233ac255a041193cdcaf25ef111d1dcadafd772cc76c0acefd761170c8291",
+    "summary.json": "b2d2bbdbdcaefe2a2a57cbcdaab9a3b2a99268ea8b73b994de25293172aa8fa6"
+  },
+  "tests": {
+    "new_experiment_tests": 8,
+    "existing_v2_pipeline_tests": 31,
+    "passed": true
+  },
+  "inference_device": "server1 physical GPU3",
+  "training_steps_added": 0
+}

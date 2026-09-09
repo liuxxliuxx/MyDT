@@ -28,6 +28,7 @@ def match_counterfactuals(
     intensity_tolerance: float = 0.2,
     turn_tolerance: float = 0.15,
     max_action_cosine: float = 0.8,
+    dataset_id: Optional[Tensor] = None,
 ) -> CounterfactualMatches:
     """Find context-near but action-different interventions in another dialogue.
 
@@ -43,6 +44,8 @@ def match_counterfactuals(
         sender_action, dim=-1
     ).transpose(0, 1)
     valid = dialogue_id[:, None] != dialogue_id[None, :]
+    if dataset_id is not None:
+        valid &= dataset_id[:, None] == dataset_id[None, :]
     valid &= context_emotion[:, None] == context_emotion[None, :]
     valid &= context_emotion[:, None] >= 0
     valid &= (

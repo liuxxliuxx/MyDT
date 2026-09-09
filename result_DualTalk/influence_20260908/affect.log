@@ -1,0 +1,29 @@
+/home/s21_yhr/miniconda3/envs/lzh_DDG/lib/python3.9/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+/home/s21_yhr/miniconda3/envs/lzh_DDG/lib/python3.9/site-packages/torch/nn/modules/transformer.py:382: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  warnings.warn(
+{"stage": "natural_forward", "variant": "affect", "clips": 8, "total": 100, "elapsed_seconds": 40}
+{"stage": "natural_forward", "variant": "affect", "clips": 16, "total": 100, "elapsed_seconds": 50}
+{"stage": "natural_forward", "variant": "affect", "clips": 24, "total": 100, "elapsed_seconds": 60}
+{"stage": "natural_forward", "variant": "affect", "clips": 32, "total": 100, "elapsed_seconds": 71}
+{"stage": "natural_forward", "variant": "affect", "clips": 40, "total": 100, "elapsed_seconds": 82}
+{"stage": "natural_forward", "variant": "affect", "clips": 48, "total": 100, "elapsed_seconds": 92}
+{"stage": "natural_forward", "variant": "affect", "clips": 56, "total": 100, "elapsed_seconds": 103}
+{"stage": "natural_forward", "variant": "affect", "clips": 64, "total": 100, "elapsed_seconds": 114}
+{"stage": "natural_forward", "variant": "affect", "clips": 72, "total": 100, "elapsed_seconds": 124}
+{"stage": "natural_forward", "variant": "affect", "clips": 80, "total": 100, "elapsed_seconds": 133}
+{"stage": "natural_forward", "variant": "affect", "clips": 88, "total": 100, "elapsed_seconds": 144}
+{"stage": "natural_forward", "variant": "affect", "clips": 96, "total": 100, "elapsed_seconds": 154}
+{"stage": "interventions", "variant": "affect", "clips": 8, "total": 100, "elapsed_seconds": 163}
+{"stage": "interventions", "variant": "affect", "clips": 16, "total": 100, "elapsed_seconds": 167}
+{"stage": "interventions", "variant": "affect", "clips": 24, "total": 100, "elapsed_seconds": 170}
+{"stage": "interventions", "variant": "affect", "clips": 32, "total": 100, "elapsed_seconds": 175}
+{"stage": "interventions", "variant": "affect", "clips": 40, "total": 100, "elapsed_seconds": 179}
+{"stage": "interventions", "variant": "affect", "clips": 48, "total": 100, "elapsed_seconds": 183}
+{"stage": "interventions", "variant": "affect", "clips": 56, "total": 100, "elapsed_seconds": 187}
+{"stage": "interventions", "variant": "affect", "clips": 64, "total": 100, "elapsed_seconds": 191}
+{"stage": "interventions", "variant": "affect", "clips": 72, "total": 100, "elapsed_seconds": 195}
+{"stage": "interventions", "variant": "affect", "clips": 80, "total": 100, "elapsed_seconds": 198}
+{"stage": "interventions", "variant": "affect", "clips": 88, "total": 100, "elapsed_seconds": 203}
+{"stage": "interventions", "variant": "affect", "clips": 96, "total": 100, "elapsed_seconds": 207}
+{"finished": "runs/v2_influence_20260908/affect.json", "variant": "affect", "parity": {"context_max_absolute_error": 0.0, "prediction_max_absolute_error": 0.0}, "elapsed_seconds": 209.35658740997314}

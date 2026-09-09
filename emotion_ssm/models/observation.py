@@ -306,6 +306,10 @@ class ObservationEncoder(nn.Module):
             face, batch.get("face_frame_mask"), batch.get("face_confidence")
         )
         face_token = self.face_adapter(face_token, domain)
+        # A separately calibrated FLAME encoder can supply visual tokens. Raw
+        # FLAME coefficients are never interpreted as AU measurements.
+        if "visual_token" in batch:
+            face_token = batch["visual_token"]
         projected = torch.stack([audio_token, face_token, text_token], dim=1)
 
         raw_modality_aff = self.shared_affect_projector(projected)
@@ -354,8 +358,12 @@ class ObservationEncoder(nn.Module):
         # Event is a semantic signal, so an audio/video-only subset must not
         # manufacture one from masked text.  Action remains a multimodal
         # behavior representation and is learned later from partner response.
-        event = self.event_head(text_token)[:, None].expand(-1, num_subsets, -1)
+        event_token = (self.text_adapter(batch["event_text"], domain)
+                       if "event_text" in batch else text_token)
+        event = self.event_head(event_token)[:, None].expand(-1, num_subsets, -1)
         event = event * present[:, :, 2, None].to(event.dtype)
+        if "event_present" in batch:
+            event = event * batch["event_present"][:, None, None].to(event.dtype)
         reliability_logits = self.reliability_head(hidden)
         return ObservationOutput(
             aff=aff,

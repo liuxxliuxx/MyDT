@@ -202,7 +202,9 @@ class DyadicEmotionSSM(nn.Module):
             raise ValueError(
                 f"dt batch dimension must be {batch_size}, got {value.shape[0]}"
             )
-        return torch.nan_to_num(value, nan=0.0, posinf=0.0, neginf=0.0)
+        if not torch.isfinite(value).all():
+            raise ValueError("Time intervals must be finite")
+        return value
 
     def decay_only(self, state: DyadicState, dt: Tensor) -> DyadicState:
         """Advance time without correction, self stimulus or partner action."""
@@ -218,6 +220,36 @@ class DyadicEmotionSSM(nn.Module):
             relation=state.relation,
             speaker_ids=state.speaker_ids,
         )
+
+    def predict_at(self, state, current_time, query_times, future_inputs=None, **options):
+        """Predict at explicit seconds; conditional inputs contain no affect correction.
+
+        future_inputs is an optional sequence of (timestamp, two observations).
+        Open-loop calls never inspect it. Inputs at the origin are already in
+        state and cannot be injected again.
+        """
+        import math
+        queries = [float(t) for t in query_times]
+        if any(not math.isfinite(t) or t < current_time for t in queries):
+            raise ValueError("Query times must be finite and at/after the state timestamp")
+        if queries != sorted(queries):
+            raise ValueError("Query times must be sorted")
+        inputs = sorted(future_inputs or [], key=lambda item: item[0])
+        if any(o.action_duration is None for _, observations in inputs for o in observations):
+            raise ValueError("Conditional future actions require explicit durations")
+        if any(not math.isfinite(float(t)) or t <= current_time for t, _ in inputs):
+            raise ValueError("Conditional inputs must occur strictly after the origin")
+        results, cursor, time, current = [], 0, float(current_time), state
+        for query in queries:
+            while cursor < len(inputs) and inputs[cursor][0] <= query:
+                timestamp, observations = inputs[cursor]
+                current = self.observe(current, observations, timestamp-time, correct=False, **options)
+                time = float(timestamp)
+                cursor += 1
+            current = self.decay_only(current, query-time)
+            time = query
+            results.append(current)
+        return results
 
     def correct(
         self,
@@ -245,6 +277,7 @@ class DyadicEmotionSSM(nn.Module):
                 dim=-1,
             )
         )
+        gate = gate * modality_mask.bool().any(-1, keepdim=True).to(gate.dtype)
         evidence_residual = observation.aff - self.state_to_aff(active_state)
         corrected = active_state + gate * self.residual_to_state(evidence_residual)
         return (
@@ -259,6 +292,67 @@ class DyadicEmotionSSM(nn.Module):
     # Kept for checkpoints and downstream callers that used the private helper.
     def _correct(self, state, observation, active_role, enabled):
         return self.correct(state, observation, active_role, enabled)
+
+    @staticmethod
+    def evidence_present(observation):
+        if observation.modality_mask is None:
+            return torch.ones(observation.aff.shape[0], dtype=torch.bool, device=observation.aff.device)
+        return observation.modality_mask.bool().any(-1)
+
+    def event_stimulus(self, observation):
+        present = observation.event_present
+        if present is None:
+            present = (observation.modality_mask[..., 2] if observation.modality_mask is not None
+                       else observation.event.abs().sum(-1) > 0)
+        if observation.modality_mask is not None:
+            present = present.bool() & observation.modality_mask[..., 2].bool()
+        return self.event_to_delta(observation.event) * present[..., None].to(observation.event.dtype)
+
+    def observe(self, state, observations, dt, enable_partner=True, correct=True,
+                fixed_relation=False, symmetric_coupling=False):
+        """Endpoint clock: elapsed decay, current correction, one event injection.
+
+        Both observations refer to the same endpoint. Their action_duration is
+        the amount of new observed behavior, not time since an arbitrary call.
+        The returned state is at this endpoint, with no future advance.
+        """
+        if len(observations) != 2:
+            raise ValueError("observe requires exactly two role observations")
+        dt = self._normalize_dt(dt, len(state.z), state.z.device, state.z.dtype)
+        if (dt < 0).any():
+            raise ValueError("Observation time cannot run backwards")
+        prior = self.decay_only(state, dt)
+        baseline, _ = self.personal(state.speaker_ids)
+        corrected, available = [], []
+        for role, observation in enumerate(observations):
+            roles = torch.full((len(state.z),), role, dtype=torch.long, device=state.z.device)
+            available.append(self.evidence_present(observation))
+            value, _ = self.correct(prior, observation, roles, correct)
+            corrected.append(torch.where(available[-1][:, None], value.z[:, role], prior.z[:, role]))
+        offset = torch.stack(corrected, 1) - baseline
+        offset = offset + torch.stack([self.event_stimulus(o) for o in observations], 1)
+        durations = []
+        for observation, valid in zip(observations, available):
+            duration = dt if observation.action_duration is None else self._normalize_dt(
+                observation.action_duration, len(state.z), state.z.device, state.z.dtype)
+            if (duration < 0).any():
+                raise ValueError("Action duration cannot be negative")
+            durations.append(duration * valid.to(dt.dtype))
+        to_a, to_b = torch.zeros_like(offset[:, 0]), torch.zeros_like(offset[:, 1])
+        if enable_partner:
+            to_b = self.direction_ab(offset[:, 0], observations[0].action,
+                                     offset[:, 1], prior.relation)[0] * durations[0][:, None]
+            direction = self.direction_ab if symmetric_coupling else self.direction_ba
+            to_a = direction(offset[:, 1], observations[1].action,
+                             offset[:, 0], prior.relation)[0] * durations[1][:, None]
+        offset = offset + torch.stack([to_a, to_b], 1)
+        relation = prior.relation
+        if not fixed_relation and enable_partner:
+            actions = [o.action * a[:, None].to(o.action.dtype) for o, a in zip(observations, available)]
+            candidate = self.relation_cell(torch.cat([offset[:, 0], offset[:, 1], *actions], -1), relation)
+            gate = 1 - torch.exp(-torch.maximum(durations[0], durations[1]))
+            relation = relation + gate[:, None] * (candidate - relation)
+        return DyadicState(baseline + offset, relation, state.speaker_ids)
 
     def _directional_influence(
         self,
@@ -309,7 +403,7 @@ class DyadicEmotionSSM(nn.Module):
         # Inject the current event and partner action before decay.  The new
         # evidence therefore contributes for the complete interval ``dt``.
         active_offset = select_role(offset, active_role)
-        stimulus = self.event_to_delta(observation.event)
+        stimulus = self.event_stimulus(observation)
         next_offset = replace_role(offset, active_role, active_offset + stimulus)
         influence = torch.zeros_like(stimulus)
         signal = torch.zeros_like(stimulus)
@@ -415,8 +509,8 @@ class DyadicEmotionSSM(nn.Module):
             tau = tau.clamp_max(tau.median(dim=-1, keepdim=True).values)
 
         offset = corrected_state.z - baseline
-        stimulus_a = self.event_to_delta(observations[0].event)
-        stimulus_b = self.event_to_delta(observations[1].event)
+        stimulus_a = self.event_stimulus(observations[0])
+        stimulus_b = self.event_stimulus(observations[1])
         self_offset = torch.stack(
             [offset[:, 0] + stimulus_a, offset[:, 1] + stimulus_b], dim=1
         )

@@ -4,3 +4,7 @@ __pycache__/
 artifacts/
 runs/
 datasets/
+.venv/
+.codex_askpass*.cmd
+.transfer/
+tests/

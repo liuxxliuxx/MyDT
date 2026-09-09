@@ -19,8 +19,18 @@ def partner_stem(stem: str) -> str:
 
 
 def normalize_waveform(waveform: np.ndarray) -> Tensor:
-    value = torch.from_numpy(waveform).float()
+    value = torch.from_numpy(np.asarray(waveform, dtype=np.float32)).float()
+    if value.numel() == 0:
+        return value
     return (value - value.mean()) / value.std().clamp_min(1e-6)
+
+
+def fixed_audio_chunk(waveform: np.ndarray, num_samples: int) -> Tensor:
+    """Normalize an audio slice and pad/truncate it to one fixed chunk."""
+    value = normalize_waveform(waveform)
+    if value.numel() >= num_samples:
+        return value[:num_samples]
+    return torch.cat((value, value.new_zeros(num_samples - value.numel())))
 
 
 def speech_is_active(waveform: np.ndarray, rms_threshold: float) -> bool:
@@ -90,8 +100,11 @@ class DualTalkChunkDataset(Dataset):
                     {
                         "name": target_npz.stem,
                         "chunk": chunk,
-                        "target_audio": normalize_waveform(target_chunk),
-                        "partner_audio": normalize_waveform(partner_chunk),
+                        # The final WAV chunk can be shorter than the FLAME
+                        # timeline. Pad only the in-memory tensor; raw files
+                        # remain untouched and every dialogue can be stacked.
+                        "target_audio": fixed_audio_chunk(target_chunk, audio_samples),
+                        "partner_audio": fixed_audio_chunk(partner_chunk, audio_samples),
                         "target_speech_active": torch.tensor(
                             speech_is_active(target_chunk, speech_rms_threshold)
                         ),
@@ -147,6 +160,9 @@ class DualTalkDialogueDataset(DualTalkChunkDataset):
             if indices != list(range(len(chunks))):
                 raise ValueError(f"DualTalk chunks for {name} are not consecutive")
             self.dialogues.append(chunks)
+        # Exposed for the length-bucketed batch sampler. Keeping this as a
+        # plain list avoids touching dialogue contents or changing collation.
+        self.lengths = [len(chunks) for chunks in self.dialogues]
 
     def __len__(self) -> int:
         return len(self.dialogues)

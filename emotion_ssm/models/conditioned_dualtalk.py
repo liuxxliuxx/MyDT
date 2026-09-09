@@ -23,10 +23,14 @@ class StateFiLM(nn.Module):
         nn.init.zeros_(self.affine.bias)
 
     def forward(self, features: Tensor, state_context: Tensor) -> Tensor:
+        if state_context.ndim == 3 and state_context.shape[:2] != features.shape[:2]:
+            raise ValueError("Frame-wise FiLM context must match feature timestamps")
         gamma, beta = self.affine(state_context).chunk(2, dim=-1)
         gamma = self.scale * torch.tanh(gamma)
         beta = self.scale * beta
-        return features * (1.0 + gamma[:, None]) + beta[:, None]
+        if gamma.ndim == 2:
+            gamma, beta = gamma[:, None], beta[:, None]
+        return features * (1.0 + gamma) + beta
 
 
 class EmotionConditionedDualTalk(nn.Module):
@@ -39,21 +43,30 @@ class EmotionConditionedDualTalk(nn.Module):
         state_dim: int = 128,
         relation_dim: int = 64,
         film_scale: float = 0.1,
+        audio_config=None,
+        fast_affect_dim: int = 0,
+        context_dim: Optional[int] = None,
     ) -> None:
         super().__init__()
-        args = SimpleNamespace(blendshape_dim=blendshape_dim, feature_dim=feature_dim)
+        args = SimpleNamespace(blendshape_dim=blendshape_dim, feature_dim=feature_dim, audio_config=audio_config)
         self.baseline = DualTalkModel(args)
-        self.context_dim = state_dim * 2 + relation_dim
+        self.context_dim = (state_dim * 2 + relation_dim + 2 * fast_affect_dim
+                            if context_dim is None else int(context_dim))
+        if self.context_dim < 1:
+            raise ValueError("FiLM context must have a positive dimension")
         self.film = StateFiLM(self.context_dim, feature_dim * 2, film_scale)
 
     @classmethod
-    def from_config(cls, cfg) -> "EmotionConditionedDualTalk":
+    def from_config(cls, cfg, audio_config=None, fast_affect_dim=0, context_dim=None) -> "EmotionConditionedDualTalk":
         return cls(
             blendshape_dim=cfg.DUALTALK.BLENDSHAPE_DIM,
             feature_dim=cfg.DUALTALK.FEATURE_DIM,
             state_dim=cfg.MODEL.STATE_DIM,
             relation_dim=cfg.MODEL.RELATION_DIM,
             film_scale=cfg.DUALTALK.FILM_SCALE,
+            audio_config=audio_config,
+            fast_affect_dim=fast_affect_dim,
+            context_dim=context_dim,
         )
 
     def forward(
@@ -63,18 +76,24 @@ class EmotionConditionedDualTalk(nn.Module):
         partner_blendshape: Tensor,
         state_context: Optional[Tensor] = None,
         enable_film: bool = True,
+        audio_features: Optional[Tuple[Tensor, Tensor]] = None,
     ) -> Tensor:
-        audio_target_feature, audio_partner_feature, blendshape_feature = (
-            self.baseline.joint_encoder(
-                audio_target, audio_partner, partner_blendshape
+        if audio_features is None:
+            audio_target_feature, audio_partner_feature, blendshape_feature = (
+                self.baseline.joint_encoder(
+                    audio_target, audio_partner, partner_blendshape
+                )
             )
-        )
-        temporal_feature = self.baseline.temporal_enhancer(
-            audio_partner_feature, blendshape_feature
-        )
-        interaction_feature = self.baseline.interaction_module(
-            audio_target_feature, temporal_feature
-        )
+        else:
+            audio_target_feature, audio_partner_feature = audio_features
+            self.baseline.joint_encoder.require_frozen_audio_cache()
+            _, _, blendshape_feature = (
+                self.baseline.joint_encoder.forward_from_audio_features(
+                    audio_target_feature, audio_partner_feature, partner_blendshape
+                )
+            )
+        temporal_feature = self.baseline.temporal_enhancer(audio_partner_feature, blendshape_feature)
+        interaction_feature = self.baseline.interaction_module(audio_target_feature, temporal_feature)
         if enable_film and state_context is not None:
             interaction_feature = self.film(interaction_feature, state_context)
         return self.baseline.synthesis_module(interaction_feature)
@@ -108,15 +127,15 @@ class AudioOnlyStateObserver(nn.Module):
         model_name: str,
         local_files_only: bool,
         dataset_id: int = 2,
+        backbone_config=None,
     ) -> None:
         super().__init__()
         try:
-            from transformers import Wav2Vec2Model
+            from transformers import AutoModel
         except ImportError as error:
             raise ImportError("transformers is required for DualTalk state conditioning") from error
-        self.backbone = Wav2Vec2Model.from_pretrained(
-            model_name, local_files_only=local_files_only
-        )
+        self.backbone = (AutoModel.from_config(backbone_config) if backbone_config is not None else
+                         AutoModel.from_pretrained(model_name, local_files_only=local_files_only))
         # The acoustic backbone remains a fixed feature extractor throughout
         # DualTalk training. Domain adaptation happens in adapter ``dataset_id``.
         self.backbone.requires_grad_(False)
@@ -129,20 +148,51 @@ class AudioOnlyStateObserver(nn.Module):
         self.backbone.eval()
         return self
 
-    def forward(self, waveform: Tensor, dataset_id: Optional[int] = None) -> EventObservation:
+    @torch.no_grad()
+    def encode_waveform(self, waveform: Tensor, lengths=None) -> Tensor:
+        """Extract one batch of frozen Wav2Vec2 audio embeddings."""
+        from emotion_ssm.utils.audio import pooled_audio
+        return pooled_audio(self.backbone, waveform, lengths)
+
+    @torch.no_grad()
+    def encode_pair(
+        self,
+        target_waveform: Tensor,
+        partner_waveform: Tensor,
+        batch_size: int = 16,
+    ) -> Tuple[Tensor, Tensor]:
+        """Batch target/partner audio through the shared frozen backbone."""
+        if target_waveform.shape != partner_waveform.shape:
+            raise ValueError("target and partner waveforms must have the same shape")
+        if target_waveform.ndim != 2:
+            raise ValueError("waveforms must have shape [B, samples]")
+        batch_size = max(int(batch_size), 1)
+        target_embeddings = []
+        partner_embeddings = []
+        for start in range(0, target_waveform.shape[0], batch_size):
+            target_part = target_waveform[start : start + batch_size]
+            partner_part = partner_waveform[start : start + batch_size]
+            paired = torch.cat([target_part, partner_part], dim=0)
+            embedding = self.encode_waveform(paired)
+            count = target_part.shape[0]
+            target_embeddings.append(embedding[:count])
+            partner_embeddings.append(embedding[count:])
+        if not target_embeddings:
+            empty = target_waveform.new_zeros((0, self.backbone.config.hidden_size))
+            return empty, empty.clone()
+        return torch.cat(target_embeddings, dim=0), torch.cat(partner_embeddings, dim=0)
+
+    def observations_from_embeddings(
+        self, audio: Tensor, dataset_id: Optional[int] = None
+    ) -> EventObservation:
+        """Run the trainable observation encoder on frozen audio features."""
         if dataset_id is None:
             dataset_id = self.dataset_id
-        attention_mask = torch.ones_like(waveform, dtype=torch.long)
-        hidden = self.backbone(
-            waveform, attention_mask=attention_mask
-        ).last_hidden_state
-        audio = hidden.mean(dim=1)
         batch_size = len(audio)
         batch = {
             "audio": audio,
-            # TemporalAUEncoder accepts a one-frame sequence.  The explicit
-            # mask marks this placeholder as absent, so it cannot affect the
-            # A-only observation while keeping the batch schema well-formed.
+            # TemporalAUEncoder accepts a one-frame sequence. The explicit
+            # mask marks this placeholder as absent.
             "face": audio.new_zeros(batch_size, 1, 35),
             "face_frame_mask": torch.zeros(
                 batch_size, 1, dtype=torch.bool, device=audio.device
@@ -162,6 +212,11 @@ class AudioOnlyStateObserver(nn.Module):
         observation = output.select(0)
         observation.modality_mask = batch["modality_mask"]
         return observation
+
+    def forward(self, waveform: Tensor, dataset_id: Optional[int] = None) -> EventObservation:
+        return self.observations_from_embeddings(
+            self.encode_waveform(waveform), dataset_id
+        )
 
 
 class DyadicAudioConditioner(nn.Module):
@@ -194,12 +249,16 @@ class DyadicAudioConditioner(nn.Module):
         enable_partner: bool = True,
         target_speech_active: Optional[Tensor] = None,
         partner_speech_active: Optional[Tensor] = None,
+        observations: Optional[Tuple[EventObservation, EventObservation]] = None,
     ) -> Tuple[Tensor, DyadicState, Dict[str, Tensor]]:
         batch_size = len(audio_target)
         if state is None:
             state = self.initialize_state(audio_target)
-        target_observation = self.audio_observer(audio_target)
-        partner_observation = self.audio_observer(audio_partner)
+        if observations is None:
+            target_observation = self.audio_observer(audio_target)
+            partner_observation = self.audio_observer(audio_partner)
+        else:
+            target_observation, partner_observation = observations
         if target_speech_active is None:
             target_speech_active = audio_target.square().mean(dim=-1) > 1e-8
         if partner_speech_active is None:

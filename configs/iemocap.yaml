@@ -3,7 +3,7 @@ DEVICE: cuda
 DATA:
   ROOT: datasets
   IEMOCAP_RAW_ROOT: datasets/iemocap/raw
-  IEMOCAP_FEATURE_ROOT: artifacts/features/iemocap
+  IEMOCAP_FEATURE_ROOT: artifacts/features/iemocap_v2
 PREPROCESS:
   AUDIO_MODEL: facebook/wav2vec2-base-960h
   TEXT_MODEL: roberta-base

@@ -1,5 +1,7 @@
 # 耦合情感状态空间实现
 
+新版训练、秒级 token、快慢状态、双人耦合、联合梯度和完整 checkpoint 以 [v3 使用说明](../docs/v3_training.md) 为准，依赖使用 `requirements-v2.txt`。旧 v2 实验保留 [v2 使用说明](../docs/v2_training.md)。下文保留早期实现供追溯，其中外部编码器恢复和旧权重命名不适用于 v3。
+
 `emotion_ssm` 是独立于原 `DualTalkModel` 的正式训练包。原始数据只读；IEMOCAP 派生特征写入 `artifacts/`，训练输出写入 `runs/`。`emotion_ssm.utils.paths` 会拒绝把输出目录放进 `datasets/`。
 
 ## 1. 环境

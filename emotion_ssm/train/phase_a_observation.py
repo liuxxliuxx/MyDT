@@ -112,6 +112,10 @@ def augment_student_batch(batch: Mapping[str, torch.Tensor], cfg) -> Dict[str, t
 @torch.no_grad()
 def validate(bundle, loader, device, context, max_batches: int = 0) -> Dict[str, float]:
     bundle.eval()
+    from emotion_ssm.utils.statistics import RepresentationTotals
+    representations = RepresentationTotals()
+    from emotion_ssm.utils.prediction_statistics import PredictionStatistics
+    domain_metrics = PredictionStatistics()
     matrices = [torch.zeros(7, 7, dtype=torch.long) for _ in SUBSET_NAMES]
     intensity_sum = torch.zeros(len(SUBSET_NAMES))
     counts = torch.zeros(len(SUBSET_NAMES))
@@ -119,17 +123,20 @@ def validate(bundle, loader, device, context, max_batches: int = 0) -> Dict[str,
         if max_batches and batch_index >= max_batches:
             break
         batch = move_to_device(raw_batch, device)
-        output, predictions = bundle(batch, SUBSET_MASKS.to(device), 0.0)
+        output, predictions = unwrap_model(bundle)(batch, SUBSET_MASKS.to(device), 0.0)
+        representations.update(output, batch["dataset_id"], SUBSET_NAMES)
+        domain_metrics.observation(output, predictions, batch, SUBSET_NAMES)
         emotion_prediction = predictions["emotion"].argmax(-1)
         for subset in range(len(SUBSET_NAMES)):
             valid = output.valid_subsets[:, subset] & (batch["emotion"] >= 0)
             matrices[subset] += confusion_matrix(
                 batch["emotion"], emotion_prediction[:, subset], mask=valid
             )
+            intensity_valid = output.valid_subsets[:, subset] & batch.get("intensity_mask", torch.ones_like(batch["intensity"], dtype=torch.bool))
             intensity_sum[subset] += (
                 predictions["intensity"][:, subset] - batch["intensity"]
-            ).abs()[output.valid_subsets[:, subset]].sum().cpu()
-            counts[subset] += output.valid_subsets[:, subset].sum().cpu()
+            ).abs()[intensity_valid].sum().cpu()
+            counts[subset] += intensity_valid.sum().cpu()
     if context.enabled:
         matrix_tensor = torch.stack(matrices).to(device)
         error_tensor = intensity_sum.to(device)
@@ -152,6 +159,8 @@ def validate(bundle, loader, device, context, max_batches: int = 0) -> Dict[str,
         metrics[f"{name}_macro_f1"] for name in SUBSET_NAMES
     ) / len(SUBSET_NAMES)
     bundle.train()
+    metrics.update(representations.metrics())
+    metrics.update(domain_metrics.metrics())
     return metrics
 
 
@@ -172,6 +181,13 @@ def save_exported_models(run_dir, bundle, teacher, speaker_vocab, metrics) -> No
 
 def main() -> None:
     cfg, _ = parse_config_args("Stage A0: multimodal emotion observation pretraining")
+    resumed = None
+    if cfg.TRAIN.RESUME:
+        from emotion_ssm.utils.emotion_checkpoint import load_emotion, deployment_paths
+        resumed = load_emotion(cfg.TRAIN.RESUME)
+        cfg = deployment_paths(resumed[2], cfg)
+        from emotion_ssm.utils.checkpoint import validate_resume_data
+        validate_resume_data(resumed[3], cfg)
     context = init_distributed(cfg.DEVICE, cfg.SEED, cfg.DETERMINISTIC)
     run_dir = create_run_directory(cfg, "phase_a_observation")
     if context.is_main:
@@ -205,6 +221,8 @@ def main() -> None:
         len(speaker_vocab),
         cfg.MODEL.NUM_DOMAINS,
     ).to(context.device)
+    if resumed:
+        encoder, heads, teacher = resumed[0].encoder.to(context.device), resumed[0].heads.to(context.device), resumed[1].to(context.device)
     bundle = maybe_ddp(ObservationTrainingBundle(encoder, heads), context)
     optimizer = torch.optim.AdamW(
         bundle.parameters(), lr=cfg.TRAIN.LR, weight_decay=cfg.TRAIN.WEIGHT_DECAY
@@ -294,6 +312,10 @@ def main() -> None:
             for name, value in losses.items():
                 totals[name] = totals.get(name, 0.0) + float(value.detach())
             batches += 1
+            if context.is_main and batches % cfg.TRAIN.LOG_INTERVAL == 0:
+                print(json.dumps({"stage": "A0", "epoch": epoch+1, "batch": batches,
+                    "global_step": global_step, "loss": float(losses["total"].detach()),
+                    "vicreg": float(losses["vicreg"].detach())}), flush=True)
         scheduler.step()
         totals = {name: value / max(batches, 1) for name, value in totals.items()}
         totals = context.reduce_scalars(totals)

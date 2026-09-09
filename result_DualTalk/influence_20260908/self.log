@@ -1,0 +1,29 @@
+/home/s21_yhr/miniconda3/envs/lzh_DDG/lib/python3.9/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+/home/s21_yhr/miniconda3/envs/lzh_DDG/lib/python3.9/site-packages/torch/nn/modules/transformer.py:382: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  warnings.warn(
+{"stage": "natural_forward", "variant": "self", "clips": 8, "total": 100, "elapsed_seconds": 40}
+{"stage": "natural_forward", "variant": "self", "clips": 16, "total": 100, "elapsed_seconds": 48}
+{"stage": "natural_forward", "variant": "self", "clips": 24, "total": 100, "elapsed_seconds": 56}
+{"stage": "natural_forward", "variant": "self", "clips": 32, "total": 100, "elapsed_seconds": 65}
+{"stage": "natural_forward", "variant": "self", "clips": 40, "total": 100, "elapsed_seconds": 74}
+{"stage": "natural_forward", "variant": "self", "clips": 48, "total": 100, "elapsed_seconds": 82}
+{"stage": "natural_forward", "variant": "self", "clips": 56, "total": 100, "elapsed_seconds": 91}
+{"stage": "natural_forward", "variant": "self", "clips": 64, "total": 100, "elapsed_seconds": 99}
+{"stage": "natural_forward", "variant": "self", "clips": 72, "total": 100, "elapsed_seconds": 107}
+{"stage": "natural_forward", "variant": "self", "clips": 80, "total": 100, "elapsed_seconds": 115}
+{"stage": "natural_forward", "variant": "self", "clips": 88, "total": 100, "elapsed_seconds": 124}
+{"stage": "natural_forward", "variant": "self", "clips": 96, "total": 100, "elapsed_seconds": 132}
+{"stage": "interventions", "variant": "self", "clips": 8, "total": 100, "elapsed_seconds": 139}
+{"stage": "interventions", "variant": "self", "clips": 16, "total": 100, "elapsed_seconds": 142}
+{"stage": "interventions", "variant": "self", "clips": 24, "total": 100, "elapsed_seconds": 145}
+{"stage": "interventions", "variant": "self", "clips": 32, "total": 100, "elapsed_seconds": 149}
+{"stage": "interventions", "variant": "self", "clips": 40, "total": 100, "elapsed_seconds": 152}
+{"stage": "interventions", "variant": "self", "clips": 48, "total": 100, "elapsed_seconds": 155}
+{"stage": "interventions", "variant": "self", "clips": 56, "total": 100, "elapsed_seconds": 158}
+{"stage": "interventions", "variant": "self", "clips": 64, "total": 100, "elapsed_seconds": 161}
+{"stage": "interventions", "variant": "self", "clips": 72, "total": 100, "elapsed_seconds": 164}
+{"stage": "interventions", "variant": "self", "clips": 80, "total": 100, "elapsed_seconds": 167}
+{"stage": "interventions", "variant": "self", "clips": 88, "total": 100, "elapsed_seconds": 170}
+{"stage": "interventions", "variant": "self", "clips": 96, "total": 100, "elapsed_seconds": 174}
+{"finished": "runs/v2_influence_20260908/self.json", "variant": "self", "parity": {"context_max_absolute_error": 0.0, "prediction_max_absolute_error": 0.0}, "elapsed_seconds": 175.37494134902954}

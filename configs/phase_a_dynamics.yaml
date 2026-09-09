@@ -2,8 +2,8 @@ SEED: 6666
 DEVICE: cuda
 DATA:
   ROOT: datasets
-  EMOTIONTALK_ROOT: datasets/emotiontalk/processed
-  IEMOCAP_FEATURE_ROOT: artifacts/features/iemocap
+  EMOTIONTALK_ROOT: artifacts/features/emotiontalk_v2
+  IEMOCAP_FEATURE_ROOT: artifacts/features/iemocap_v2
   IEMOCAP_FOLD: 5
   WINDOW_LENGTH: 33
   WINDOW_STRIDE: 4
@@ -21,5 +21,7 @@ DYNAMICS:
   HORIZONS: [1, 2, 4, 8, 16, 32]
   ENABLE_PARTNER: false
   CORRECTION_MODE: teacher_forced
-  ROLLOUT_MODE: conditional
+  ROLLOUT_MODE: joint
+  FULL_DIALOGUES: true
+  BPTT_EVENTS: 32
   OPEN_LOOP_DT: 1.0

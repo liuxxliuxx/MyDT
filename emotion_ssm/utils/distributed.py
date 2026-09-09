@@ -47,7 +47,7 @@ def init_distributed(device_name: str, seed: int, deterministic: bool) -> Distri
     rank = int(os.environ.get("RANK", "0"))
     local_rank = int(os.environ.get("LOCAL_RANK", "0"))
     if world_size > 1 and not dist.is_initialized():
-        dist.init_process_group(backend="nccl" if torch.cuda.is_available() else "gloo")
+        dist.init_process_group(backend="nccl" if device_name.startswith("cuda") and torch.cuda.is_available() else "gloo")
 
     if device_name.startswith("cuda") and torch.cuda.is_available():
         device = torch.device(f"cuda:{local_rank}" if world_size > 1 else device_name)

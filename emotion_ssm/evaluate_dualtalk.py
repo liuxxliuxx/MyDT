@@ -204,12 +204,6 @@ def _evaluate_conditioned(
 ):
     system = _build_system(cfg, device)
     metadata = _load_conditioned_checkpoint(system, checkpoint)
-    system.restore_shared_observer(
-        load_component_state(
-            Path(cfg.DUALTALK.PHASE_B_CHECKPOINT or cfg.TRAIN.PHASE_B_CHECKPOINT),
-            "encoder",
-        )
-    )
     system.eval()
     totals = ReconstructionTotals()
     consistency_sum = 0.0
@@ -311,6 +305,14 @@ def main() -> None:
     args = parser.parse_args()
     _install_numpy_pickle_compatibility()
     cfg = load_config(args.config, args.opts)
+    if cfg.DUALTALK.PROTOCOL_VERSION == 2:
+        from emotion_ssm.evaluate_generation import evaluate_checkpoint
+        if args.ablation == "random_partner":
+            parser.error("Use separately retrained controls; random_partner is only a legacy diagnostic")
+        return evaluate_checkpoint(args.checkpoint, args.split, args.output,
+            "cuda:0" if torch.cuda.is_available() else "cpu", cfg.DATA.DUALTALK_ROOT,
+            cfg.DUALTALK.TIMED_FEATURE_ROOT, cfg.DUALTALK.SPLIT_MANIFEST,
+            args.ablation, args.max_batches)
     cfg = cfg.clone()
     cfg.defrost()
     if args.baseline_checkpoint is not None:
@@ -368,6 +370,8 @@ def main() -> None:
         )
 
     result = {
+        "protocol_version": 1,
+        "protocol": "legacy_original_checkpoint_no_observer_override",
         "model": args.model,
         "ablation": "official" if args.model == "baseline" else args.ablation,
         "checkpoint": str(args.checkpoint.resolve()),

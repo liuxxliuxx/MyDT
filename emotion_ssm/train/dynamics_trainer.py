@@ -28,6 +28,24 @@ from emotion_ssm.utils.checkpoint import (
     save_training_checkpoint,
 )
 from emotion_ssm.utils.distributed import init_distributed, unwrap_model
+from emotion_ssm.data.full_dialogues import FullDialogueDataset, collate_full_dialogues
+from emotion_ssm.utils.statistics import WeightedStatistics
+
+
+def validation_batches(loader, context, pool_size=0, max_batches=0):
+    """Fixed CF groups are independent of minibatch size and DDP sharding."""
+    if pool_size:
+        groups = [list(range(start, min(start+pool_size, len(loader.dataset))))
+                  for start in range(0, len(loader.dataset), pool_size)]
+        if max_batches:
+            groups = groups[:max_batches]
+        for group in groups[context.rank::context.world_size]:
+            yield loader.collate_fn([loader.dataset[index] for index in group])
+    else:
+        for index, batch in enumerate(loader):
+            if max_batches and index >= max_batches:
+                break
+            yield batch
 
 
 def _load_teacher(cfg, device: torch.device) -> ObservationEncoder:
@@ -64,31 +82,58 @@ def validate(
     max_batches: int = 0,
 ) -> Dict[str, float]:
     bundle.eval()
-    totals: Dict[str, float] = {}
+    totals = WeightedStatistics()
+    from emotion_ssm.utils.prediction_statistics import PredictionStatistics
+    prediction_totals = PredictionStatistics()
+    from emotion_ssm.models.observation import SUBSET_MASKS, SUBSET_NAMES
+    raw = unwrap_model(bundle)
+    pool_size = getattr(raw, "cf_eval_pool_dialogues", 4) if use_counterfactual else 0
     batches = 0
-    for batch_index, raw_batch in enumerate(loader):
-        if max_batches and batch_index >= max_batches:
-            break
+    for raw_batch in validation_batches(loader, context, pool_size, max_batches):
         batch = move_to_device(raw_batch, context.device)
         target_aff = make_teacher_aff(teacher, batch)
-        losses = bundle(
-            batch,
-            target_aff,
-            class_weights,
-            enable_partner,
-            use_counterfactual,
-        )
-        for name, value in losses.items():
-            totals[name] = totals.get(name, 0.0) + float(value.detach())
-        if enable_partner:
-            self_only = bundle(batch, target_aff, class_weights, False, False)
-            totals["partner_gain"] = totals.get("partner_gain", 0.0) + float(
-                self_only.get("h1", self_only["total"])
-                - losses.get("h1", losses["total"])
-            )
+        raw = unwrap_model(bundle)
+        for subset, name in zip(SUBSET_MASKS, SUBSET_NAMES):
+            losses = raw(batch, target_aff, class_weights, enable_partner,
+                         use_counterfactual, subset_mask=subset[None])
+            totals.dynamics(losses, name + "_")
+            prediction_totals.merge(raw.prediction_statistics, name + "_")
+            if name == "AVT":
+                totals.dynamics(losses)
+                prediction_totals.merge(raw.prediction_statistics)
+                if enable_partner:
+                    self_only = raw(batch, target_aff, class_weights, False, False, subset_mask=subset[None])
+                    totals.add("partner_gain", self_only.get("h1", self_only["total"]) - losses.get("h1", losses["total"]),
+                               losses.get("h1_count", 0))
         batches += 1
-    result = {f"val_{name}": value / max(batches, 1) for name, value in totals.items()}
-    result = context.reduce_scalars(result)
+    aggregated = totals.finalize()
+    aggregated.update(prediction_totals.metrics())
+    # Recompute selection losses from global numerators/denominators. CCC is
+    # nonlinear and must never be averaged across validation minibatches.
+    raw = unwrap_model(bundle)
+    for prefix in [""] + [name+"_" for name in SUBSET_NAMES]:
+        horizon_losses = []
+        modes = ("conditional", "open_loop") if raw.rollout_mode == "joint" else (raw.rollout_mode,)
+        for horizon in raw.horizons:
+            terms = {}
+            for mode in modes:
+                key = f"{prefix}{mode}_h{horizon}"
+                terms[mode] = (aggregated.get(key+"_affect_loss", 0.) + raw.loss_emotion*aggregated.get(key+"_emotion_ce", 0.)
+                    + raw.loss_intensity*aggregated.get(key+"_intensity_mse", 0.) + raw.loss_vad*aggregated.get(key+"_vad_loss", 0.))
+                aggregated[key] = terms[mode]
+            total = (terms["conditional"] + raw.open_loop_weight*terms["open_loop"]
+                     if raw.rollout_mode == "joint" else terms[raw.rollout_mode])
+            aggregated[f"{prefix}h{horizon}"] = total
+            horizon_losses.append(total)
+        first = horizon_losses[0] if horizon_losses else 0.
+        rest = sum(horizon_losses[1:])/max(len(horizon_losses)-1, 1)
+        aggregated[prefix+"total"] = (raw.loss_next*first + raw.loss_trajectory*rest
+            + raw.loss_correction*aggregated.get(prefix+"correction", 0.)
+            + raw.loss_counterfactual*aggregated.get(prefix+"counterfactual", 0.)
+            + raw.loss_observation_anchor*aggregated.get(prefix+"observation_anchor", 0.))
+    result = {f"val_{name}": value for name, value in aggregated.items()}
+    if use_counterfactual:
+        result["val_cf_pool_dialogues"] = pool_size
     bundle.train()
     return result
 
@@ -101,6 +146,13 @@ def run_dynamics_stage(
     use_counterfactual: bool,
     previous_stage_checkpoint: str = "",
 ) -> None:
+    resumed = None
+    if cfg.TRAIN.RESUME:
+        from emotion_ssm.utils.emotion_checkpoint import load_emotion, deployment_paths
+        resumed = load_emotion(cfg.TRAIN.RESUME)
+        cfg = deployment_paths(resumed[2], cfg)
+        from emotion_ssm.utils.checkpoint import validate_resume_data
+        validate_resume_data(resumed[3], cfg)
     context = init_distributed(cfg.DEVICE, cfg.SEED, cfg.DETERMINISTIC)
     run_dir = create_run_directory(cfg, stage_name)
     if context.is_main:
@@ -108,14 +160,16 @@ def run_dynamics_stage(
 
     stores = build_feature_stores(cfg)
     speaker_vocab = build_speaker_vocabulary(stores)
-    train_dataset = DialogueWindowDataset(
+    dataset_type = FullDialogueDataset if cfg.DYNAMICS.FULL_DIALOGUES else DialogueWindowDataset
+    collate = collate_full_dialogues if cfg.DYNAMICS.FULL_DIALOGUES else None
+    train_dataset = dataset_type(
         stores,
         "train",
         speaker_vocab,
         cfg.DATA.WINDOW_LENGTH,
         cfg.DATA.WINDOW_STRIDE,
     )
-    val_dataset = DialogueWindowDataset(
+    val_dataset = dataset_type(
         stores,
         "val",
         speaker_vocab,
@@ -129,6 +183,7 @@ def run_dynamics_stage(
         True,
         cfg.DATA.NUM_WORKERS,
         cfg.DATA.PIN_MEMORY,
+        collate_fn=collate,
     )
     val_loader, _ = make_loader(
         val_dataset,
@@ -137,11 +192,15 @@ def run_dynamics_stage(
         False,
         cfg.DATA.NUM_WORKERS,
         cfg.DATA.PIN_MEMORY,
+        collate_fn=collate,
     )
-    bundle = initialize_dynamics_bundle(cfg, len(speaker_vocab)).to(context.device)
-    if previous_stage_checkpoint:
+    bundle = (resumed[0] if resumed else initialize_dynamics_bundle(cfg, len(speaker_vocab))).to(context.device)
+    if previous_stage_checkpoint and not resumed:
         _load_previous_stage(bundle, Path(previous_stage_checkpoint))
-    teacher = _load_teacher(cfg, context.device)
+    teacher = resumed[1].to(context.device) if resumed else _load_teacher(cfg, context.device)
+    # Register only trainable affect/event branches in DDP from the outset.
+    if enable_partner:
+        bundle.set_phase_b_affect_frozen(True)
     bundle = maybe_ddp(bundle, context)
     raw_bundle = unwrap_model(bundle)
     parameter_groups = [{
@@ -206,7 +265,7 @@ def run_dynamics_stage(
                 epoch < cfg.DYNAMICS.FREEZE_AFFECT_EPOCHS
             )
         bundle.train()
-        totals: Dict[str, float] = {}
+        totals = WeightedStatistics()
         batches = 0
         optimizer.zero_grad(set_to_none=True)
         for batch_index, raw_batch in enumerate(train_loader):
@@ -241,12 +300,10 @@ def run_dynamics_stage(
                 scaler.update()
                 optimizer.zero_grad(set_to_none=True)
                 global_step += 1
-            for name, value in losses.items():
-                totals[name] = totals.get(name, 0.0) + float(value.detach())
+            totals.dynamics(losses)
             batches += 1
         scheduler.step()
-        totals = {name: value / max(batches, 1) for name, value in totals.items()}
-        totals = context.reduce_scalars(totals)
+        totals = totals.finalize()
         val_metrics = validate(
             bundle,
             teacher,

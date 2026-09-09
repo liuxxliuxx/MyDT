@@ -1,0 +1,17 @@
+{
+  "surface": "standalone PNG/PDF research figures",
+  "source": "manifest plus complete per-clip JSON",
+  "palette": {
+    "none": "#929292",
+    "affect": "#555555",
+    "self": "#2364AA",
+    "dyadic": "#BA7C16"
+  },
+  "figures": {
+    "mechanisms": "history line (8 times), event line (9 times), partner grouped bars; sensitivity only",
+    "quality": "two panels of paired model-minus-none dot-and-95%-intervals; mean expression MSE"
+  },
+  "comparison_units": "source-cluster bootstrap, same valid elements",
+  "grayscale": "markers, dashes, hatched/open bars",
+  "selection": "fixed before model inference; all four controls reported"
+}

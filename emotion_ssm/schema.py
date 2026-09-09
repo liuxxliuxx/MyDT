@@ -55,6 +55,8 @@ class EventObservation:
     action: Tensor
     reliability: Tensor
     modality_mask: Optional[Tensor]
+    event_present: Optional[Tensor] = None
+    action_duration: Optional[Tensor] = None
 
     def index(self, index: int) -> "EventObservation":
         mask = None if self.modality_mask is None else self.modality_mask[index]
@@ -64,6 +66,8 @@ class EventObservation:
             action=self.action[index],
             reliability=self.reliability[index],
             modality_mask=mask,
+            event_present=None if self.event_present is None else self.event_present[index],
+            action_duration=None if self.action_duration is None else self.action_duration[index],
         )
 
 

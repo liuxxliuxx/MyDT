@@ -31,14 +31,11 @@ def main() -> None:
     args = parser.parse_args()
     cfg = load_config(args.config, args.opts)
     device = torch.device(cfg.DEVICE if torch.cuda.is_available() else "cpu")
+    if cfg.DUALTALK.PROTOCOL_VERSION == 2:
+        from emotion_ssm.infer.streaming_demo import run
+        return run(args.checkpoint, args.target_audio, args.partner_audio, args.partner_flame, args.output_dir, device=device)
     system = _build_system(cfg, device)
     system.load_state_dict(load_component_state(args.checkpoint, "system"), strict=True)
-    system.restore_shared_observer(
-        load_component_state(
-            Path(cfg.DUALTALK.PHASE_B_CHECKPOINT or cfg.TRAIN.PHASE_B_CHECKPOINT),
-            "encoder",
-        )
-    )
     system.eval()
 
     target_wave, _ = librosa.load(str(args.target_audio), sr=16000)

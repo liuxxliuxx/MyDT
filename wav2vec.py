@@ -85,7 +85,6 @@ class Wav2Vec2Model(Wav2Vec2Model):
             return_dict=None,
             frame_num=None
     ):
-        self.config.output_attentions = True
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states

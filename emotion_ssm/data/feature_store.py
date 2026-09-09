@@ -206,11 +206,13 @@ class FeatureDialogueStore:
         dataset_name: str,
         dataset_id: int,
         fold: Optional[int] = None,
+        require_v2: bool = False,
     ) -> None:
         self.root = Path(root)
         self.dataset_name = dataset_name
         self.dataset_id = dataset_id
         self.fold = fold
+        self.require_v2 = require_v2
         self.dialogues_root = self.root / "dialogues"
         if not self.dialogues_root.is_dir() and any(
             path.is_file() for path in self.root.glob("*/labels.json")
@@ -260,6 +262,17 @@ class FeatureDialogueStore:
         self, dialogue_id: str, speaker_vocab: SpeakerVocabulary
     ) -> DialogueRecord:
         root = self.dialogues_root / dialogue_id
+        if self.require_v2:
+            from .protocol import PREPROCESS_VERSION, fingerprint, require_compatible
+            provenance = read_json(root / "provenance.json")
+            source = read_json(self.root / "metadata" / "feature_source.json")
+            require_compatible(source, provenance["feature_source"])
+            if source["preprocessing"] != PREPROCESS_VERSION:
+                raise ValueError(f"{dialogue_id}: obsolete preprocessing version")
+            if provenance.get("labels_digest") != fingerprint(read_json(root / "labels.json")):
+                raise ValueError(f"{dialogue_id}: labels changed; rebuild features")
+            if not (root / "event_text_features.pt").is_file():
+                raise ValueError(f"{dialogue_id}: causal context/event features are missing")
         audio = resolve_feature_tensor(
             load_pt(root / "audio_features.pt"), "audio"
         ).float()
@@ -269,6 +282,8 @@ class FeatureDialogueStore:
         face_data = load_pt(root / "face_au_features.pt")
         labels = read_json(root / "labels.json")
         utterances = resolve_utterances(labels)
+        event_path = root / "event_text_features.pt"
+        event_text = resolve_feature_tensor(load_pt(event_path), "text").float() if event_path.exists() else text.clone()
         utterance_ids = [
             str(item.get("utterance_id", item.get("id", index)))
             for index, item in enumerate(utterances)
@@ -338,6 +353,10 @@ class FeatureDialogueStore:
         reliability = torch.ones(len(utterances), 3, dtype=torch.float32)
         reliability[:, 1] = torch.tensor(face_reliability)
         modality_mask[:, 1] = reliability[:, 1] > 0
+        if self.require_v2:
+            modality_mask[:, 0] = torch.tensor([item["audio_present"] for item in utterances])
+            modality_mask[:, 2] = torch.tensor([item["context_present"] for item in utterances])
+            reliability *= modality_mask
 
         emotion = torch.tensor(
             [resolve_emotion_id(item) for item in utterances], dtype=torch.long
@@ -346,16 +365,15 @@ class FeatureDialogueStore:
         vad_values = []
         vad_masks = []
         for item in utterances:
-            if "vad" in item:
+            if "vad" in item and self.dataset_name != "emotiontalk":
                 vad = [float(value) for value in item["vad"]]
                 vad_mask = [bool(value) for value in item.get("vad_mask", [1, 1, 1])]
                 intensity = float(item.get("intensity", (vad[1] + 1.0) / 2.0))
             else:
                 # EmotionTalk 的 intensity_abs/sentiment_score 范围均为 [-2, 2] 的子集。
                 valence = float(item.get("sentiment_score", 0.0)) / 2.0
-                arousal = float(item.get("intensity_abs", 0.0)) / 2.0
-                vad = [valence, arousal, 0.0]
-                vad_mask = [True, True, False]
+                vad = [valence, 0.0, 0.0]
+                vad_mask = ["sentiment_score" in item, False, False]
                 intensity = float(item.get("intensity_abs", 0.0)) / 2.0
             intensity_values.append(intensity)
             vad_values.append(vad)
@@ -411,6 +429,8 @@ class FeatureDialogueStore:
             dtype=torch.long,
         )
 
+        if self.require_v2 and any("start_time" not in item or "end_time" not in item for item in utterances):
+            raise ValueError(f"{dialogue_id}: reliable start/end timestamps are required")
         start_time = torch.tensor(
             [float(item.get("start_time", i)) for i, item in enumerate(utterances)],
             dtype=torch.float32,
@@ -421,7 +441,9 @@ class FeatureDialogueStore:
         )
         dt_to_next = torch.zeros(len(utterances), dtype=torch.float32)
         if len(utterances) > 1:
-            dt_to_next[:-1] = (start_time[1:] - start_time[:-1]).clamp(0.0, 60.0)
+            dt_to_next[:-1] = (end_time[1:] - end_time[:-1]).clamp_min(0)
+        if not torch.isfinite(start_time).all() or not torch.isfinite(end_time).all() or (end_time < start_time).any():
+            raise ValueError(f"{dialogue_id}: invalid observation timestamps")
         turn_position = torch.tensor(
             [
                 float(item.get("turn_position", i / max(len(utterances) - 1, 1)))
@@ -443,6 +465,8 @@ class FeatureDialogueStore:
             reliability=reliability,
             emotion=emotion,
             intensity=torch.tensor(intensity_values, dtype=torch.float32),
+            intensity_mask=torch.tensor([bool(item.get("intensity_mask",
+                "intensity_abs" in item if self.dataset_name == "emotiontalk" else False)) for item in utterances]),
             vad=torch.tensor(vad_values, dtype=torch.float32),
             vad_mask=torch.tensor(vad_masks, dtype=torch.bool),
             active_role=torch.tensor(role_values, dtype=torch.long),
@@ -452,6 +476,9 @@ class FeatureDialogueStore:
             end_time=end_time,
             dt_to_next=dt_to_next,
             utterance_ids=utterance_ids,
+            event_text=event_text,
+            event_present=torch.tensor([bool(item.get("event_present", modality_mask[i, 2]))
+                                        for i, item in enumerate(utterances)]),
         )
         validate_record(record)
         return record

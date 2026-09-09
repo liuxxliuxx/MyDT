@@ -1,0 +1,1044 @@
+{
+  "manifest_digest": "4d4a3ff577fc64920263199a5c2d736d82ee4a0a41acfeea65b3d2ba15a2d9c4",
+  "quality": {
+    "history": {
+      "affect": {
+        "mean_expression_mse": {
+          "none": 0.35924083758770203,
+          "condition": 0.3584454868697734,
+          "delta": -0.0007953507179286334,
+          "relative_percent": -0.22139763487620284,
+          "source_cluster_95ci": [
+            -0.0050793298224869835,
+            0.00439828041030047
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "expression_mse": {
+          "none": 0.41712419528000894,
+          "condition": 0.4163910903625598,
+          "delta": -0.0007331049174491566,
+          "relative_percent": -0.17575219221149105,
+          "source_cluster_95ci": [
+            -0.00507237698815529,
+            0.004526127490001532
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "jaw_mse": {
+          "none": 0.0011146906997560545,
+          "condition": 0.0011093359262609353,
+          "delta": -5.35477349511925e-06,
+          "relative_percent": -0.48038200159839134,
+          "source_cluster_95ci": [
+            -1.2718617052274317e-05,
+            1.9173694737852184e-06
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "neck_mse": {
+          "none": 0.01846467511313374,
+          "condition": 0.018518295145818826,
+          "delta": 5.3620032685088026e-05,
+          "relative_percent": 0.29039250545463774,
+          "source_cluster_95ci": [
+            -0.00010011725173779415,
+            0.0002125647952652139
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "velocity_mse": {
+          "none": 0.015133313807030964,
+          "condition": 0.015129003169784602,
+          "delta": -4.310637246362006e-06,
+          "relative_percent": -0.028484423843502648,
+          "source_cluster_95ci": [
+            -1.9719261762721554e-05,
+            1.2288516394402586e-05
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "boundary_velocity_mse": {
+          "none": 0.07467431614254082,
+          "condition": 0.07545513357635955,
+          "delta": 0.000780817433818734,
+          "relative_percent": 1.0456305114710174,
+          "source_cluster_95ci": [
+            -9.592103345425796e-05,
+            0.0019402340256800827
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        }
+      },
+      "self": {
+        "mean_expression_mse": {
+          "none": 0.35924083758770203,
+          "condition": 0.3620092453810548,
+          "delta": 0.002768407793352745,
+          "relative_percent": 0.7706272516071866,
+          "source_cluster_95ci": [
+            -0.001619474085842787,
+            0.008882124274709826
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "expression_mse": {
+          "none": 0.41712419528000894,
+          "condition": 0.41985264207134504,
+          "delta": 0.0027284467913361032,
+          "relative_percent": 0.6541089733489422,
+          "source_cluster_95ci": [
+            -0.0017029593018660972,
+            0.008865222081921156
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "jaw_mse": {
+          "none": 0.0011146906997560545,
+          "condition": 0.0011122359819917553,
+          "delta": -2.4547177642992093e-06,
+          "relative_percent": -0.22021514711089044,
+          "source_cluster_95ci": [
+            -7.591053968735091e-06,
+            2.04510162079258e-06
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "neck_mse": {
+          "none": 0.01846467511313374,
+          "condition": 0.018513161602264055,
+          "delta": 4.8486489130316474e-05,
+          "relative_percent": 0.26259053480896893,
+          "source_cluster_95ci": [
+            -3.6142690898876854e-05,
+            0.00014326030867157943
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "velocity_mse": {
+          "none": 0.015133313807030964,
+          "condition": 0.015125201767385308,
+          "delta": -8.112039645655905e-06,
+          "relative_percent": -0.053603855368987575,
+          "source_cluster_95ci": [
+            -3.9767191404884794e-05,
+            1.708987024606003e-05
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "boundary_velocity_mse": {
+          "none": 0.07467431614254082,
+          "condition": 0.07528656958580064,
+          "delta": 0.0006122534432598248,
+          "relative_percent": 0.8198982928630174,
+          "source_cluster_95ci": [
+            -0.00013410722043485647,
+            0.001668070122757251
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        }
+      },
+      "dyadic": {
+        "mean_expression_mse": {
+          "none": 0.35924083758770203,
+          "condition": 0.36083316980835356,
+          "delta": 0.0015923322206515267,
+          "relative_percent": 0.44324922281776724,
+          "source_cluster_95ci": [
+            -0.0006014520997416021,
+            0.005197114660202852
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "expression_mse": {
+          "none": 0.41712419528000894,
+          "condition": 0.41870613149619684,
+          "delta": 0.001581936216187907,
+          "relative_percent": 0.37924825126146855,
+          "source_cluster_95ci": [
+            -0.0006609112942692174,
+            0.0052559857349299575
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "jaw_mse": {
+          "none": 0.0011146906997560545,
+          "condition": 0.0011126999381933275,
+          "delta": -1.9907615627270513e-06,
+          "relative_percent": -0.17859317953964463,
+          "source_cluster_95ci": [
+            -4.913397656945134e-06,
+            6.734604507027973e-07
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "neck_mse": {
+          "none": 0.01846467511313374,
+          "condition": 0.018530354553070713,
+          "delta": 6.567943993697478e-05,
+          "relative_percent": 0.35570319832087194,
+          "source_cluster_95ci": [
+            4.0587738275440705e-07,
+            0.0001374636490105538
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "velocity_mse": {
+          "none": 0.015133313807030964,
+          "condition": 0.015130945165197798,
+          "delta": -2.3686418331655967e-06,
+          "relative_percent": -0.01565183847615135,
+          "source_cluster_95ci": [
+            -1.9162235103138215e-05,
+            1.4505208056158825e-05
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "boundary_velocity_mse": {
+          "none": 0.07467431614254082,
+          "condition": 0.07490051278409725,
+          "delta": 0.00022619664155643093,
+          "relative_percent": 0.3029108979379995,
+          "source_cluster_95ci": [
+            -0.00020686825984483643,
+            0.0008289535747168149
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        }
+      }
+    },
+    "event": {
+      "affect": {
+        "mean_expression_mse": {
+          "none": 0.24633036169211855,
+          "condition": 0.24473603190512286,
+          "delta": -0.0015943297869956963,
+          "relative_percent": -0.6472323492905047,
+          "source_cluster_95ci": [
+            -0.005990361890394674,
+            0.0015295916990434343
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        },
+        "expression_mse": {
+          "none": 0.29861780117527204,
+          "condition": 0.2970343781064325,
+          "delta": -0.0015834230688395179,
+          "relative_percent": -0.530250729396449,
+          "source_cluster_95ci": [
+            -0.0060102324670505535,
+            0.0015700097772032235
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        },
+        "jaw_mse": {
+          "none": 0.001009378960791098,
+          "condition": 0.000998045301330407,
+          "delta": -1.1333659460691006e-05,
+          "relative_percent": -1.1228349213667266,
+          "source_cluster_95ci": [
+            -2.6928213467295354e-05,
+            1.2193378850458287e-06
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        },
+        "neck_mse": {
+          "none": 0.014833591883125666,
+          "condition": 0.014738255588989653,
+          "delta": -9.533629413601384e-05,
+          "relative_percent": -0.6427053871184504,
+          "source_cluster_95ci": [
+            -0.0003087051644396229,
+            5.264301859941362e-05
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        },
+        "velocity_mse": {
+          "none": 0.014217371855058515,
+          "condition": 0.014214190272736658,
+          "delta": -3.181582321857071e-06,
+          "relative_percent": -0.022378132571140918,
+          "source_cluster_95ci": [
+            -2.5374872347317834e-05,
+            1.5654908099463908e-05
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        },
+        "boundary_velocity_mse": {
+          "none": 0.05899087412950731,
+          "condition": 0.058728085498280846,
+          "delta": -0.00026278863122646684,
+          "relative_percent": -0.4454733636418851,
+          "source_cluster_95ci": [
+            -0.0012283911257350902,
+            0.00038560275064535016
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        }
+      },
+      "self": {
+        "mean_expression_mse": {
+          "none": 0.24633036169211855,
+          "condition": 0.2470400223067873,
+          "delta": 0.0007096606146687334,
+          "relative_percent": 0.28809303481465204,
+          "source_cluster_95ci": [
+            -0.000551311054529946,
+            0.0020004606798995207
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        },
+        "expression_mse": {
+          "none": 0.29861780117527204,
+          "condition": 0.2993043860485937,
+          "delta": 0.0006865848733216828,
+          "relative_percent": 0.22992094597826596,
+          "source_cluster_95ci": [
+            -0.000589300822577192,
+            0.0020015123869039984
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        },
+        "jaw_mse": {
+          "none": 0.001009378960791098,
+          "condition": 0.0010053034787403264,
+          "delta": -4.075482050771564e-06,
+          "relative_percent": -0.4037613432696691,
+          "source_cluster_95ci": [
+            -9.36216398585877e-06,
+            1.6575044640322045e-06
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        },
+        "neck_mse": {
+          "none": 0.014833591883125666,
+          "condition": 0.014777954265301728,
+          "delta": -5.5637617823938584e-05,
+          "relative_percent": -0.37507852624171617,
+          "source_cluster_95ci": [
+            -0.00014181827915475876,
+            1.14512829066399e-05
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        },
+        "velocity_mse": {
+          "none": 0.014217371855058515,
+          "condition": 0.014219782856948466,
+          "delta": 2.4110018899507757e-06,
+          "relative_percent": 0.01695814046738143,
+          "source_cluster_95ci": [
+            -8.221177049977857e-06,
+            1.4479751937278595e-05
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        },
+        "boundary_velocity_mse": {
+          "none": 0.05899087412950731,
+          "condition": 0.05853417101437533,
+          "delta": -0.0004567031151319831,
+          "relative_percent": -0.7741928253671013,
+          "source_cluster_95ci": [
+            -0.0008836907790786712,
+            -9.776198200927823e-05
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        }
+      },
+      "dyadic": {
+        "mean_expression_mse": {
+          "none": 0.24633036169211855,
+          "condition": 0.2461466390288657,
+          "delta": -0.00018372266325286657,
+          "relative_percent": -0.07458384828846085,
+          "source_cluster_95ci": [
+            -0.0011888787666871584,
+            0.0006130347828312818
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        },
+        "expression_mse": {
+          "none": 0.29861780117527204,
+          "condition": 0.2984231738249584,
+          "delta": -0.00019462735031361422,
+          "relative_percent": -0.06517607106730346,
+          "source_cluster_95ci": [
+            -0.001218385819028772,
+            0.0005973447609584716
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        },
+        "jaw_mse": {
+          "none": 0.001009378960791098,
+          "condition": 0.0010076983284067142,
+          "delta": -1.6806323843837883e-06,
+          "relative_percent": -0.16650162621445938,
+          "source_cluster_95ci": [
+            -5.4013042378535274e-06,
+            2.069986136264342e-06
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        },
+        "neck_mse": {
+          "none": 0.014833591883125666,
+          "condition": 0.014813172785572627,
+          "delta": -2.041909755303925e-05,
+          "relative_percent": -0.1376544380748908,
+          "source_cluster_95ci": [
+            -5.280401556794247e-05,
+            1.1480439608122845e-05
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        },
+        "velocity_mse": {
+          "none": 0.014217371855058515,
+          "condition": 0.01421513078646551,
+          "delta": -2.2410685930045887e-06,
+          "relative_percent": -0.01576288934306252,
+          "source_cluster_95ci": [
+            -9.008001482677412e-06,
+            5.156204445532846e-06
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        },
+        "boundary_velocity_mse": {
+          "none": 0.05899087412950731,
+          "condition": 0.058532709801409274,
+          "delta": -0.0004581643280980388,
+          "relative_percent": -0.7766698406472068,
+          "source_cluster_95ci": [
+            -0.0009813537094077048,
+            -5.485330795782405e-05
+          ],
+          "source_clusters": 19,
+          "directed_clips": 38
+        }
+      }
+    },
+    "partner": {
+      "affect": {
+        "mean_expression_mse": {
+          "none": 0.35924083758770203,
+          "condition": 0.3584454868697734,
+          "delta": -0.0007953507179286334,
+          "relative_percent": -0.22139763487620284,
+          "source_cluster_95ci": [
+            -0.0050793298224869835,
+            0.00439828041030047
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "expression_mse": {
+          "none": 0.41712419528000894,
+          "condition": 0.4163910903625598,
+          "delta": -0.0007331049174491566,
+          "relative_percent": -0.17575219221149105,
+          "source_cluster_95ci": [
+            -0.00507237698815529,
+            0.004526127490001532
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "jaw_mse": {
+          "none": 0.0011146906997560545,
+          "condition": 0.0011093359262609353,
+          "delta": -5.35477349511925e-06,
+          "relative_percent": -0.48038200159839134,
+          "source_cluster_95ci": [
+            -1.2718617052274317e-05,
+            1.9173694737852184e-06
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "neck_mse": {
+          "none": 0.01846467511313374,
+          "condition": 0.018518295145818826,
+          "delta": 5.3620032685088026e-05,
+          "relative_percent": 0.29039250545463774,
+          "source_cluster_95ci": [
+            -0.00010011725173779415,
+            0.0002125647952652139
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "velocity_mse": {
+          "none": 0.015133313807030964,
+          "condition": 0.015129003169784602,
+          "delta": -4.310637246362006e-06,
+          "relative_percent": -0.028484423843502648,
+          "source_cluster_95ci": [
+            -1.9719261762721554e-05,
+            1.2288516394402586e-05
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "boundary_velocity_mse": {
+          "none": 0.07467431614254082,
+          "condition": 0.07545513357635955,
+          "delta": 0.000780817433818734,
+          "relative_percent": 1.0456305114710174,
+          "source_cluster_95ci": [
+            -9.592103345425796e-05,
+            0.0019402340256800827
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        }
+      },
+      "self": {
+        "mean_expression_mse": {
+          "none": 0.35924083758770203,
+          "condition": 0.3620092453810548,
+          "delta": 0.002768407793352745,
+          "relative_percent": 0.7706272516071866,
+          "source_cluster_95ci": [
+            -0.001619474085842787,
+            0.008882124274709826
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "expression_mse": {
+          "none": 0.41712419528000894,
+          "condition": 0.41985264207134504,
+          "delta": 0.0027284467913361032,
+          "relative_percent": 0.6541089733489422,
+          "source_cluster_95ci": [
+            -0.0017029593018660972,
+            0.008865222081921156
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "jaw_mse": {
+          "none": 0.0011146906997560545,
+          "condition": 0.0011122359819917553,
+          "delta": -2.4547177642992093e-06,
+          "relative_percent": -0.22021514711089044,
+          "source_cluster_95ci": [
+            -7.591053968735091e-06,
+            2.04510162079258e-06
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "neck_mse": {
+          "none": 0.01846467511313374,
+          "condition": 0.018513161602264055,
+          "delta": 4.8486489130316474e-05,
+          "relative_percent": 0.26259053480896893,
+          "source_cluster_95ci": [
+            -3.6142690898876854e-05,
+            0.00014326030867157943
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "velocity_mse": {
+          "none": 0.015133313807030964,
+          "condition": 0.015125201767385308,
+          "delta": -8.112039645655905e-06,
+          "relative_percent": -0.053603855368987575,
+          "source_cluster_95ci": [
+            -3.9767191404884794e-05,
+            1.708987024606003e-05
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "boundary_velocity_mse": {
+          "none": 0.07467431614254082,
+          "condition": 0.07528656958580064,
+          "delta": 0.0006122534432598248,
+          "relative_percent": 0.8198982928630174,
+          "source_cluster_95ci": [
+            -0.00013410722043485647,
+            0.001668070122757251
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        }
+      },
+      "dyadic": {
+        "mean_expression_mse": {
+          "none": 0.35924083758770203,
+          "condition": 0.36083316980835356,
+          "delta": 0.0015923322206515267,
+          "relative_percent": 0.44324922281776724,
+          "source_cluster_95ci": [
+            -0.0006014520997416021,
+            0.005197114660202852
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "expression_mse": {
+          "none": 0.41712419528000894,
+          "condition": 0.41870613149619684,
+          "delta": 0.001581936216187907,
+          "relative_percent": 0.37924825126146855,
+          "source_cluster_95ci": [
+            -0.0006609112942692174,
+            0.0052559857349299575
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "jaw_mse": {
+          "none": 0.0011146906997560545,
+          "condition": 0.0011126999381933275,
+          "delta": -1.9907615627270513e-06,
+          "relative_percent": -0.17859317953964463,
+          "source_cluster_95ci": [
+            -4.913397656945134e-06,
+            6.734604507027973e-07
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "neck_mse": {
+          "none": 0.01846467511313374,
+          "condition": 0.018530354553070713,
+          "delta": 6.567943993697478e-05,
+          "relative_percent": 0.35570319832087194,
+          "source_cluster_95ci": [
+            4.0587738275440705e-07,
+            0.0001374636490105538
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "velocity_mse": {
+          "none": 0.015133313807030964,
+          "condition": 0.015130945165197798,
+          "delta": -2.3686418331655967e-06,
+          "relative_percent": -0.01565183847615135,
+          "source_cluster_95ci": [
+            -1.9162235103138215e-05,
+            1.4505208056158825e-05
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        },
+        "boundary_velocity_mse": {
+          "none": 0.07467431614254082,
+          "condition": 0.07490051278409725,
+          "delta": 0.00022619664155643093,
+          "relative_percent": 0.3029108979379995,
+          "source_cluster_95ci": [
+            -0.00020686825984483643,
+            0.0008289535747168149
+          ],
+          "source_clusters": 32,
+          "directed_clips": 64
+        }
+      }
+    }
+  },
+  "mechanisms": {
+    "history": {
+      "none": {
+        "count": 64,
+        "mean_output_rms": 0.0,
+        "mean_per_second_rms": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "natural_mean_expression_mse": 0.35924083758770203,
+        "reset_mean_expression_mse": 0.35924083758770203
+      },
+      "affect": {
+        "count": 64,
+        "mean_output_rms": 0.0,
+        "mean_per_second_rms": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "natural_mean_expression_mse": 0.3584454868697734,
+        "reset_mean_expression_mse": 0.3584454868697734
+      },
+      "self": {
+        "count": 64,
+        "mean_output_rms": 3.6171162114500944e-05,
+        "mean_per_second_rms": [
+          9.080515234688743e-05,
+          4.0546625036349115e-05,
+          1.9784180748127436e-05,
+          9.459065108699547e-06,
+          4.879166509307795e-06,
+          2.6007258421765325e-06,
+          1.3953018704900638e-06,
+          7.645691369650869e-07
+        ],
+        "natural_mean_expression_mse": 0.3620092453810548,
+        "reset_mean_expression_mse": 0.36201076459518206
+      },
+      "dyadic": {
+        "count": 64,
+        "mean_output_rms": 0.00043413927322495937,
+        "mean_per_second_rms": [
+          0.0007577305112352343,
+          0.0005571808938120622,
+          0.0004428502815132029,
+          0.00036307141052757577,
+          0.0003156558816247958,
+          0.0002667071589041292,
+          0.00023123034883449663,
+          0.0002012447739248409
+        ],
+        "natural_mean_expression_mse": 0.36083316980835356,
+        "reset_mean_expression_mse": 0.3608180523251436
+      }
+    },
+    "event": {
+      "none": {
+        "count": 38,
+        "centered_trajectory_mse": 0.1851227081798429,
+        "response_amplitude_mae": 0.15563913348655414,
+        "peak_lag_error_seconds": 2.1052631578947367,
+        "late_response_error": 0.14453449608570618,
+        "response_area_error": 1.1112027159628168,
+        "single_effect": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "repeated_effect": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "single_target_state_rms": [
+          0.042488032461781254,
+          0.010176881608602247,
+          0.004602518814959024,
+          0.0021442589104959837,
+          0.0010821683160764607,
+          0.0005574332041616895,
+          0.00029667123377102574,
+          0.0001563494308931312,
+          8.639358010872169e-05
+        ],
+        "repeated_target_state_rms": [
+          0.042488032461781254,
+          0.010176881608602247,
+          0.045092418593795675,
+          0.012008574448133769,
+          0.04571025857799932,
+          0.012749724090099335,
+          0.006010885423931636,
+          0.00295497655353852,
+          0.0015364068768624413
+        ],
+        "natural_mean_expression_mse": 0.24633036169211855,
+        "removed_mean_expression_mse": 0.24633036169211855,
+        "anchor_removal_output_rms": 0.0
+      },
+      "affect": {
+        "count": 38,
+        "centered_trajectory_mse": 0.17806191656250997,
+        "response_amplitude_mae": 0.1583638504929973,
+        "peak_lag_error_seconds": 2.1052631578947367,
+        "late_response_error": 0.14771476820184026,
+        "response_area_error": 1.141417445687569,
+        "single_effect": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "repeated_effect": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "single_target_state_rms": [
+          0.042488032461781254,
+          0.010176881608602247,
+          0.004602518814959024,
+          0.0021442589104959837,
+          0.0010821683160764607,
+          0.0005574332041616895,
+          0.00029667123377102574,
+          0.0001563494308931312,
+          8.639358010872169e-05
+        ],
+        "repeated_target_state_rms": [
+          0.042488032461781254,
+          0.010176881608602247,
+          0.045092418593795675,
+          0.012008574448133769,
+          0.04571025857799932,
+          0.012749724090099335,
+          0.006010885423931636,
+          0.00295497655353852,
+          0.0015364068768624413
+        ],
+        "natural_mean_expression_mse": 0.24473603190512286,
+        "removed_mean_expression_mse": 0.24473603190512286,
+        "anchor_removal_output_rms": 0.0
+      },
+      "self": {
+        "count": 38,
+        "centered_trajectory_mse": 0.18341605990034707,
+        "response_amplitude_mae": 0.156087404414691,
+        "peak_lag_error_seconds": 2.210526315789474,
+        "late_response_error": 0.14551608833368407,
+        "response_area_error": 1.1248630478025199,
+        "single_effect": [
+          0.0002331989628709528,
+          0.00012553339379888103,
+          0.00011079694851630324,
+          0.00010710969156200874,
+          2.39809590825223e-05,
+          1.0093506591836154e-05,
+          4.4975064278036245e-06,
+          2.2182482389570473e-06,
+          1.053367164544953e-06
+        ],
+        "repeated_effect": [
+          0.0002331989628709528,
+          0.00012553339379888103,
+          0.00034601955268176763,
+          0.00023211514191144868,
+          0.00032773068942155764,
+          0.0002352301699090975,
+          0.00013618810198104238,
+          0.00011999202773815936,
+          3.1934424093114904e-05
+        ],
+        "single_target_state_rms": [
+          0.042488032461781254,
+          0.010176881608602247,
+          0.004602518814959024,
+          0.0021442589104959837,
+          0.0010821683160764607,
+          0.0005574332041616895,
+          0.00029667123377102574,
+          0.0001563494308931312,
+          8.639358010872169e-05
+        ],
+        "repeated_target_state_rms": [
+          0.042488032461781254,
+          0.010176881608602247,
+          0.045092418593795675,
+          0.012008574448133769,
+          0.04571025857799932,
+          0.012749724090099335,
+          0.006010885423931636,
+          0.00295497655353852,
+          0.0015364068768624413
+        ],
+        "natural_mean_expression_mse": 0.2470400223067873,
+        "removed_mean_expression_mse": 0.24703883019831754,
+        "anchor_removal_output_rms": 0.000103013200954631
+      },
+      "dyadic": {
+        "count": 38,
+        "centered_trajectory_mse": 0.18295612547008697,
+        "response_amplitude_mae": 0.15598893892108964,
+        "peak_lag_error_seconds": 2.1052631578947367,
+        "late_response_error": 0.14595379709190007,
+        "response_area_error": 1.1180065062233844,
+        "single_effect": [
+          0.0003227065382160313,
+          0.0001910920463328046,
+          0.000171593416429726,
+          0.00016807398843334583,
+          3.697202885584301e-05,
+          1.633027840960456e-05,
+          8.959429439040441e-06,
+          5.5707990541488265e-06,
+          4.110403001907072e-06
+        ],
+        "repeated_effect": [
+          0.0003227065382160313,
+          0.0001910920463328046,
+          0.0004967291623789895,
+          0.0003639585322448417,
+          0.0005028354388919671,
+          0.00036715571574964784,
+          0.0002168174345823533,
+          0.0001853217571970465,
+          4.8936909956262955e-05
+        ],
+        "single_target_state_rms": [
+          0.04277866402040481,
+          0.01028040496519105,
+          0.004725607043502877,
+          0.002256952416102745,
+          0.0011831635349249393,
+          0.0006341423565907845,
+          0.0003614889262136881,
+          0.00021659775819372093,
+          0.0001390296429714286
+        ],
+        "repeated_target_state_rms": [
+          0.04277866402040481,
+          0.01028040496519105,
+          0.045265752255401914,
+          0.012158198743188558,
+          0.04597499848674297,
+          0.012948209828831941,
+          0.00623722180975356,
+          0.003174200360693871,
+          0.0017219032846409583
+        ],
+        "natural_mean_expression_mse": 0.2461466390288657,
+        "removed_mean_expression_mse": 0.24614554123772645,
+        "anchor_removal_output_rms": 0.00015133304464292976
+      }
+    },
+    "partner": {
+      "none": {
+        "count": 64,
+        "shuffled_mean_expression_mse": 0.35924083758770203,
+        "shuffled_valid_chunks": 512,
+        "coupling_off_mean_expression_mse": 0.35924083758770203,
+        "coupling_off_valid_chunks": 512,
+        "listening_mean_expression_mse": 0.4852345852341546,
+        "listening_valid_chunks": 1,
+        "speaking_mean_expression_mse": 0.35899427448076177,
+        "speaking_valid_chunks": 511,
+        "shuffle_output_rms": 0.0,
+        "coupling_output_rms": 0.0,
+        "natural_mean_expression_mse": 0.35924083758770203
+      },
+      "affect": {
+        "count": 64,
+        "shuffled_mean_expression_mse": 0.3584454868697734,
+        "shuffled_valid_chunks": 512,
+        "coupling_off_mean_expression_mse": 0.3584454868697734,
+        "coupling_off_valid_chunks": 512,
+        "listening_mean_expression_mse": 0.4916618996969416,
+        "listening_valid_chunks": 1,
+        "speaking_mean_expression_mse": 0.3581847893887026,
+        "speaking_valid_chunks": 511,
+        "shuffle_output_rms": 0.0,
+        "coupling_output_rms": 0.0,
+        "natural_mean_expression_mse": 0.3584454868697734
+      },
+      "self": {
+        "count": 64,
+        "shuffled_mean_expression_mse": 0.3620092453810548,
+        "shuffled_valid_chunks": 512,
+        "coupling_off_mean_expression_mse": 0.3620092453810548,
+        "coupling_off_valid_chunks": 512,
+        "listening_mean_expression_mse": 0.4908913631011245,
+        "listening_valid_chunks": 1,
+        "speaking_mean_expression_mse": 0.36175702988649494,
+        "speaking_valid_chunks": 511,
+        "shuffle_output_rms": 0.0,
+        "coupling_output_rms": 0.0,
+        "natural_mean_expression_mse": 0.3620092453810548
+      },
+      "dyadic": {
+        "count": 64,
+        "shuffled_mean_expression_mse": 0.360853425897553,
+        "shuffled_valid_chunks": 512,
+        "coupling_off_mean_expression_mse": 0.3608512833991579,
+        "coupling_off_valid_chunks": 512,
+        "listening_mean_expression_mse": 0.4910817558908749,
+        "listening_valid_chunks": 1,
+        "speaking_mean_expression_mse": 0.3605782802074093,
+        "speaking_valid_chunks": 511,
+        "shuffle_output_rms": 0.0007960504049876849,
+        "coupling_output_rms": 0.0018385696220238348,
+        "natural_mean_expression_mse": 0.36083316980835356
+      }
+    }
+  },
+  "interpretation": "Negative error differences favor the condition. Sensitivity is not appropriateness. CIs cover video sampling, not training-seed variation.",
+  "parity": {
+    "none": {
+      "context_max_absolute_error": 0.0,
+      "prediction_max_absolute_error": 0.0
+    },
+    "affect": {
+      "context_max_absolute_error": 0.0,
+      "prediction_max_absolute_error": 0.0
+    },
+    "self": {
+      "context_max_absolute_error": 0.0,
+      "prediction_max_absolute_error": 0.0
+    },
+    "dyadic": {
+      "context_max_absolute_error": 0.0,
+      "prediction_max_absolute_error": 0.0
+    }
+  }
+}

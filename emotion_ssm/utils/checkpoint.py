@@ -11,6 +11,31 @@ import torch
 from .distributed import unwrap_model
 
 
+def data_provenance(config):
+    import json
+    from emotion_ssm.data.protocol import fingerprint
+    sources, splits, data = {}, {}, {}
+    roots = {"emotiontalk": config.DATA.EMOTIONTALK_ROOT, "iemocap": config.DATA.IEMOCAP_FEATURE_ROOT}
+    for source in config.DATA.SOURCES:
+        root = Path(roots[source])
+        metadata = root / "metadata" / "feature_source.json"
+        if metadata.exists():
+            sources[source] = json.loads(metadata.read_text(encoding="utf-8"))
+        split_root = root / "splits"
+        if source == "iemocap":
+            split_root /= f"fold_{config.DATA.IEMOCAP_FOLD}"
+        splits[source] = fingerprint({p.name: p.read_text(encoding="utf-8") for p in sorted(split_root.glob("*.txt"))})
+        data[source] = fingerprint({p.relative_to(root).as_posix(): p.read_text(encoding="utf-8")
+                                    for p in sorted((root / "dialogues").glob("*/provenance.json"))})
+    return {"feature_sources": sources, "split_digests": splits, "data_digests": data}
+
+
+def validate_resume_data(payload, config):
+    for key, value in data_provenance(config).items():
+        if payload.get(key) != value:
+            raise ValueError(f"Resume data changed ({key}); use weights as initialization for a new experiment")
+
+
 def capture_rng_state() -> Dict[str, Any]:
     state = {
         "python": random.getstate(),
@@ -41,7 +66,15 @@ def save_training_checkpoint(
     metrics: Optional[Mapping[str, float]] = None,
     config: Optional[Mapping[str, Any]] = None,
 ) -> None:
+    provenance = {"feature_sources": {}, "split_digests": {}, "data_digests": {}}
+    if config:
+        from yacs.config import CfgNode
+        parsed = CfgNode.load_cfg(config) if isinstance(config, str) else CfgNode(config)
+        if "DATA" in parsed:
+            provenance = data_provenance(parsed)
     payload = {
+        "format_version": 2,
+        "data_semantics": "masked-vad-endpoint-v2",
         "epoch": epoch,
         "global_step": global_step,
         "models": {
@@ -52,6 +85,7 @@ def save_training_checkpoint(
         "scaler": None if scaler is None else scaler.state_dict(),
         "metrics": dict(metrics or {}),
         "config": config,
+        **provenance,
         "rng_state": capture_rng_state(),
     }
     torch.save(payload, str(path))
@@ -69,6 +103,8 @@ def load_training_checkpoint(
     if "weights_only" in inspect.signature(torch.load).parameters:
         load_kwargs["weights_only"] = False
     checkpoint = torch.load(str(path), **load_kwargs)
+    if optimizer is not None and checkpoint.get("format_version") != 2:
+        raise ValueError("Legacy checkpoint is initialization-only; do not resume its optimizer under v2 semantics")
     for name, model in models.items():
         if name not in checkpoint["models"]:
             raise KeyError(f"Checkpoint does not contain model '{name}'")

@@ -2,8 +2,8 @@ SEED: 6666
 DEVICE: cuda
 DATA:
   ROOT: datasets
-  EMOTIONTALK_ROOT: datasets/emotiontalk/processed
-  IEMOCAP_FEATURE_ROOT: artifacts/features/iemocap
+  EMOTIONTALK_ROOT: artifacts/features/emotiontalk_v2
+  IEMOCAP_FEATURE_ROOT: artifacts/features/iemocap_v2
   IEMOCAP_FOLD: 5
   WINDOW_LENGTH: 33
   WINDOW_STRIDE: 4
@@ -27,8 +27,10 @@ DYNAMICS:
   ROLLOUT_MODE: joint
   OPEN_LOOP_DT: 1.0
   RANDOM_ROLE_SWAP: true
-  # First train event/action/coupling with a fixed affect space, then release
-  # the affect branch at 0.05x LR while anchoring it to the EMA observer.
+  # Shared affect coordinates remain fixed throughout Phase B.
+  KEEP_AFFECT_FROZEN: true
+  FULL_DIALOGUES: true
+  BPTT_EVENTS: 32
   FREEZE_AFFECT_EPOCHS: 5
   AFFECT_LR_SCALE: 0.05
 LOSS:

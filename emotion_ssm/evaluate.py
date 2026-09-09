@@ -33,6 +33,9 @@ from emotion_ssm.utils.paths import ensure_output_directory
 def evaluate_observation(encoder, heads, loader, device) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
     encoder.eval()
     heads.eval()
+    from emotion_ssm.utils.prediction_statistics import PredictionStatistics
+    from emotion_ssm.utils.statistics import RepresentationTotals
+    domain_metrics, representations = PredictionStatistics(), RepresentationTotals()
     matrices = [torch.zeros(7, 7, dtype=torch.long) for _ in SUBSET_NAMES]
     intensity_error = torch.zeros(len(SUBSET_NAMES))
     counts = torch.zeros(len(SUBSET_NAMES))
@@ -51,16 +54,19 @@ def evaluate_observation(encoder, heads, loader, device) -> Tuple[Dict[str, floa
         batch = move_to_device(raw_batch, device)
         output = encoder(batch, SUBSET_MASKS.to(device))
         predictions = heads(output.aff, 0.0)
+        domain_metrics.observation(output, predictions, batch, SUBSET_NAMES)
+        representations.update(output, batch["dataset_id"], SUBSET_NAMES)
         emotion_prediction = predictions["emotion"].argmax(-1)
         for subset in range(len(SUBSET_NAMES)):
             valid = output.valid_subsets[:, subset]
             matrices[subset] += confusion_matrix(
                 batch["emotion"], emotion_prediction[:, subset], mask=valid
             )
+            intensity_valid = valid & batch.get("intensity_mask", torch.ones_like(batch["intensity"], dtype=torch.bool))
             intensity_error[subset] += (
                 predictions["intensity"][:, subset] - batch["intensity"]
-            ).abs()[valid].sum().cpu()
-            counts[subset] += valid.sum().cpu()
+            ).abs()[intensity_valid].sum().cpu()
+            counts[subset] += intensity_valid.sum().cpu()
         for subset in range(len(SUBSET_NAMES)):
             subset_vad_prediction[subset].append(predictions["vad"][:, subset].cpu())
             subset_vad_target[subset].append(batch["vad"].cpu())
@@ -135,6 +141,8 @@ def evaluate_observation(encoder, heads, loader, device) -> Tuple[Dict[str, floa
         evidence["latent_near_constant_dimensions"] = torch.tensor(
             evidence["aff"].shape[-1]
         )
+    metrics.update(domain_metrics.metrics())
+    metrics.update(representations.metrics())
     return metrics, evidence
 
 
@@ -245,36 +253,16 @@ def observation_contract_failures(
 def evaluate_dynamics(
     bundle, teacher, loader, class_weights, device, enable_partner: bool
 ) -> Dict[str, float]:
-    bundle.eval()
-    totals: Dict[str, float] = {}
-    batches = 0
-    for raw_batch in loader:
-        batch = move_to_device(raw_batch, device)
-        target_aff = make_teacher_aff(teacher, batch)
-        original_mode = bundle.rollout_mode
-        mode_results = {}
-        for mode in ("conditional", "open_loop"):
-            bundle.rollout_mode = mode
-            mode_results[mode] = bundle(
-                batch,
-                target_aff,
-                class_weights,
-                enable_partner,
-                enable_partner,
-            )
-            for name, value in mode_results[mode].items():
-                key = f"{mode}_{name}"
-                totals[key] = totals.get(key, 0.0) + float(value)
-        bundle.rollout_mode = original_mode
-        if enable_partner:
-            bundle.rollout_mode = "conditional"
-            self_only = bundle(batch, target_aff, class_weights, False, False)
-            bundle.rollout_mode = original_mode
-            totals["partner_gain"] = totals.get("partner_gain", 0.0) + float(
-                self_only["h1"] - mode_results["conditional"]["h1"]
-            )
-        batches += 1
-    return {name: value / max(batches, 1) for name, value in totals.items()}
+    from emotion_ssm.train.dynamics_trainer import validate
+    from emotion_ssm.utils.distributed import DistributedContext
+    original = bundle.rollout_mode
+    bundle.rollout_mode = "joint"
+    try:
+        values = validate(bundle, teacher, loader, class_weights,
+                          DistributedContext(0, 0, 1, torch.device(device)), enable_partner, enable_partner)
+        return {name.removeprefix("val_"): value for name, value in values.items()}
+    finally:
+        bundle.rollout_mode = original
 
 
 @torch.no_grad()
@@ -304,6 +292,10 @@ def state_curves(model) -> Dict[str, object]:
 
 
 def main() -> None:
+    import sys
+    if "--checkpoint" in sys.argv:
+        from emotion_ssm.evaluate_emotion_v2 import main as complete_checkpoint_main
+        return complete_checkpoint_main()
     parser = argparse.ArgumentParser(description="Evaluate emotion observation and dyadic state models")
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--split", choices=("val", "test"), default="test")
@@ -382,7 +374,9 @@ def main() -> None:
         teacher = ObservationEncoder.from_config(cfg).to(device)
         teacher.load_state_dict(load_component_state(args.ema_checkpoint, "teacher"))
         teacher.eval()
-        windows = DialogueWindowDataset(
+        from emotion_ssm.data.full_dialogues import FullDialogueDataset, collate_full_dialogues
+        dataset_type = FullDialogueDataset if cfg.DYNAMICS.FULL_DIALOGUES else DialogueWindowDataset
+        windows = dataset_type(
             stores,
             args.split,
             speaker_vocab,
@@ -394,12 +388,13 @@ def main() -> None:
             batch_size=cfg.TRAIN.SEQUENCE_BATCH_SIZE,
             shuffle=False,
             num_workers=cfg.DATA.NUM_WORKERS,
+            collate_fn=collate_full_dialogues if cfg.DYNAMICS.FULL_DIALOGUES else None,
         )
         dynamics = evaluate_dynamics(
             bundle,
             teacher,
             window_loader,
-            windows.class_weights().to(device),
+            probe_dataset.class_weights().to(device),
             device,
             cfg.DYNAMICS.ENABLE_PARTNER,
         )

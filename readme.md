@@ -1,5 +1,7 @@
 # DualTalk: Dual-Speaker Interaction for 3D Talking Head Conversations [CVPR 2025]
 
+新版情感 Avatar 默认使用 v3.2：状态相关的跨维度演化、持续双人反馈、90% 片段遮挡与 10% 整模态遮挡；保留同坐标快慢记忆和自主未来预测。实现与兼容约定见 [v3.2 修改说明](docs/v32_adaptive_dynamics_2026-09-09.md)，训练入口见 [docs/v3_training.md](docs/v3_training.md)。生成器每次输出 25 帧，原始上下文仍限于此前 3 秒。新旧训练 revision 不能混用优化器；旧 checkpoint 保留原构造推理。旧 v2 实验按 [docs/v2_training.md](docs/v2_training.md) 恢复。依赖见 `requirements-v2.txt`，CPU 回归测试见 `requirements-test.txt`。下方 Environment 保留原论文实现的环境说明。
+
 Official PyTorch implementation for the paper:
 
 > **DualTalk: Dual-Speaker Interaction for 3D Talking Head Conversations**, ***CVPR 2025***.
@@ -92,7 +94,7 @@ The data folder format is as follows:
 
 ## **Training and Testing**
 
-### Emotion-state rollout semantics
+### Archived v1/v2 emotion-state rollout semantics
 
 The emotion-state extension reports two distinct trajectory settings:
 

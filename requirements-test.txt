@@ -1,0 +1,3 @@
+# CPU-only verification environment; install torch from its CPU wheel index.
+-r requirements-v2.txt
+pytest>=8,<9
