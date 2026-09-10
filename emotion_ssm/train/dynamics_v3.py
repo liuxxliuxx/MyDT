@@ -592,16 +592,52 @@ def _distributed_device(config):
     return device, rank, world
 
 
-def run(config):
+def _resume_configuration(payload, until_step=None, output=None, learning_rate=None):
+    """Resume exactly, or explicitly fork the learning rate into another output."""
+    config = copy.deepcopy(payload["config"])
+    if until_step is not None:
+        if isinstance(until_step, bool) or not isinstance(until_step, int):
+            raise ValueError("resume_until_step must be an integer absolute step")
+        previous_limit = int(config["train"]["max_steps"])
+        if until_step <= max(previous_limit, int(payload["global_step"])):
+            raise ValueError("resume_until_step must extend the checkpoint's existing step limit")
+        config["train"]["max_steps"] = until_step
+        config["train"]["dynamics_steps"] = until_step
+    if output is not None:
+        if not str(output).strip():
+            raise ValueError("resume_output cannot be empty")
+        config["paths"]["output"] = str(Path(output).resolve())
+    if learning_rate is not None:
+        if (isinstance(learning_rate, bool) or not isinstance(learning_rate, (int, float))
+                or not math.isfinite(learning_rate) or learning_rate <= 0):
+            raise ValueError("resume_lr must be a finite positive number")
+        if output is None or Path(output).resolve() == Path(payload["config"]["paths"]["output"]).resolve():
+            raise ValueError("A learning-rate branch requires a separate resume_output directory")
+        if payload.get("optimizer") is None:
+            raise ValueError("A learning-rate branch requires the source optimizer state")
+        config["train"].update(lr=float(learning_rate), state_lr=float(learning_rate))
+        config["learning_rate_branch"] = {
+            "source_step": int(payload["global_step"]),
+            "source_output": payload["config"]["paths"]["output"],
+            "source_learning_rates": [float(group["lr"]) for group in payload["optimizer"]["param_groups"]],
+            "learning_rate": float(learning_rate),
+            "optimizer_moments_preserved": True,
+        }
+    return config
+
+
+def run(config, *, resume_until_step=None, resume_output=None, resume_lr=None):
     config = copy.deepcopy(validate_config(config))
     resume_path = config["paths"].get("resume")
     resumed = read_checkpoint(resume_path) if resume_path else None
+    if resumed is None and any(value is not None for value in (resume_until_step, resume_output, resume_lr)):
+        raise ValueError("Resume overrides require a complete resume checkpoint")
     if resumed is not None:
         if resumed["kind"] != "dynamics_v3":
             raise ValueError("Only a complete dynamics_v3 checkpoint can resume this stage")
         require_training_revision(resumed)
-        # Resume is an exact continuation, including batch budget and data list.
-        config = copy.deepcopy(resumed["config"])
+        # Batch budget/data are authoritative; an explicit LR fork is recorded.
+        config = _resume_configuration(resumed, resume_until_step, resume_output, resume_lr)
     else:
         # Generation's diagnostic max_steps is distinct from the upstream
         # dynamics budget. Record the effective budget in saved experiment data.
@@ -659,6 +695,11 @@ def run(config):
     start_step, best = 0, math.inf
     if resumed is not None:
         restore_training(resumed, models, optimizer=optimizer, config=config, restore_rng=False)
+        # load_state_dict restores source group options, including its old LR.
+        # Override after loading, preserving every moment tensor and step counter.
+        if resume_lr is not None:
+            for group in optimizer.param_groups:
+                group["lr"] = float(resume_lr)
         run_state = resumed["run_state"]
         if int(run_state["world_size"]) != world:
             raise ValueError("Exact resume requires the same DDP world size")
@@ -681,6 +722,15 @@ def run(config):
     if rank == 0:
         output.mkdir(parents=True, exist_ok=True)
         write_config(output / "config.json", config)
+        if resumed is not None:
+            optimizer_steps = [int(value["step"].item()) for value in optimizer.state.values() if "step" in value]
+            receipt = {"checkpoint": str(resume_path), "checkpoint_step": start_step,
+                       "source_learning_rates": [float(g["lr"]) for g in resumed["optimizer"]["param_groups"]],
+                       "actual_learning_rates": [float(g["lr"]) for g in optimizer.param_groups],
+                       "explicit_lr_override": resume_lr, "world_size": world,
+                       "optimizer_step_range": [min(optimizer_steps), max(optimizer_steps)] if optimizer_steps else [],
+                       "cursor": {k: rank_state["cursor"][k] for k in ("epoch", "order_position", "packet_index", "dialogue_identity")}}
+            (output / "resume_receipt.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")
         (output / "training_status.json").write_text(json.dumps(
             {"status": "running", "stage": "dynamics_v3", "step": start_step,
              "max_steps": int(config["train"]["max_steps"]), "world_size": world}), encoding="utf-8")
@@ -777,6 +827,7 @@ def run(config):
         mean_count += increment_count
         metrics = statistics.distributed().metrics()
         metrics.update(step=step, new_chunks=actual_chunks, cumulative_new_chunks=step*budget,
+                       learning_rates=[float(group["lr"]) for group in optimizer.param_groups],
                        gradient_norm=float(grad_norm), training_mean_samples=float(mean_count),
                        baseline_gradient_norm=float(core.baseline.grad.norm()) if core.baseline.grad is not None else 0.,
                         dynamics_revision=DYNAMICS_REVISION,
@@ -838,11 +889,18 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     parser.add_argument("--resume", default="")
+    parser.add_argument("--resume-until-step", type=int, default=None,
+                        help="Extend a resumed run to this absolute optimizer step; keep all learning settings")
+    parser.add_argument("--resume-output", default=None,
+                        help="Write a resumed run to this directory, preserving the source checkpoint")
+    parser.add_argument("--resume-lr", type=float, default=None,
+                        help="Fork both optimizer groups to this LR after restoring moments; requires separate output")
     arguments = parser.parse_args()
     config = read_config(arguments.config)
     if arguments.resume:
         config["paths"]["resume"] = arguments.resume
-    run(config)
+    run(config, resume_until_step=arguments.resume_until_step, resume_output=arguments.resume_output,
+        resume_lr=arguments.resume_lr)
 
 
 if __name__ == "__main__":

@@ -98,15 +98,34 @@ class AdaptiveDyadicFlow(nn.Module):
                        elapsed=state.elapsed+dt)
 
     def propagate(self, state, dt, rates, omega, max_step, enable_partner=True,
-                  force=None, relation_force=None):
+                  force=None, relation_force=None, known_steps=None):
         """Exponential midpoint, with bounded physical-second substeps.
 
         Coefficients are recomputed at every midpoint. Exponential damping
         handles short fast time constants without an explicit Euler instability.
         Nonlinear flow has numerical, not exact algebraic, composition accuracy.
         """
-        count = math.ceil(float(dt.max().detach())/max_step)
+        # known_steps is supplied only after validating a CPU query schedule.
+        count = (math.ceil(float(dt.max().detach())/max_step) if known_steps is None
+                 else known_steps)
         current, remaining = state, dt
+
+        midpoint = getattr(self, '_compiled_midpoint', None) or self._midpoint
+        for _ in range(count):
+            step = remaining.clamp(0, max_step)
+            current = midpoint(current, step, rates, omega, enable_partner, force, relation_force)
+            remaining = (remaining-step).clamp_min(0)
+        # Avoid accumulated floating-point drift in the declared timestamp.
+        return replace(current, elapsed=state.elapsed+dt)
+
+    def configure_execution(self, compile_midpoint=False):
+        # Compile a callable, not an nn.Module wrapper: checkpoint parameter
+        # names and optimizer ordering must remain unchanged.
+        self._compiled_midpoint = (torch.compile(self._midpoint, fullgraph=True, dynamic=True,
+            options={'triton.cudagraphs': False}) if compile_midpoint else None)
+
+    def _midpoint(self, current, step, rates, omega, enable_partner,
+                  force, relation_force):
 
         def coefficients(value):
             decay, drive = self.coefficients(value, rates, omega, enable_partner)
@@ -117,12 +136,7 @@ class AdaptiveDyadicFlow(nn.Module):
                 relation = relation+rates[2]*relation_force
             return decay, (fast, slow, relation)
 
-        for _ in range(count):
-            step = remaining.clamp(0, max_step)
-            damping, forcing = coefficients(current)
-            middle = self._exponential_step(current, step*.5, damping, forcing)
-            damping, forcing = coefficients(middle)
-            current = self._exponential_step(current, step, damping, forcing)
-            remaining = (remaining-step).clamp_min(0)
-        # Avoid accumulated floating-point drift in the declared timestamp.
-        return replace(current, elapsed=state.elapsed+dt)
+        damping, forcing = coefficients(current)
+        middle = self._exponential_step(current, step*.5, damping, forcing)
+        damping, forcing = coefficients(middle)
+        return self._exponential_step(current, step, damping, forcing)

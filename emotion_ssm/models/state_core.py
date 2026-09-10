@@ -426,7 +426,8 @@ class UnifiedEmotionStateCore(nn.Module):
         return force, torch.stack(directional, 1)
 
     def advance(self, state: EmotionMemory, observations: Sequence[EventObservation], dt,
-                enable_partner: bool = True, correct: bool = True) -> EmotionMemory:
+                enable_partner: bool = True, correct: bool = True,
+                diagnostics: Optional[dict] = None) -> EmotionMemory:
         """Advance elapsed time, then inject each new event and correct its endpoint.
 
         Continuous behaviour is integrated only over its explicit new duration.
@@ -459,6 +460,7 @@ class UnifiedEmotionStateCore(nn.Module):
         slow_rate = self.max_slow_correction_rate * self.slow_correction_logits.sigmoid()
         total_rate = fast_rate + slow_rate
         event_strength = self.max_event * self.event_strength.sigmoid()
+        before_correction, correction_amounts, evidence_values = [], [], []
         for role, (observation, m) in enumerate(zip(observations, metadata)):
             present = m["event_present"]
             event_ids = m["event_ids"]
@@ -469,6 +471,10 @@ class UnifiedEmotionStateCore(nn.Module):
             event_delta = event_delta.to(current.fast.dtype) * present[:, None]
             role_fast = current.fast[:, role] + event_strength[0] * event_delta
             role_slow = current.slow[:, role] + event_strength[1] * event_delta
+            if diagnostics is not None:
+                before_correction.append(current.baseline[:, role] + role_fast + role_slow)
+                evidence_values.append(m["evidence"])
+            amount = torch.zeros_like(role_fast)
             if correct:
                 innovation = torch.where(m["evidence"][:, None] > 0,
                                          observation.aff - current.baseline[:, role] - role_fast - role_slow,
@@ -476,10 +482,16 @@ class UnifiedEmotionStateCore(nn.Module):
                 amount = -torch.expm1(-dt[:, None] * m["evidence"][:, None] * total_rate)
                 role_fast = role_fast + amount * (fast_rate / total_rate) * innovation
                 role_slow = role_slow + amount * (slow_rate / total_rate) * innovation
+            if diagnostics is not None:
+                correction_amounts.append(amount)
             fast.append(role_fast)
             slow.append(role_slow)
             ids.append(state.last_event_ids[:, role] if event_ids is None else
                        torch.where(present, event_ids, state.last_event_ids[:, role]))
+        if diagnostics is not None:
+            diagnostics.update(input_conditioned_prior=torch.stack(before_correction, 1),
+                               correction_gain=torch.stack(correction_amounts, 1),
+                               evidence=torch.stack(evidence_values, 1))
         return EmotionMemory(torch.stack(fast, 1), torch.stack(slow, 1), current.relation,
                              current.baseline, current.elapsed, torch.stack(ids, 1))
 
@@ -517,13 +529,26 @@ class UnifiedEmotionStateCore(nn.Module):
             # an origin-anchored grid; fractional queries are read-only branches.
             result, anchor, seconds = [], state, 0.
             step = self.max_integration_step
+            optimized = getattr(self, '_execution_optimized', False)
+            if optimized:
+                # The Python query schedule above is already validated. Rates
+                # are constant within this forecast (weights do not update).
+                rates = self.rates()
+                omega = self.max_autonomous_rotation*self.rotation.tanh()
+                def scheduled(current, interval):
+                    dt = torch.full_like(current.elapsed, interval)
+                    return self.adaptive_flow.propagate(current, dt, rates, omega, step,
+                        enable_partner=enable_partner, known_steps=math.ceil(interval/step))
             for query in queries:
                 while seconds+step <= query+1e-12:
-                    anchor = self._propagate(anchor, self._interval(step, anchor),
-                                             enable_partner=enable_partner)
+                    anchor = (scheduled(anchor, step) if optimized else
+                              self._propagate(anchor, self._interval(step, anchor),
+                                              enable_partner=enable_partner))
                     seconds += step
-                result.append(self._propagate(anchor, self._interval(max(0., query-seconds), anchor),
-                                               enable_partner=enable_partner))
+                interval = max(0., query-seconds)
+                result.append(scheduled(anchor, interval) if optimized else
+                              self._propagate(anchor, self._interval(interval, anchor),
+                                              enable_partner=enable_partner))
             return result
         result = []
         current, origin, cursor = state, 0.0, 0
@@ -537,6 +562,18 @@ class UnifiedEmotionStateCore(nn.Module):
             result.append(self._propagate(current, self._interval(query - origin, current),
                                           enable_partner=enable_partner))
         return result
+
+    def configure_execution(self, mode='reference'):
+        """Execution-only choice; no model construction or weight keys change."""
+        if mode not in {'reference', 'optimized', 'compiled'}:
+            raise ValueError('Unknown dynamics execution mode')
+        self._execution_optimized = mode != 'reference'
+        if mode == 'compiled':
+            # Grad/no-grad, scalar/batched states and the four phase parameter
+            # partitions are finite, legitimate variants of the same callable.
+            torch._dynamo.config.cache_size_limit = max(torch._dynamo.config.cache_size_limit, 64)
+        if self.adaptive_flow is not None:
+            self.adaptive_flow.configure_execution(compile_midpoint=mode == 'compiled')
 
     def context(self, state: EmotionMemory, observations: Sequence[EventObservation],
                 variant: str = "dyadic") -> Tensor:

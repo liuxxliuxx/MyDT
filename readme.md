@@ -1,5 +1,13 @@
 # DualTalk: Dual-Speaker Interaction for 3D Talking Head Conversations [CVPR 2025]
 
+V3.2.1 新增[状态校准与固定起点传播训练](docs/staged_dynamics_v3_2_1.md)，入口为 `emotion_ssm.train.dynamics_staged_v3`。它保留 V3.2 架构，冻结观测校正速率与输入增益，增加真实状态向量监督，并在联合更新后重新形成起点、适配传播器。只有固定起点预测和候选模型自身起点上的预测同时通过检查，才保存可部署的 `best.pt`。冻结特征缓存和起点批处理用于缩短训练耗时；旧优化器不能恢复到新协议。
+
+该阶段支持[执行效率优化](docs/staged_execution_optimization_2026-09-10.md)：`--execution compiled` 编译单个积分步，保留训练预算、FP32和原动力学公式，可恢复同一V3.2.1阶段的checkpoint。文档区分局部测速、数值一致性和实际双卡训练速度。
+
+原 V3.2 动力学支持通过 `--resume-until-step` 显式延长完整断点的停止步数，其他训练设置仍以断点为准。服务器3从10000步续训至20000步的配置、数据覆盖率和原曲线见[续训记录](docs/server3_v32_extend20k_2026-09-10.md)。
+
+独立学习率分支可使用 `--resume-lr 3e-5 --resume-output 新目录`：先完整恢复Adam状态，再覆盖两组学习率并记录到checkpoint。服务器3同卡运行的 `1e-4` / `3e-5` 对照见[学习率实验记录](docs/server3_v32_lr_comparison_2026-09-10.md)。
+
 新版情感 Avatar 默认使用 v3.2：状态相关的跨维度演化、持续双人反馈、90% 片段遮挡与 10% 整模态遮挡；保留同坐标快慢记忆和自主未来预测。实现与兼容约定见 [v3.2 修改说明](docs/v32_adaptive_dynamics_2026-09-09.md)，训练入口见 [docs/v3_training.md](docs/v3_training.md)。生成器每次输出 25 帧，原始上下文仍限于此前 3 秒。新旧训练 revision 不能混用优化器；旧 checkpoint 保留原构造推理。旧 v2 实验按 [docs/v2_training.md](docs/v2_training.md) 恢复。依赖见 `requirements-v2.txt`，CPU 回归测试见 `requirements-test.txt`。下方 Environment 保留原论文实现的环境说明。
 
 Official PyTorch implementation for the paper:

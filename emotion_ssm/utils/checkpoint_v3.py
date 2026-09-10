@@ -13,7 +13,8 @@ from pathlib import Path
 import torch
 
 from emotion_ssm.config_v3 import (FORMAT_VERSION, PROTOCOL, DYNAMICS_REVISION,
-                                   FUTURE_LABEL_PROTOCOL, GENERATION_REVISION, LEARNING_REVISION, validate_config)
+                                   FUTURE_LABEL_PROTOCOL, GENERATION_REVISION, LEARNING_REVISION,
+                                   STAGED_DYNAMICS_REVISION, validate_config)
 from emotion_ssm.utils.checkpoint import capture_rng_state, restore_rng_state
 
 
@@ -68,6 +69,7 @@ def save_checkpoint(path, models, config, construction, kind, step=0,
 def require_training_revision(payload):
     """Old weights remain readable; changed gradient semantics require a new run."""
     revisions = {"dynamics_v3": ("dynamics_revision", DYNAMICS_REVISION),
+                 "dynamics_staged_v3": ("staged_revision", STAGED_DYNAMICS_REVISION),
                  "streaming_avatar_v3": ("generation_revision", GENERATION_REVISION),
                  "observation_v3": ("learning_revision", LEARNING_REVISION),
                  "calibration_v3": ("learning_revision", LEARNING_REVISION)}

@@ -8,6 +8,7 @@ from pathlib import Path
 PROTOCOL = "emotion-token-packets-v3.1"
 FORMAT_VERSION = 4
 DYNAMICS_REVISION = "v3.2-adaptive-dyadic-flow"
+STAGED_DYNAMICS_REVISION = "v3.2.1-fixed-gain-calibration-replayed-origins"
 REAL_ENDPOINT_DYNAMICS_REVISIONS = ("v3.1.3-real-endpoint-forecast", DYNAMICS_REVISION)
 UNIT_LABEL_DYNAMICS_REVISIONS = ("v3.1.2-state-memory-forecast", *REAL_ENDPOINT_DYNAMICS_REVISIONS)
 FUTURE_LABEL_PROTOCOL = "gold_endpoint_latest_complete_origin_v1"

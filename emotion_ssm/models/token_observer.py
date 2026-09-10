@@ -235,6 +235,7 @@ class TokenObserver(nn.Module):
         obs.context_available = masks["text"].any(1)
         obs.action_present = action_present
         return {"observation": obs, "raw_aff": raw_aff, "valid": valid,
+                "head_inputs": {"event": event_pooled, "action": pooled},
                 "hidden": hidden, "spans": spans, "masks": masks, "masked": masked,
                 "reconstruction": {m: self.reconstruct[m](hidden[:, spans[m]]) for m in MODES}}
 
