@@ -181,3 +181,10 @@ If you find this code useful, please consider citing:
   year={2025}
 }
 ```
+
+
+## v3.3 分阶段动力学对照
+
+新版修复入口为 `emotion_ssm.train.staged_v33.trainer`，三步实验总控为 `scripts/run_staged_v33_suite.py`。采用域/时距平衡的实际查询、独立真实标签端点、全局有效分母、持续AdamW状态及可复现的sensor/update缺失重放。仿射驱动与self-only分别做匹配对照；完整checkpoint不依赖外部初始化文件。
+
+执行协议、32事件前缀重放的适用范围、训练预算、基线与日志见 [v3.3实施记录](docs/staged_dynamics_v3_3_implementation.md)。新协议的MSE不可直接替换旧实验结果；是否超过均值收缩以及是否可部署，由完整重训的固定/live/gap和独立语义指标分别判断。

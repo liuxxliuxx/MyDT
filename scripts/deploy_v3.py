@@ -11,23 +11,23 @@ def allowed(name):
     parts = PurePosixPath(name).parts
     if not parts or any(p in ("..", ".git", "__pycache__") or p.startswith(".codex") for p in parts):
         return False
-    if name in ("DualTalk.py", "wav2vec.py", "requirements-test.txt", "requirements-v2.txt", "README.md", "emotion_ssm/README.md"):
+    if name in ("DualTalk.py", "wav2vec.py", "requirements-test.txt", "requirements-v2.txt", "requirements-report.txt", "README.md", "emotion_ssm/README.md"):
         return True
     if parts[0] in ("emotion_ssm", "tests") and name.endswith(".py"):
         return True
     if parts[0] == "scripts" and ("v3" in parts[-1]) and name.endswith(".py"):
         return True
-    return name in ("docs/v3_training.md", "docs/v32_adaptive_dynamics_2026-09-09.md",
+    return name in ("docs/v3_training.md", "docs/staged_dynamics_v3_3_implementation.md", "docs/v32_adaptive_dynamics_2026-09-09.md",
                     "docs/server3_v32_run_2026-09-09.md")
 
 
 def build(root, archive):
     root, archive = Path(root).resolve(), Path(archive).resolve()
     archive.parent.mkdir(parents=True, exist_ok=True)
-    candidates = [root / name for name in ("DualTalk.py", "wav2vec.py", "requirements-test.txt", "requirements-v2.txt",
+    candidates = [root / name for name in ("DualTalk.py", "wav2vec.py", "requirements-test.txt", "requirements-v2.txt", "requirements-report.txt",
                                          "README.md", "emotion_ssm/README.md", "docs/v3_training.md",
                                          "docs/v32_adaptive_dynamics_2026-09-09.md",
-                                         "docs/server3_v32_run_2026-09-09.md")]
+                                         "docs/server3_v32_run_2026-09-09.md", "docs/staged_dynamics_v3_3_implementation.md")]
     for folder in ("emotion_ssm", "tests", "scripts"):
         candidates.extend((root / folder).rglob("*.py"))
     paths = sorted({path for path in candidates if path.is_file() and allowed(path.relative_to(root).as_posix())})

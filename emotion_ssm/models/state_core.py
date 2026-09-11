@@ -123,7 +123,8 @@ class UnifiedEmotionStateCore(nn.Module):
     The legacy flow has independent 2x2 blocks with negative symmetric parts.
     The adaptive flow recomputes cross-coordinate mixing, damping and directed
     feedback from both roles' current states; feedback can increase energy.
-    Both preserve the neutral origin and keep new event/action inputs separate.
+    The optional affine revision adds a bounded shared continuous drive.
+    All revisions keep new event/action inputs separate from autonomous flow.
     """
 
     FORMAT_VERSION = 3
@@ -139,7 +140,8 @@ class UnifiedEmotionStateCore(nn.Module):
                  max_autonomous_rotation: float = 0.05,
                  initial_autonomous_rotation: float = 0.002,
                  flow_kind: str = "legacy_linear_v1", flow_rank: int = 8,
-                 max_cross_rate: float = .05, max_feedback: float = 2.) -> None:
+                 max_cross_rate: float = .05, max_feedback: float = 2.,
+                 affine_max_offset: float = .5) -> None:
         super().__init__()
         self.observation_dim = int(observation_dim)
         self.state_dim = self.observation_dim
@@ -196,18 +198,21 @@ class UnifiedEmotionStateCore(nn.Module):
         self.event_projection = nn.Sequential(nn.Linear(observation_dim, hidden_dim, bias=False),
                                               nn.Tanh(), nn.Linear(hidden_dim, observation_dim, bias=False),
                                               nn.Tanh())
-        if flow_kind not in ("legacy_linear_v1", "adaptive_dyadic_v1"):
+        if flow_kind not in ("legacy_linear_v1", "adaptive_dyadic_v1", "adaptive_affine_dyadic_v2"):
             raise ValueError("Unknown autonomous flow; checkpoint construction is authoritative")
         self.flow_kind = flow_kind
         self.adaptive_flow = None
-        if flow_kind == "adaptive_dyadic_v1":
+        if flow_kind in ("adaptive_dyadic_v1", "adaptive_affine_dyadic_v2"):
             from emotion_ssm.models.adaptive_flow import AdaptiveDyadicFlow
             if max_integration_step > .5:
                 raise ValueError("Adaptive integration steps must not exceed 0.5 seconds")
             self._construction.update(flow_kind=flow_kind, flow_rank=flow_rank,
                                       max_cross_rate=max_cross_rate, max_feedback=max_feedback)
             self.adaptive_flow = AdaptiveDyadicFlow(observation_dim, relation_dim, hidden_dim,
-                                                    flow_rank, max_cross_rate, max_feedback)
+                flow_rank, max_cross_rate, max_feedback,
+                affine_max_offset if flow_kind == 'adaptive_affine_dyadic_v2' else None)
+            if flow_kind == 'adaptive_affine_dyadic_v2':
+                self._construction['affine_max_offset'] = affine_max_offset
 
     def get_config(self) -> dict[str, Any]:
         return dict(self._construction)
@@ -438,6 +443,8 @@ class UnifiedEmotionStateCore(nn.Module):
         state = self._persistent_precision(state)
         dt = self._interval(dt, state)
         metadata = [self._metadata(o, state, dt, correct) for o in observations]
+        if diagnostics is not None and diagnostics.get('include_autonomous_prior', False):
+            diagnostics['autonomous_prior'] = self._propagate(state, dt, enable_partner=enable_partner).z
         current = state
         active_actions = enable_partner and any(bool((m["duration"] > 0).any()) for m in metadata)
         if not active_actions:

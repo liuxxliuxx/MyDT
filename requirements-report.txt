@@ -1,0 +1,3 @@
+# Additive reporting dependencies for the Python 3.9 lzh_DDG environment.
+# Install separately; do not reinstall or downgrade the training torch stack.
+matplotlib==3.9.4

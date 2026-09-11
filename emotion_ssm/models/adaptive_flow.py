@@ -18,12 +18,18 @@ class AdaptiveDyadicFlow(nn.Module):
     REVISION = "adaptive_dyadic_v1"
 
     def __init__(self, dimension, relation_dim, hidden_dim, rank=8,
-                 max_cross_rate=.05, max_feedback=2.):
+                 max_cross_rate=.05, max_feedback=2., affine_max_offset=None):
         super().__init__()
         if rank < 1 or min(max_cross_rate, max_feedback) <= 0:
             raise ValueError("Adaptive flow rank and bounds must be positive")
         self.dimension, self.rank = int(dimension), int(rank)
         self.max_cross_rate, self.max_feedback = float(max_cross_rate), float(max_feedback)
+        self.affine_max_offset = affine_max_offset
+        if affine_max_offset is not None:
+            if not 0 < affine_max_offset <= 1:
+                raise ValueError('Affine equilibrium offset bound must lie in (0,1]')
+            self.affine_fast = nn.Parameter(torch.zeros(dimension))
+            self.affine_slow = nn.Parameter(torch.zeros(dimension))
         self.left = nn.Parameter(torch.randn(2*dimension, rank) / math.sqrt(2*dimension*rank))
         self.right = nn.Parameter(torch.randn(2*dimension, rank) / math.sqrt(2*dimension*rank))
         # Shared parameters, role-relative inputs: swapping A/B swaps outputs.
@@ -65,6 +71,16 @@ class AdaptiveDyadicFlow(nn.Module):
         rotation = omega*(1 + .5*control[..., -3:-2].tanh())
         fast_force = skew[..., :d] + rotation*state.slow
         slow_force = skew[..., d:] - rotation*state.fast
+        if self.affine_max_offset is not None:
+            # Constant for a fixed parameter set. Bound with the minimum damping
+            # permitted by this model's state-dependent exp(.5*tanh) modulation.
+            # ||c/r_min|| <= max_offset even when learned time constants change.
+            # They are not multiplied by the event/observation existence gates.
+            scale = self.affine_max_offset / math.sqrt(d)
+            fast_min=(rates[0]*math.exp(-.5)).clamp(1/16.,4.)
+            slow_min=(rates[1]*math.exp(-.5)).clamp(1/1800.,1/30.)
+            fast_force = fast_force + scale*fast_min*self.affine_fast.tanh().to(x.dtype)
+            slow_force = slow_force + scale*slow_min*self.affine_slow.tanh().to(x.dtype)
         relation_force = torch.zeros_like(state.relation)
         partner_fast, partner_slow = torch.zeros_like(state.fast), torch.zeros_like(state.slow)
         if enable_partner:
