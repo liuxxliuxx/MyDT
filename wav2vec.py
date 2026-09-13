@@ -40,6 +40,10 @@ def _compute_mask_indices(
             sz = all_sz
             num_mask = all_num_mask
 
+        if num_mask == 0 or sz <= 0:
+            mask_idcs.append(np.empty(0, dtype=np.int64))
+            continue
+
         lengths = np.full(num_mask, mask_length)
 
         if sum(lengths) == 0:
@@ -58,6 +62,35 @@ def _compute_mask_indices(
         if len(mask_idc) > min_len:
             mask_idc = np.random.choice(mask_idc, min_len, replace=False)
         mask[i, mask_idc] = True
+    return mask
+
+
+def _budget_mask_indices(shape, mask_prob, mask_length, attention_mask=None):
+    """Versioned short-window policy: expected masked positions = prob * valid.
+
+    Stochastic rounding allows zero masks. Spans shrink to the remaining budget,
+    never overlap or touch padding. Each row keeps its own valid-length budget.
+    """
+    if not 0 <= mask_prob <= 1 or mask_length < 1:
+        raise ValueError("Invalid time-mask probability or span length")
+    valid = (np.ones(shape, dtype=bool) if attention_mask is None else
+             attention_mask.detach().cpu().numpy().astype(bool))
+    if valid.shape != shape:
+        raise ValueError("Time mask must use the interpolated feature grid")
+    mask = np.zeros(shape, dtype=bool)
+    for row in range(shape[0]):
+        positions = np.flatnonzero(valid[row])
+        budget = min(len(positions), int(mask_prob * len(positions) + np.random.rand()))
+        available = valid[row].copy()
+        while budget:
+            start = int(np.random.choice(np.flatnonzero(available)))
+            for index in range(start, min(shape[1], start + mask_length)):
+                if not available[index]:
+                    break
+                mask[row, index], available[index] = True, False
+                budget -= 1
+                if not budget:
+                    break
     return mask
 
 
@@ -93,33 +126,41 @@ class Wav2Vec2Model(Wav2Vec2Model):
 
         hidden_states = self.feature_extractor(input_values)
         hidden_states = hidden_states.transpose(1, 2)
+        convolution_length = hidden_states.shape[1]
 
         if dataset == "vocaset":
             hidden_states = linear_interpolation(hidden_states, 50, 30, output_len=frame_num)
 
         if attention_mask is not None:
             output_lengths = self._get_feat_extract_output_lengths(attention_mask.sum(-1))
-            attention_mask = torch.zeros(
-                hidden_states.shape[:2], dtype=hidden_states.dtype, device=hidden_states.device
-            )
-            attention_mask[
-                (torch.arange(attention_mask.shape[0], device=hidden_states.device), output_lengths - 1)
-            ] = 1
-            attention_mask = attention_mask.flip([-1]).cumsum(-1).flip([-1]).bool()
+            output_lengths = torch.ceil(output_lengths.clamp_min(0).double() *
+                                        hidden_states.shape[1] / convolution_length).long()
+            attention_mask = (torch.arange(hidden_states.shape[1], device=hidden_states.device)[None]
+                              < output_lengths[:, None])
 
         hidden_states = self.feature_projection(hidden_states)[0]
 
         if self.config.apply_spec_augment and self.training:
             batch_size, sequence_length, hidden_size = hidden_states.size()
             if self.config.mask_time_prob > 0:
-                mask_time_indices = _compute_mask_indices(
-                    (batch_size, sequence_length),
-                    self.config.mask_time_prob,
-                    self.config.mask_time_length,
-                    attention_mask=attention_mask,
-                    min_masks=2,
-                )
-                hidden_states[torch.from_numpy(mask_time_indices)] = self.masked_spec_embed.to(hidden_states.dtype)
+                policy = getattr(self.config, "avatar_mask_policy", "legacy_min_two")
+                if policy == "valid_budget_v1":
+                    mask_time_indices = _budget_mask_indices((batch_size, sequence_length),
+                        self.config.mask_time_prob, self.config.mask_time_length, attention_mask)
+                elif policy == "legacy_min_two":
+                    mask_time_indices = _compute_mask_indices((batch_size, sequence_length),
+                        self.config.mask_time_prob, self.config.mask_time_length,
+                        attention_mask=attention_mask, min_masks=2)
+                else:
+                    raise ValueError("Unknown Avatar time-mask protocol: " + policy)
+                # CPU mask statistics introduce no extra device synchronization
+                # for the unpadded generator inputs used in streaming training.
+                if policy == "valid_budget_v1" and attention_mask is None:
+                    old = getattr(self, "_avatar_mask_totals", [0, 0, 0, 0])
+                    current = mask_time_indices[:, -25:]
+                    self._avatar_mask_totals = [old[0] + int(mask_time_indices.sum()), old[1] + mask_time_indices.size,
+                                               old[2] + int(current.sum()), old[3] + current.size]
+                hidden_states[torch.from_numpy(mask_time_indices).to(hidden_states.device)] = self.masked_spec_embed.to(hidden_states.dtype)
             if self.config.mask_feature_prob > 0:
                 mask_feature_indices = _compute_mask_indices(
                     (batch_size, hidden_size),

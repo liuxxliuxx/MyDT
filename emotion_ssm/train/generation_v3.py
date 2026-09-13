@@ -15,10 +15,30 @@ import torch
 import torch.distributed as dist
 
 from emotion_ssm.models.streaming_v3 import map_tensors
-from emotion_ssm.utils.reconstruction import ReconstructionTotals
+from emotion_ssm.utils.reconstruction import ReconstructionTotals, DeferredReconstructionTotals
 from emotion_ssm.config_v3 import GENERATION_REVISION
+from emotion_ssm.train.generation_sampling import ConversationStates, InterleavedCursor, session_key
+from emotion_ssm.train.generation_stability import (configure_stability, optimizer_groups,
+    set_learning_rates, mask_diagnostics, run_fixed_probes, STABILITY_PROTOCOL)
 
 OPTIMIZATION_PROTOCOL = "v3-variant-objectives-component-clipping-baseline-tbptt-v2"
+EXECUTION_PROTOCOL = "generation-metrics-prefetch-v1"
+
+
+def generation_execution_settings(config, requested=None):
+    """The only runtime overrides on resume are these two execution switches."""
+    value = dict(config.get("generation_execution", {}))
+    if requested is not None:
+        value.update(requested.get("generation_execution", {}))
+    if set(value) - {"defer_metrics", "prefetch_batches"}:
+        raise ValueError("Unknown generation execution override")
+    result = {"defer_metrics": value.get("defer_metrics", False),
+              "prefetch_batches": value.get("prefetch_batches", 0)}
+    if type(result["defer_metrics"]) is not bool or type(result["prefetch_batches"]) is not int:
+        raise ValueError("Execution switches require bool and int values")
+    if result["prefetch_batches"] not in (0, 1):
+        raise ValueError("Only a single speculative CPU batch is supported")
+    return result
 
 
 def distributed():
@@ -77,6 +97,27 @@ def set_training_mode(model):
     model.train()
     for module in getattr(model, "_v3_fixed_modules", ()):
         module.eval()
+
+
+def configure_generation_from_config(model, config):
+    """Restore the declared upstream freeze policy before constructing AdamW."""
+    settings = config['generation']
+    configure_generation_stage(model,
+        train_observer=settings.get('train_observer', True),
+        train_state=settings.get('train_state', True),
+        frozen_teacher=getattr(model, 'teacher', None),
+        coordinate_modules=tuple(getattr(model.observer, name) for name in
+            ('affect_head', 'emotion_head', 'intensity_head', 'vad_head')),
+        gradient_checkpointing=settings.get('gradient_checkpointing', True))
+    configure_stability(model, config)
+    return [p for p in model.parameters() if p.requires_grad]
+
+
+def generation_auxiliary_enabled(model, train_config):
+    upstream_trainable = any(p.requires_grad for module in (model.observer, model.state_model)
+                             for p in module.parameters())
+    return upstream_trainable and any(float(train_config.get(key, 0.)) > 0
+        for key in ('coordinate_weight', 'future_weight', 'masked_weight'))
 
 
 def rebind_training_baseline(model, state):
@@ -319,7 +360,7 @@ def _synchronize_gradients(parameters):
 
 def train_segment(model, packets, optimizer, *, state=None, device=None, tbptt_steps=32,
                   scaler=None, amp=False, grad_clip=1., auxiliary_loss=None,
-                  auxiliary_weight=1., optimize=True):
+                  auxiliary_weight=1., optimize=True, defer_metrics=False):
     """Run one equal-budget optimizer step with boundary-only graph truncation.
 
     ``packets`` is a list of (input, target, valid_frame_mask). Forward never sees
@@ -350,7 +391,12 @@ def train_segment(model, packets, optimizer, *, state=None, device=None, tbptt_s
     set_training_mode(model)
     if state is not None:
         state = state.to(device).detach()
-    metrics = ReconstructionTotals()
+    bank = state if isinstance(state, ConversationStates) else None
+    if bank is not None:
+        if any(p.requires_grad for module in (model.observer, model.state_model) for p in module.parameters()):
+            raise ValueError("Interleaved generation requires frozen upstream state; joint TBPTT is a separate protocol")
+        state = None
+    metrics = DeferredReconstructionTotals(device) if defer_metrics else ReconstructionTotals()
     accumulated, auxiliary_total, segment_count = 0., 0., 0
     auxiliary_counts = {"coordinate_count": 0., "future_count": 0., "masked_count": 0.}
     # Detach previous boundary frames only for reporting; it does not enter loss.
@@ -362,6 +408,9 @@ def train_segment(model, packets, optimizer, *, state=None, device=None, tbptt_s
         for raw_packet, raw_target, raw_valid in packets[start:start + tbptt_steps]:
             packet = map_tensors(raw_packet, lambda value: value.to(device))
             target, valid = raw_target.to(device), raw_valid.to(device).bool()
+            if bank is not None:
+                key = session_key(packet)
+                state, previous = bank.states.get(key), bank.previous.get(key)
             if state is not None and (state.session_id != str(packet["session_id"]) or state.roles != tuple(packet["roles"])):
                 state, previous = None, None
             with torch.autocast(device.type, enabled=use_amp):
@@ -373,6 +422,12 @@ def train_segment(model, packets, optimizer, *, state=None, device=None, tbptt_s
             records.append(SegmentRecord(packet, generated, target, valid, state, diagnostics))
             metrics.update(generated, torch.nan_to_num(target), valid, previous)
             previous = (generated[:, -1].detach(), torch.nan_to_num(target[:, -1]).detach(), valid[:, -1])
+            if bank is not None:
+                if packet.get("training_session_end", False):
+                    bank.states.pop(key, None)
+                    bank.previous.pop(key, None)
+                else:
+                    bank.states[key], bank.previous[key] = state, previous
         if auxiliary_loss is not None:
             with torch.autocast(device.type, enabled=use_amp):
                 extra = auxiliary_loss(records)
@@ -396,6 +451,8 @@ def train_segment(model, packets, optimizer, *, state=None, device=None, tbptt_s
         accumulated += float(segment_loss.detach())
         segment_count += 1
         state = state.detach()
+        if bank is not None:
+            bank = bank.detach()
         # The next segment retains numeric history but no graph from this one.
         del records, segment_loss
     _synchronize_gradients(parameters)
@@ -445,26 +502,37 @@ def train_segment(model, packets, optimizer, *, state=None, device=None, tbptt_s
               "generator_clip_threshold": float(grad_clip),
               "coordinate_count": int(scalar[2]), "future_count": int(scalar[3]), "masked_count": int(scalar[4]),
               "error_elements": dict(metrics.elements), **component_gradients}
-    return state, result
+    return bank if bank is not None else state, result
 
 
 @torch.no_grad()
-def evaluate(model, dataset, device, rank=0, world_size=1, max_dialogues=0):
+def evaluate(model, dataset, device, rank=0, world_size=1, max_dialogues=0,
+             selected_names=None, max_blocks=0, representation_diagnostics=True):
     """Full chronological validation; no padded/repeated distributed samples."""
     model.eval()
     indices = list(range(len(dataset)))
+    if selected_names is not None:
+        lookup = {name: index for index, name in enumerate(dataset.names)}
+        if len(set(selected_names)) != len(selected_names) or set(selected_names) - set(lookup):
+            raise ValueError("Diagnostic manifest has duplicate or unavailable conversations")
+        indices = [lookup[name] for name in selected_names]
     if max_dialogues:
         indices = indices[:max_dialogues]
     totals, records, affect_samples = ReconstructionTotals(), [], []
     representation_samples, preservation = {}, {}
+    from emotion_ssm.utils.reconstruction import ExpressionDecomposition
     for index in indices[rank::world_size]:
         local, state, previous = ReconstructionTotals(), None, None
+        decomposition = ExpressionDecomposition(device)
         for chunk_index, (packet, target, valid) in enumerate(dataset.packets(index)):
+            if max_blocks and chunk_index >= max_blocks:
+                break
             packet = map_tensors(packet, lambda value: value.to(device))
             target, valid = target.to(device), valid.to(device).bool()
             generated, state, diagnostics = model(packet, state)
             local.update(generated, target, valid, previous)
-            if index < 16 and chunk_index < 32:
+            decomposition.update(generated, target, valid)
+            if representation_diagnostics and index < 16 and chunk_index < 32:
                 affect_samples.append(torch.stack([diagnostics["target_aff"], diagnostics["partner_aff"]], 1).cpu())
                 for role, features in zip(("target", "partner"), diagnostics["observation_inputs"]):
                     reference = model.teacher(features) if hasattr(model, "teacher") else None
@@ -484,7 +552,8 @@ def evaluate(model, dataset, device, rank=0, world_size=1, max_dialogues=0):
         totals.merge(local)
         names = getattr(dataset, "names", None)
         records.append({"dialogue": names[index] if names is not None else str(index),
-                        "sse": dict(local.square_error), "elements": dict(local.elements), **local.metrics()})
+                        "sse": dict(local.square_error), "elements": dict(local.elements),
+                        **local.metrics(), **decomposition.metrics()})
     totals.distributed_sum(device)
     if distributed():
         gathered = [None] * dist.get_world_size()
@@ -503,6 +572,8 @@ def evaluate(model, dataset, device, rank=0, world_size=1, max_dialogues=0):
                 old_sum, old_count = preservation.get(key, (0., 0))
                 preservation[key] = (old_sum + total, old_count + count)
     metrics = {**totals.metrics(), "error_elements": dict(totals.elements)}
+    for name in ("expression_bias_mse", "expression_centered_mse", "expression_pred_variance", "expression_target_variance"):
+        metrics[name] = sum(row[name] * row["valid_frames"] for row in records) / max(1, metrics["valid_frames"])
     if affect_samples:
         values = torch.cat(affect_samples, 0).float()
         for role, name in enumerate(("target", "partner")):
@@ -529,16 +600,20 @@ def evaluate(model, dataset, device, rank=0, world_size=1, max_dialogues=0):
     return metrics, records
 
 
-def run(config):
+def run(config, stop_after=None):
     """Run a complete joint generation experiment under torchrun or one process."""
     import math
+    import os
     import shutil
+    import time
     from emotion_ssm.config_v3 import validate_config, write_config
     from emotion_ssm.utils.checkpoint import capture_rng_state, restore_rng_state
     from emotion_ssm.utils.checkpoint_v3 import (build_avatar, load_avatar, read_checkpoint, save_checkpoint,
                                                   manifest_provenance, require_training_revision)
     from emotion_ssm.utils.distributed import init_distributed
+    from emotion_ssm.train.staged_dynamics_support import weight_digest
     validate_config(config)
+    requested_execution = dict(config.get("generation_execution", {}))
     payload = read_checkpoint(config["paths"]["resume"]) if config["paths"].get("resume") else None
     if payload:
         # Reject changed gradient semantics before allocating models or joining
@@ -546,24 +621,46 @@ def run(config):
         require_training_revision(payload)
         if payload["run_state"].get("optimization_protocol") != OPTIMIZATION_PROTOCOL:
             raise ValueError("Optimizer objective/clipping protocol changed; use old weights as explicit initialization, not resume")
+        requested_stability = config.get("generation_stability")
+        if requested_stability is not None and requested_stability != payload["config"].get("generation_stability"):
+            raise ValueError("Sampling/masking/learning-rate protocol changed; initialize a new experiment")
+        if payload["run_state"].get("stability_protocol") != payload["config"].get("generation_stability", {}).get("protocol"):
+            raise ValueError("Checkpoint stability protocol is inconsistent")
     authoritative = payload["config"] if payload else config
     train_config = authoritative["train"]
     context = init_distributed(train_config["device"], train_config["seed"], train_config["deterministic"])
     device = context.device
+    initial_metrics = {}
     if payload:
         model, config, payload = load_avatar(payload, device)
         if payload["provenance"] != manifest_provenance(config):
             raise ValueError("Data/source/split changed; start a new experiment instead of resuming")
+    elif config["paths"].get("avatar_initialization"):
+        initialization_payload = torch.load(config["paths"]["avatar_initialization"], map_location="cpu", weights_only=False, mmap=True)
+        if initialization_payload["kind"] != "streaming_avatar_v3":
+            raise ValueError("Avatar initialization must be a complete generator checkpoint")
+        if initialization_payload["provenance"] != manifest_provenance(config):
+            raise ValueError("Initialization data/source/split differs from the controlled experiment")
+        if initialization_payload["config"]["generation"]["variant"] != config["generation"]["variant"]:
+            raise ValueError("Use a separate explicit protocol when changing initialization conditioning")
+        model = build_avatar(config, device=device, construction=initialization_payload["construction"], initialize=False)
+        model.load_state_dict(initialization_payload["models"]["system"], strict=True)
+        initial_metrics = dict(initialization_payload["metrics"])
+        del initialization_payload
     else:
         model = build_avatar(config, device)
+    execution = generation_execution_settings(config, {"generation_execution": requested_execution})
+    config["generation_execution"] = execution
     teacher = model.teacher
-    parameters = configure_generation_stage(model, frozen_teacher=teacher,
-                                             coordinate_modules=tuple(getattr(model.observer, name) for name in
-                                                 ("affect_head", "emotion_head", "intensity_head", "vad_head")),
-                                             gradient_checkpointing=config["generation"].get("gradient_checkpointing", True))
+    parameters = configure_generation_from_config(model, config)
+    model.state_model.configure_execution(config['generation'].get('dynamics_execution', 'reference'))
+    frozen_condition = not any(p.requires_grad for module in (model.observer, model.state_model)
+                               for p in module.parameters())
+    condition_models = {'observer': model.observer, 'teacher': teacher, 'state': model.state_model}
     if context.enabled:
         for value in list(model.parameters()) + list(model.buffers()):
             dist.broadcast(value.data, 0)
+    initial_condition_hash = weight_digest(condition_models) if frozen_condition else None
     # Cached-token generation never invokes the heavyweight raw extractor.
     # Keep its weights in the complete checkpoint while freeing GPU residency.
     if model.features is not None and config["generation"].get("offload_extractor", True):
@@ -576,14 +673,22 @@ def run(config):
         output.mkdir(parents=True, exist_ok=True)
         write_config(output / "config.json", config)
     context.barrier()
+    initialization = dict(event='generation_initialized', rank=context.rank, pid=os.getpid(),
+        device=str(device), world_size=context.world_size, variant=model.variant,
+        frozen_condition=frozen_condition, condition_hash=initial_condition_hash,
+        dynamics_checkpoint=config['paths']['dynamics_checkpoint'],
+        trainable_parameters={name:sum(p.numel() for p in module.parameters() if p.requires_grad)
+            for name,module in (('generator',model.generator),('observer',model.observer),('state',model.state_model))},
+        train_dialogues=len(training), validation_dialogues=len(validation),
+        execution_protocol=EXECUTION_PROTOCOL, generation_execution=execution)
+    print(json.dumps(initialization), flush=True)
+    if context.is_main:
+        (output/'initialization.json').write_text(json.dumps(initialization,indent=2),encoding='utf-8')
     train_config = config["train"]
-    observer_ids = {id(p) for p in model.observer.parameters()}
-    state_ids = {id(p) for p in model.state_model.parameters()}
-    groups = [("generator", [p for p in parameters if id(p) not in observer_ids | state_ids], train_config["lr"]),
-              ("observer", [p for p in parameters if id(p) in observer_ids], train_config["observer_lr"]),
-              ("state", [p for p in parameters if id(p) in state_ids], train_config["state_lr"])]
-    optimizer = torch.optim.AdamW([{"params": values, "lr": rate, "initial_lr": rate, "name": name}
-                                  for name, values, rate in groups if values], weight_decay=train_config["weight_decay"], foreach=False)
+    final_step = int(train_config["max_steps"])
+    if stop_after is not None:
+        final_step = min(final_step, int(stop_after))
+    optimizer = torch.optim.AdamW(optimizer_groups(model, config), weight_decay=train_config["weight_decay"], foreach=False)
     scaler = torch.amp.GradScaler("cuda", enabled=train_config["amp"] and device.type == "cuda")
     start, best, saved, state = 0, float("inf"), {}, None
     if payload:
@@ -593,7 +698,7 @@ def run(config):
         optimizer.load_state_dict(payload["optimizer"])
         for values in optimizer.state.values():
             for key, value in values.items():
-                if torch.is_tensor(value):
+                if torch.is_tensor(value) and key != "step":
                     values[key] = value.to(device)
         if payload.get("scaler"):
             scaler.load_state_dict(payload["scaler"])
@@ -602,7 +707,15 @@ def run(config):
         state = saved.get("stream_state")
         if state is not None:
             state = state.to(device)
-    cursor = SegmentCursor(training, train_config["seed"], context.rank, context.world_size, saved.get("packets_seen", 0))
+    stability = config.get("generation_stability", {})
+    if stability:
+        cursor = InterleavedCursor(training, train_config["seed"], context.rank, context.world_size,
+            stability["conversations_per_rank"], stability["blocks_per_conversation"], saved.get("sampling_state"))
+        state = state if state is not None else ConversationStates()
+        if not isinstance(state, ConversationStates):
+            raise ValueError("Interleaved resume requires a complete conversation state bank")
+    else:
+        cursor = SegmentCursor(training, train_config["seed"], context.rank, context.world_size, saved.get("packets_seen", 0))
     if saved.get("rng"):
         restore_rng_state(saved["rng"])
     validation_metrics = payload.get("metrics", {}) if payload else {}
@@ -611,14 +724,42 @@ def run(config):
     if global_blocks % context.world_size:
         raise ValueError("Global valid blocks must divide evenly over ranks")
     local_blocks = global_blocks // context.world_size
-    auxiliary = JointAuxiliary(model, train_config)
-    for step in range(start, int(train_config["max_steps"])):
+    if stability and local_blocks != stability["conversations_per_rank"] * stability["blocks_per_conversation"]:
+        raise ValueError("World size and conversation slots do not match the valid-block budget")
+    auxiliary = JointAuxiliary(model, train_config) if generation_auxiliary_enabled(model, train_config) else None
+    if execution["prefetch_batches"]:
+        from emotion_ssm.train.generation_prefetch import PrefetchSegmentCursor
+        lookahead_count = (math.ceil(max(train_config["forecast_seconds"]))
+                           if auxiliary is not None and model.variant in ("self", "dyadic") else 0)
+        cursor = PrefetchSegmentCursor(cursor, local_blocks, lookahead_count)
+    set_learning_rates(optimizer, config, start)
+    if stability and not start:
+        run_fixed_probes(model, training, validation, config, context, 0, output)
+        # The source checkpoint's full validation is a retained candidate, not a
+        # resumed optimizer. Probe replay and unchanged inference are tested by
+        # the launch gate; report the provenance of this inherited score.
+        if initial_metrics and stability.get("retain_initial_candidate", False):
+            best = float(initial_metrics["generation_total"])
+            validation_metrics = initial_metrics
+            if context.is_main:
+                save_checkpoint(output / "best.pt", {"system": model}, config, model.construction_info,
+                    "streaming_avatar_v3", step=0, metrics=initial_metrics,
+                    run_state={"candidate_only": True, "score_origin": "initialization_checkpoint_full_validation",
+                               "stability_protocol": STABILITY_PROTOCOL})
+                (output / "initial_candidate.json").write_text(json.dumps(dict(score=best,
+                    checkpoint=config["paths"]["avatar_initialization"], new_optimizer_steps=0)), encoding="utf-8")
+            context.barrier()
+    began = time.monotonic()
+    for step in range(start, final_step):
+        step_began = time.monotonic()
         packets = cursor.take_valid(local_blocks)
+        data_wait_seconds = time.monotonic() - step_began
         # Future token observations are detached labels. A peek leaves the live
         # input cursor and all state histories unchanged, including on resume.
         lookahead = (cursor.peek(math.ceil(max(train_config["forecast_seconds"])))
-                     if model.variant in ("self", "dyadic") else [])
-        auxiliary.prepare(packets + lookahead, device, input_count=len(packets))
+                     if auxiliary is not None and model.variant in ("self", "dyadic") else [])
+        if auxiliary is not None:
+            auxiliary.prepare(packets + lookahead, device, input_count=len(packets))
         step_state, attempt_rng = state, capture_rng_state()
         attempts = 0
         while True:
@@ -626,7 +767,8 @@ def run(config):
             try:
                 state, metrics = train_segment(model, packets, optimizer, state=step_state, device=device,
                                                tbptt_steps=int(train_config["tbptt_seconds"]), scaler=scaler,
-                                               amp=train_config["amp"], grad_clip=train_config["clip_grad"], auxiliary_loss=auxiliary)
+                                               amp=train_config["amp"], grad_clip=train_config["clip_grad"], auxiliary_loss=auxiliary,
+                                               defer_metrics=execution["defer_metrics"])
                 metrics["amp_overflow_retries"] = attempts
                 break
             except AMPGradientOverflow as error:
@@ -635,22 +777,46 @@ def run(config):
                     print(json.dumps({"step": step+1, "amp_retry": attempts, "message": str(error)}), flush=True)
                 if attempts >= int(train_config.get("max_amp_retries", 8)):
                     raise FloatingPointError("Repeated AMP overflow exhausted retries; no optimizer budget was counted") from error
-        for group in optimizer.param_groups:
-            group["lr"] = group["initial_lr"] * .5 * (1 + math.cos(math.pi * (step+1) / train_config["max_steps"]))
+        used_learning_rates = {group["name"]: group["lr"] for group in optimizer.param_groups}
+        set_learning_rates(optimizer, config, step+1)
+        if stability:
+            from collections import Counter
+            rows = [(row[0]["session_id"], row[0]["training_source_id"]) for row in packets if row[2].any()]
+            if distributed():
+                shards = [None] * context.world_size
+                dist.all_gather_object(shards, rows)
+                rows = [row for shard in shards for row in shard]
+            counts = Counter(row[0] for row in rows)
+            metrics.update(conversations_per_step=len(counts), sources_per_step=len({row[1] for row in rows}),
+                dominant_conversation_fraction=max(counts.values()) / len(rows),
+                active_states_rank=len(state.states), speech_mask=mask_diagnostics(model))
         if context.is_main and ((step+1) % train_config["log_every"] == 0 or step == start):
-            entry = {"step": step+1, **metrics, "lr": optimizer.param_groups[0]["lr"]}
+            entry = {"step": step+1, **metrics, "lr": optimizer.param_groups[0]["lr"],
+                     "learning_rates_used": used_learning_rates,
+                     "step_seconds": time.monotonic()-step_began, "elapsed_seconds": time.monotonic()-began,
+                     "frozen_condition": frozen_condition,
+                     "execution_protocol": EXECUTION_PROTOCOL, "generation_execution": execution,
+                     "resume_step": start, "data_wait_seconds": data_wait_seconds,
+                     "peak_allocated_mib": torch.cuda.max_memory_allocated(device)/2**20 if device.type=='cuda' else 0.,
+                     "peak_reserved_mib": torch.cuda.max_memory_reserved(device)/2**20 if device.type=='cuda' else 0.}
             with (output / "train_metrics.jsonl").open("a", encoding="utf-8") as stream:
                 stream.write(json.dumps(entry, ensure_ascii=False) + "\n")
             print(json.dumps(entry), flush=True)
             (output / "training_status.json").write_text(json.dumps({"status": "running", "step": step+1,
                 "max_steps": train_config["max_steps"], "variant": model.variant, "metrics": metrics}), encoding="utf-8")
-        if (step+1) % train_config["validate_every"] == 0 or step+1 == train_config["max_steps"]:
+        if stability and (step+1) % int(stability.get("diagnostic_every", 250)) == 0:
+            run_fixed_probes(model, training, validation, config, context, step+1, output)
+        if (step+1) % train_config["validate_every"] == 0 or step+1 == final_step:
+            if frozen_condition and weight_digest(condition_models) != initial_condition_hash:
+                raise RuntimeError('Frozen observer/teacher/dynamics weights changed during generation training')
             validation_metrics, records = evaluate(model, validation, device, context.rank, context.world_size,
                                                   train_config["validation_max_dialogues"])
             score = validation_metrics["generation_total"]
             improved = score < best
             best = min(best, score)
             local = {"packets_seen": cursor.seen, "stream_state": state.detach().to("cpu"), "rng": capture_rng_state()}
+            if stability:
+                local["sampling_state"] = cursor.state_dict()
             ranks = [local]
             if context.enabled:
                 ranks = [None] * context.world_size
@@ -659,6 +825,8 @@ def run(config):
                          "optimization_protocol": OPTIMIZATION_PROTOCOL,
                          "generation_revision": GENERATION_REVISION,
                          "split_digest": training.manifest_digest, "feature_digest": training.feature_digest,
+                         "frozen_condition": frozen_condition, "condition_hash": initial_condition_hash,
+                         "stability_protocol": stability.get("protocol"),
                          "optimizer_budget": {"global_new_blocks": global_blocks, "step": step+1}}
             if context.is_main:
                 with (output / "metrics.jsonl").open("a", encoding="utf-8") as stream:
@@ -673,9 +841,12 @@ def run(config):
                 print(json.dumps({"validation_step": step+1, **validation_metrics}), flush=True)
             context.barrier()
     if context.is_main:
-        (output / "training_status.json").write_text(json.dumps({"status": "complete", "step": train_config["max_steps"],
+        (output / "training_status.json").write_text(json.dumps({"status": "complete" if final_step == train_config["max_steps"] else "paused",
+            "step": final_step,
             "variant": model.variant, "best_generation_total": best, "metrics": validation_metrics}), encoding="utf-8")
-    return {"steps": int(train_config["max_steps"]), "best_generation_total": best, "output": str(output)}
+    if hasattr(cursor, "close"):
+        cursor.close()
+    return {"steps": final_step, "best_generation_total": best, "output": str(output)}
 
 
 if __name__ == "__main__":
@@ -683,5 +854,6 @@ if __name__ == "__main__":
     from emotion_ssm.config_v3 import read_config
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", required=True)
+    parser.add_argument("--stop-after", type=int, help="Save and pause at this absolute step without changing the training budget")
     arguments = parser.parse_args()
-    run(read_config(arguments.config))
+    run(read_config(arguments.config), stop_after=arguments.stop_after)

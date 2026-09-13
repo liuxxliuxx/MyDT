@@ -76,6 +76,9 @@ def require_training_revision(payload):
     if payload.get("kind") == "dynamics_staged_v33":
         from emotion_ssm.train.staged_v33 import REVISION
         revisions['dynamics_staged_v33'] = ('staged_revision', REVISION)
+    if payload.get("kind") == "dynamics_staged_v34":
+        from emotion_ssm.train.staged_v34 import REVISION
+        revisions['dynamics_staged_v34'] = ('staged_revision', REVISION)
     expected = revisions.get(payload.get("kind"))
     if expected is not None:
         key, revision = expected

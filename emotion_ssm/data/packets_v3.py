@@ -264,6 +264,10 @@ class TokenDualTalk:
     Only raw audio and the two FLAME targets are read here. Tokens remain
     source-bound and current Avatar visual input is independently rejected.
     """
+    # packets() only loads/validates fixed CPU data; stochastic audio augmentation
+    # remains in the generator's main training thread.
+    prefetch_rng_neutral = True
+
     def __init__(self, raw_root, token_root, split="train", fps=25, threshold=1e-4):
         if fps != 25:
             raise ValueError("V3 DualTalk clock requires 25 FPS")
