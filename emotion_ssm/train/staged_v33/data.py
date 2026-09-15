@@ -123,7 +123,9 @@ def assemble(memories,records,encoded_rows,horizons,stride,producer,histories=No
             endpoints.append((row,copy.deepcopy(query)))
         current_gold.append(encoded['gold'][tick]);current_valid.append(encoded['valid'][tick])
         domains.append(encoded['domain']);keys.append((encoded['identity'],encoded['times'][tick]))
-    return dict(states=states,targets=targets,valid=valid,domain=torch.tensor(domains),keys=keys,
+    ages=torch.tensor([encoded_rows[r]['times'][t]-(encoded_rows[r]['times'][0]-encoded_rows[r]['dt'][0])
+                       for r,t in records],dtype=torch.float64)
+    return dict(states=states,targets=targets,valid=valid,domain=torch.tensor(domains),keys=keys,history_age=ages,
         endpoints=endpoints,horizons=list(horizons),producer=producer,
         current_gold=torch.stack(current_gold),current_valid=torch.stack(current_valid),
         history=torch.cat(histories) if histories else torch.cat([states.z,states.z.flip(1)]*4,-1),
@@ -239,11 +241,20 @@ def replay_origins(observer,core,bank,rows,device,enable_partner=True):
 
 class QuerySampler:
     """32 global origins, balanced domains and horizons; only assigned h counts."""
-    def __init__(self,bank,seed,chronological=False):
+    def __init__(self,bank,seed,chronological=False,age_sampling=None):
         self.bank=bank;self.generator=torch.Generator().manual_seed(seed)
         self.step=0;self.visits={};self.domain_counts={};self.cell_counts={};self.gold_visits={}
         self.chronological=chronological;self.cursors={};self.seed=seed;self.orders={};self.gold_cells={};self.gold_endpoints={}
         self.vector={}
+        self.age_sampling=dict(age_sampling or {})
+        self.age_edges=self.age_sampling.get('age_edges',[0,8,16,32,64])
+        if self.age_edges!=sorted(set(self.age_edges)) or self.age_edges[0]!=0:
+            raise ValueError('History age bins must be strictly ordered from zero')
+        if not 0<=self.age_sampling.get('natural_probability',.5)<=1:
+            raise ValueError('Invalid natural history sampling probability')
+        if self.age_sampling and 'history_age' not in bank:
+            raise ValueError('Age sampling needs real causal history ages')
+        self.age_visits={}
         for domain in sorted(set(bank['domain'].tolist())):
             pools={h:torch.where((bank['domain']==domain)&bank['valid'][:,h].any(-1))[0]
                    for h in range(len(bank['horizons']))}
@@ -259,6 +270,32 @@ class QuerySampler:
             for task in tasks:self.gold.setdefault((domain,h,task),[]).append(index)
 
     def draw(self,cell,pool,gold=False):
+        if self.age_sampling and torch.rand((),generator=self.generator).item()>=self.age_sampling.get('natural_probability',.5):
+            bins={}
+            for item in pool:
+                row=self.bank['endpoints'][int(item)][0] if gold else int(item)
+                age=float(self.bank['history_age'][row])
+                bucket=max(i for i,e in enumerate(self.age_edges) if age>=e)
+                bins.setdefault(bucket,[]).append(int(item))
+            bucket=sorted(bins)[int(torch.randint(len(bins),(1,),generator=self.generator))]
+            pool=bins[bucket];cell=(*cell,'age',bucket)
+            sources={}
+            for item in pool:
+                row=self.bank['endpoints'][item][0] if gold else item
+                identity=self.bank['keys'][row][0]
+                source=identity.split('_sub_video_',1)[0]
+                sources.setdefault(source,[]).append(item)
+            source=sorted(sources)[int(torch.randint(len(sources),(1,),generator=self.generator))]
+            pool=sources[source];cell=(*cell,'source',source)
+        chosen=self._draw(cell,pool,gold)
+        if self.age_sampling:
+            row=self.bank['endpoints'][chosen][0] if gold else chosen
+            b=max(i for i,e in enumerate(self.age_edges) if float(self.bank['history_age'][row])>=e)
+            key=str((gold,cell[:2],self.age_edges[b]))
+            self.age_visits[key]=self.age_visits.get(key,0)+1
+        return chosen
+
+    def _draw(self,cell,pool,gold=False):
         if not self.chronological:
             return int(pool[int(torch.randint(len(pool),(1,),generator=self.generator))])
         key=str((gold,cell));position=self.cursors.get(key,0);epoch=position//len(pool)
@@ -311,9 +348,13 @@ class QuerySampler:
     def state_dict(self):
         return dict(rng=self.generator.get_state(),step=self.step,visits=self.visits,
             domain_counts=self.domain_counts,cell_counts=self.cell_counts,gold_visits=self.gold_visits,
-            cursors=self.cursors,chronological=self.chronological,gold_cells=self.gold_cells,gold_endpoints=self.gold_endpoints)
+            cursors=self.cursors,chronological=self.chronological,gold_cells=self.gold_cells,gold_endpoints=self.gold_endpoints,
+            age_sampling=self.age_sampling,age_visits=self.age_visits)
 
     def load_state_dict(self,value):
+        if value.get('age_sampling',{})!=self.age_sampling:
+            raise ValueError('History age sampling changed; initialize a new experiment')
+        self.age_visits=value.get('age_visits',{})
         self.generator.set_state(value['rng']);self.step=value['step']
         for k in ('visits','domain_counts','cell_counts','gold_visits'):setattr(self,k,value[k])
         self.cursors=value.get('cursors',{});self.chronological=value.get('chronological',self.chronological)
@@ -321,7 +362,7 @@ class QuerySampler:
 
     def diagnostics(self):
         total=sum(self.domain_counts.values())
-        return dict(domain_counts=self.domain_counts,domain_share={k:v/max(1,total) for k,v in self.domain_counts.items()},
+        return dict(history_age_visits=self.age_visits,domain_counts=self.domain_counts,domain_share={k:v/max(1,total) for k,v in self.domain_counts.items()},
             cell_counts=self.cell_counts,unique_origin_queries=len(self.visits),
             repeated_origin_queries=sum(max(0,n-1) for n in self.visits.values()),
             gold_task_visits=sum(self.gold_visits.values()),unique_gold_task_queries=len(self.gold_visits),

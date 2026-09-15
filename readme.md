@@ -185,6 +185,9 @@ If you find this code useful, please consider citing:
 
 ## v3.3 分阶段动力学对照
 
+2026-09-13新增的边界损失、冻结视觉教师校准、条件路由、完整checkpoint恢复、条件干预评测、连续对话索引与长历史训练入口，见[生成监督与长时训练修复](docs/generation_repairs_and_long_history.md)。
+`scripts/run_generation_repair_suite.py`默认生成1,000步双卡诊断配置，显式`--execute`才使用GPU2和3启动新实验；`scripts/prepare_long_dynamics.py`为现有v3.4训练器准备长历史配置。视觉损失默认关闭，缺少独立人工校准或真实连续映射时会保留明确的数据缺口。
+
 Avatar生成训练的多会话状态缓存、语音骨干分组学习率、短窗口mask预算和恢复验收见
 [生成训练稳定性修复](docs/avatar_stability_training.md)。该方案从旧Avatar的1000步best建立新实验，
 保留9750步动力学的冻结权重和完整长时状态，不能用旧优化器混合恢复新采样协议。

@@ -7,4 +7,4 @@ datasets/
 .venv/
 .codex_askpass*.cmd
 .transfer/
-tests/ 
+# Keep regression tests versionable; generated caches are excluded above.

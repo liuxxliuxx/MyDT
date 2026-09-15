@@ -66,6 +66,17 @@ def validate_config(config):
     if config.get("format_version") != FORMAT_VERSION or config.get("protocol") != PROTOCOL:
         raise ValueError("V3.1 requires format 4 and new token semantics; legacy experiment optimizers cannot resume")
     generation = config["generation"]
+    if config.get('long_history',{}).get('enabled',False):
+        if not config.get('generation_stability') or generation.get('train_observer',True) or generation.get('train_state',True):
+            raise ValueError('Long-history windows require the frozen upstream interleaved generation protocol')
+    if config.get('generation_selection',{}).get('metric','generation_total') not in ('generation_total','generation_total_with_boundary'):
+        raise ValueError('Unknown generation selection metric')
+    from emotion_ssm.utils.generation_losses import loss_settings
+    loss_settings(config.get('generation_losses'))
+    if generation.get('condition_routing') is not None:
+        from emotion_ssm.models.condition_router import MODES
+        if generation['condition_routing'].get('mode','full_state') not in MODES:
+            raise ValueError('Unknown condition routing mode')
     if generation["fps"] != 25 or generation["chunk_frames"] != 25:
         raise ValueError("All V3 controls use 25 new frames per second")
     if not 0 <= generation["history_seconds"] <= 3:

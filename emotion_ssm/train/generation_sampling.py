@@ -24,6 +24,17 @@ def session_key(packet):
 class ConversationStates:
     states: dict = field(default_factory=dict)
     previous: dict = field(default_factory=dict)
+    boundary_for_loss: dict = field(default_factory=dict)
+
+    def __setstate__(self,values):
+        self.__dict__.update(values)
+        if 'boundary_for_loss' not in values:
+            from emotion_ssm.utils.generation_losses import BoundaryFrame
+            self.boundary_for_loss={}
+            for key,edge in self.previous.items():
+                state=self.states.get(key)
+                if state is not None and len(edge)==3:
+                    self.boundary_for_loss[key]=BoundaryFrame(state.session_id,state.roles,round(state.time*25),*edge)
 
     def detach(self):
         return map_tensors(self, lambda value: value.detach())
@@ -48,7 +59,7 @@ class InterleavedCursor:
         self.conversations, self.blocks = int(conversations), int(blocks_per_conversation)
         if min(self.conversations, self.blocks, self.world_size) < 1:
             raise ValueError("Invalid interleaved sampling budget")
-        self.sources = [source_id(name) for name in dataset.names]
+        self.sources = list(getattr(dataset,'source_ids',[source_id(name) for name in dataset.names]))
         sources = sorted(set(self.sources))
         random.Random(self.seed).shuffle(sources)
         weights = {source: 0 for source in sources}

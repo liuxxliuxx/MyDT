@@ -8,6 +8,32 @@ from emotion_ssm.train.staged_v33.data import FeatureViews,QuerySampler,assemble
 from emotion_ssm.train.staged_v33.missing import digest,update_missing
 
 
+def replay_current_origins(observer,core,bank,rows,device,enable_partner=True,with_grad=False):
+    """Replay shared full prefixes with current weights, then optional TBPTT.
+
+    Prefixes are recomputed once per selected dialogue, not once per query.
+    Old bank snapshots cannot change the deployed origin distribution here.
+    """
+    rows=list(map(int,rows));requested={};snapshots={}
+    for row in rows:
+        record,start,stop=bank['replay_rows'][row]
+        requested.setdefault(record,set()).add(start if with_grad else stop)
+    records=sorted(requested);encoded=[bank['encoded_rows'][r] for r in records]
+    with torch.no_grad():
+        state=core.initialize(len(records),device)
+        for i,record in enumerate(records):
+            if 0 in requested[record]:snapshots[record,0]=memory_index(state,slice(i,i+1)).detach()
+        for tick in range(max(max(v) for v in requested.values())):
+            state,_,_=step_batch(observer,core,encoded,state,tick,device,enable_partner)
+            for i,record in enumerate(records):
+                if tick+1 in requested[record]:snapshots[record,tick+1]=memory_index(state,slice(i,i+1)).detach()
+    state=memory_cat([snapshots[record,start if with_grad else stop]
+                     for record,start,stop in (bank['replay_rows'][r] for r in rows)])
+    if not with_grad:return state.detach()
+    replay_bank={**bank,'prefixes':state,'replay_rows':[bank['replay_rows'][r] for r in rows]}
+    return replay_origins(observer,core,replay_bank,range(len(rows)),device,enable_partner)
+
+
 def step_batch(observer,core,encoded_rows,state,tick,device,partner=True):
     """Advance active dialogues once; padding cannot change any memory field."""
     observations=[[],[]];active=[];intervals=[]

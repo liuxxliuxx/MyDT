@@ -40,12 +40,25 @@ def manifest_provenance(config):
             raise ValueError(f"Cannot reuse legacy token manifest: {path}")
         result[str(root)] = {"sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
                              "feature_sources": data["feature_sources"], "splits": data["splits"]}
+    for split,filename in config.get('data',{}).get('continuous_timelines',{}).items():
+        raw=Path(filename).read_bytes()
+        result['continuous:'+split]={'sha256':hashlib.sha256(raw).hexdigest()}
     return result
 
 
 def save_checkpoint(path, models, config, construction, kind, step=0,
                     optimizer=None, metrics=None, run_state=None, scaler=None):
     validate_config(config)
+    config,construction=copy.deepcopy(config),copy.deepcopy(construction)
+    system=models.get('system')
+    if system is not None:
+        system=system.module if hasattr(system,'module') else system
+        if getattr(system,'condition_router',None) is not None:
+            route=system.condition_router.construction()
+            construction['condition_routing']=route
+            config['generation']['condition_routing']=route
+        if getattr(system,'visual_teacher',None) is not None:
+            construction['visual_teacher']=system.visual_teacher.construction()
     payload = {"format_version": FORMAT_VERSION, "protocol": PROTOCOL, "kind": kind,
                "config": copy.deepcopy(config), "construction": copy.deepcopy(construction),
                "models": {name: (model.module if hasattr(model, "module") else model).state_dict()
@@ -54,8 +67,10 @@ def save_checkpoint(path, models, config, construction, kind, step=0,
                "optimizer": None if optimizer is None else optimizer.state_dict(),
                "scaler": None if scaler is None else scaler.state_dict(),
                "rng_state": capture_rng_state(), "provenance": manifest_provenance(config),
-               "experiment": {"clock": "one_second_endpoint", "selection": "generation_total" if "avatar" in kind else "validation_loss",
-                              "target_flame_observed": False, "teacher_future_inputs": "targets_only",
+               "experiment": {"clock": "one_second_endpoint", "selection": config.get('generation_selection',{}).get('metric','generation_total') if "avatar" in kind else "validation_loss",
+                              "target_flame_observed": config.get('generation',{}).get('condition_routing',{}).get('mode')=='oracle_visual_pseudo',
+                              "deployable": config.get('generation',{}).get('condition_routing',{}).get('mode')!='oracle_visual_pseudo',
+                              "teacher_future_inputs": "targets_only", "generation_losses": copy.deepcopy(config.get('generation_losses',{})),
                               "max_steps": config["train"]["max_steps"],
                               "global_new_blocks": config["train"]["global_chunks_per_step"]}}
     path = Path(path)
@@ -94,6 +109,7 @@ def restore_training(payload, models, optimizer=None, scaler=None, config=None, 
     if optimizer is not None:
         require_training_revision(payload)
         if config is not None:
+            require_generation_objective_match(payload['config'],config)
             stored = payload["config"]["train"]
             requested = config["train"]
             if stored.get("masking") != requested.get("masking") or payload["config"].get("state") != config.get("state"):
@@ -111,6 +127,24 @@ def restore_training(payload, models, optimizer=None, scaler=None, config=None, 
     if restore_rng and payload.get("rng_state"):
         restore_rng_state(payload["rng_state"])
     return payload
+
+
+def require_generation_objective_match(stored, requested):
+    from emotion_ssm.utils.generation_losses import loss_settings
+    if loss_settings(stored.get('generation_losses')) != loss_settings(requested.get('generation_losses')):
+        raise ValueError('Generation losses changed; use explicit initialization with a new optimizer')
+    for key in ('condition_routing','visual_teacher'):
+        def canonical(value):
+            if key!='condition_routing' or value is None:return value
+            value=copy.deepcopy(value);value.setdefault('mode','full_state')
+            if not value.get('mean_provenance'):value.pop('mean_provenance',None)
+            if 'train_mean' in value:value['train_mean']=torch.tensor(value['train_mean'],dtype=torch.float32).tolist()
+            return value
+        if canonical(stored.get('generation',{}).get(key))!=canonical(requested.get('generation',{}).get(key)):
+            raise ValueError('Condition/teacher protocol changed; use explicit initialization')
+    for key in ('generation_selection','long_history'):
+        if stored.get(key)!=requested.get(key):
+            raise ValueError('Selection/history sampling protocol changed; initialize a new experiment')
 
 
 def load_observer(path, device="cpu", teacher=False):
@@ -175,7 +209,7 @@ def build_avatar(config, device="cpu", construction=None, initialize=True):
                 raise ValueError("Streaming token extractor differs from the calibrated labelled adapter source")
     model = StreamingAvatarV3(generator, observer, state, features=features, variant=g["variant"],
                              fps=g["fps"], history_seconds=g["history_seconds"],
-                             speech_rms_threshold=g["speech_rms_threshold"])
+                             speech_rms_threshold=g["speech_rms_threshold"],condition_config=g.get('condition_routing'))
     model.teacher = teacher.requires_grad_(False).eval()
     model.construction_info = {"observer": observer.construction(), "state": state.get_config(),
                               "generator_audio": generator.baseline.joint_encoder.audio_encoder1.config.to_dict(),
@@ -183,7 +217,57 @@ def build_avatar(config, device="cpu", construction=None, initialize=True):
                                                                          "backbone": features.construction()}}
     if binding is not None:
         model.construction_info["adapter_source_binding"] = copy.deepcopy(binding)
+    visual = None if construction is None else construction.get('visual_teacher')
+    if visual is not None or (g.get('visual_teacher') is not None and g['visual_teacher'].get('enabled',True)):
+        from emotion_ssm.models.visual_affect_teacher import FrozenFlameAffect
+        model.visual_teacher = (FrozenFlameAffect.from_construction(visual) if visual is not None else FrozenFlameAffect(observer,g['visual_teacher']))
+        if visual is None and initialize and g['visual_teacher'].get('checkpoint'):
+            load_visual_teacher_initialization(model,g['visual_teacher']['checkpoint'])
+        model.construction_info['visual_teacher']=model.visual_teacher.construction()
+    if model.condition_router is not None:
+        model.construction_info['condition_routing']=model.condition_router.construction()
+    from emotion_ssm.utils.generation_losses import loss_settings
+    model._generation_loss_settings=loss_settings(config.get('generation_losses'))
     return model.to(device)
+
+
+def load_visual_teacher_initialization(model, path):
+    from emotion_ssm.models.visual_affect_teacher import FrozenFlameAffect
+    artifact=torch.load(path,map_location='cpu',weights_only=False)
+    if artifact.get('kind')!='validated_flame_teacher_v1':
+        raise ValueError('Expected an explicitly calibrated FLAME teacher artifact')
+    model.visual_teacher=FrozenFlameAffect.from_construction(artifact['construction'])
+    model.visual_teacher.load_state_dict(artifact['state_dict'],strict=True)
+    model.visual_teacher.require_validated(artifact['construction']['config']['validation']['validated_heads'])
+    model.construction_info['visual_teacher']=model.visual_teacher.construction()
+
+
+def initialize_avatar_weights(model, payload, config):
+    """New objective: retain common weights; initialize only declared additions."""
+    old=payload['models']['system']; allowed=('condition_router.','visual_teacher.')
+    current=model.state_dict()
+    common={k:v for k,v in old.items() if k in current and not k.startswith(allowed)}
+    missing,unexpected=model.load_state_dict(common,strict=False)
+    if unexpected or any(not key.startswith(allowed) for key in missing):
+        raise ValueError('Initialization differs beyond declared condition/teacher modules')
+    if any(k not in current and not k.startswith(allowed) for k in old):
+        raise ValueError('Unexpected architecture change during initialization')
+    previous_route=payload['config'].get('generation',{}).get('condition_routing')
+    requested_route=config.get('generation',{}).get('condition_routing')
+    if (getattr(model,'condition_router',None) is not None and previous_route==requested_route
+            and not config.get('experiment',{}).get('reset_condition_projector',False)):
+        model.condition_router.load_state_dict({k.removeprefix('condition_router.'):v for k,v in old.items()
+                                               if k.startswith('condition_router.')},strict=True)
+    if getattr(model,'visual_teacher',None) is not None:
+        spec=config['generation'].get('visual_teacher',{})
+        if spec.get('checkpoint'):
+            load_visual_teacher_initialization(model,spec['checkpoint'])
+            model.visual_teacher.to(next(model.parameters()).device)
+        elif 'visual_teacher' not in payload.get('construction',{}):
+            model.visual_teacher.observer.load_state_dict(model.observer.state_dict())
+        else:
+            model.visual_teacher.load_state_dict({k.removeprefix('visual_teacher.'):v for k,v in old.items() if k.startswith('visual_teacher.')},strict=True)
+        model.construction_info['visual_teacher']=model.visual_teacher.construction()
 
 
 def load_avatar(path, device="cpu", builder=build_avatar):

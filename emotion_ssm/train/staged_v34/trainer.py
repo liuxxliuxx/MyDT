@@ -60,6 +60,9 @@ def run(request,execution_override=None,stop_after=None):
             raise ValueError('Old optimizer semantics cannot resume v3.4; use explicit initialization')
         if source['provenance']!=manifest_provenance(config):raise ValueError('Resume source/split provenance changed')
         if source['run_state']['world_size']!=size:raise ValueError('Exact resume needs the same rank budget')
+        for key in ('history_age_sampling','train_protocol_cycle','block_gap_period','block_gap_seconds','full_origin_replay'):
+            if config.get('staged',{}).get(key,DEFAULTS.get(key))!=source['config'].get('staged',{}).get(key,DEFAULTS.get(key)):
+                raise ValueError('Long-history protocol changed; initialize a new experiment')
         config=copy.deepcopy(source['config']);config['paths']['output']=str(output)
     settings={**DEFAULTS,**config.get('staged',{})};config['staged']=settings
     if settings['objective_mode']!='weighted_joint' or settings['endpoint_label_weight']<=0:
@@ -134,6 +137,11 @@ def run(request,execution_override=None,stop_after=None):
         if value is None:value=torch.load(path,map_location='cpu',weights_only=False)
         if value['signature']!=signature:raise ValueError('Origin producer differs between ranks/resume')
         if expected is not None and value['producer']!=expected:raise ValueError('Origin replay identity changed')
+        if settings.get('history_age_sampling'):
+            if 'history_age' not in value:raise ValueError('Rebuild the origin bank to include physical history ages')
+            if rank==0:
+                from emotion_ssm.utils.history_coverage import bank_coverage
+                atomic_json(output/(label+'_history_coverage.json'),bank_coverage(value,settings['history_age_sampling'].get('age_edges',[0,8,16,32,64])))
         return value
     saved=cpu_models(models)
     for name,model in models.items():model.load_state_dict(initial_models[name])
@@ -225,7 +233,7 @@ def run(request,execution_override=None,stop_after=None):
             train_bank=bank(training,selected,f'origins_block{block}',protocol=protocol)
         train_bank['class_audit']=class_audit(train_bank,settings)
         if rank==0:atomic_json(output/f'class_audit_block{block}.json',train_bank['class_audit'])
-        sampler=QuerySampler(train_bank,seed+block*101,chronological=online)
+        sampler=QuerySampler(train_bank,seed+block*101,chronological=online,age_sampling=settings.get('history_age_sampling'))
         if continuing:sampler.load_state_dict(source['run_state']['ranks'][rank]['sampler'])
         support=supports(sampler,device);optimizers.phase(phase)
         emit('phase_started',phase=phase,block=block,length=length,origins=len(train_bank['keys']),
@@ -248,7 +256,7 @@ def run(request,execution_override=None,stop_after=None):
                 previous_sampler=sampler.state_dict()
                 train_bank=bank(training,selected,f'origins_block{block}',protocol=protocol)
                 train_bank['class_audit']=class_audit(train_bank,settings)
-                sampler=QuerySampler(train_bank,seed+block*101,chronological=online);sampler.load_state_dict(previous_sampler)
+                sampler=QuerySampler(train_bank,seed+block*101,chronological=online,age_sampling=settings.get('history_age_sampling'));sampler.load_state_dict(previous_sampler)
                 support=supports(sampler,device)
                 emit('prefix_refreshed',block=block,block_step=block_step,producer=train_bank['producer'],
                     mask_plan_hash=digest([p['sha256'] for p in train_bank['plans']]))

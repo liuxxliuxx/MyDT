@@ -3,7 +3,7 @@ import torch
 from torch.nn import functional as F
 from emotion_ssm.train.dynamics_v3 import unit_state_readout
 from emotion_ssm.train.staged_dynamics_support import memory_index
-from .data import replay_origins
+from .data import replay_origins,replay_current_origins
 from .semantics import NEUTRAL
 from emotion_ssm.train.staged_v33.optimization import global_mean
 
@@ -23,7 +23,9 @@ def loss(core,observer,bank,vectors,gold,settings,support,online=False):
     if not rows:raise ValueError('Each rank needs an origin; increase the global query budget')
     index=torch.tensor(rows);mapping={r:i for i,r in enumerate(rows)}
     partner=settings.get('enable_partner',True)
-    if online:
+    if settings.get('full_origin_replay',False):
+        origins=replay_current_origins(observer,core,bank,rows,device,partner,with_grad=online)
+    elif online:
         origins=replay_origins(observer,core,bank,rows,device,partner)
     elif settings.get('flow_replay_origins',True):
         # Recompute the recent state with current flow parameters; forecast gradients

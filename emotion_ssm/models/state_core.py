@@ -582,6 +582,13 @@ class UnifiedEmotionStateCore(nn.Module):
         if self.adaptive_flow is not None:
             self.adaptive_flow.configure_execution(compile_midpoint=mode == 'compiled')
 
+    def context_layout(self):
+        """One named layout shared by training, routing and diagnostics."""
+        d = self.baseline.numel()
+        r = self.context_dim-6*d
+        return dict(affect=slice(0, 2*d), fast=slice(2*d, 4*d),
+                    slow=slice(4*d, 6*d), relation=slice(6*d, 6*d+r))
+
     def context(self, state: EmotionMemory, observations: Sequence[EventObservation],
                 variant: str = "dyadic") -> Tensor:
         """Fixed-width FiLM input: both current affects, both fast/slow, directions.

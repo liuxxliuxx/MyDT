@@ -22,12 +22,14 @@ class StateFiLM(nn.Module):
         nn.init.zeros_(self.affine.weight)
         nn.init.zeros_(self.affine.bias)
 
+    def modulation(self, state_context: Tensor):
+        gamma, beta = self.affine(state_context).chunk(2, dim=-1)
+        return self.scale * torch.tanh(gamma), self.scale * beta
+
     def forward(self, features: Tensor, state_context: Tensor) -> Tensor:
         if state_context.ndim == 3 and state_context.shape[:2] != features.shape[:2]:
             raise ValueError("Frame-wise FiLM context must match feature timestamps")
-        gamma, beta = self.affine(state_context).chunk(2, dim=-1)
-        gamma = self.scale * torch.tanh(gamma)
-        beta = self.scale * beta
+        gamma, beta = self.modulation(state_context)
         if gamma.ndim == 2:
             gamma, beta = gamma[:, None], beta[:, None]
         return features * (1.0 + gamma) + beta
@@ -78,6 +80,10 @@ class EmotionConditionedDualTalk(nn.Module):
         enable_film: bool = True,
         audio_features: Optional[Tuple[Tensor, Tensor]] = None,
     ) -> Tensor:
+        features = self.encode_interaction(audio_target, audio_partner, partner_blendshape, audio_features)
+        return self.decode_interaction(features, state_context, enable_film)
+
+    def encode_interaction(self, audio_target, audio_partner, partner_blendshape, audio_features=None):
         if audio_features is None:
             audio_target_feature, audio_partner_feature, blendshape_feature = (
                 self.baseline.joint_encoder(
@@ -94,6 +100,9 @@ class EmotionConditionedDualTalk(nn.Module):
             )
         temporal_feature = self.baseline.temporal_enhancer(audio_partner_feature, blendshape_feature)
         interaction_feature = self.baseline.interaction_module(audio_target_feature, temporal_feature)
+        return interaction_feature
+
+    def decode_interaction(self, interaction_feature, state_context=None, enable_film=True):
         if enable_film and state_context is not None:
             interaction_feature = self.film(interaction_feature, state_context)
         return self.baseline.synthesis_module(interaction_feature)

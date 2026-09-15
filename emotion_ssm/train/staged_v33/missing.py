@@ -14,7 +14,7 @@ def digest(value):
 
 
 def make_plan(identity, duration, protocol, seed, period=32., gap=8.):
-    if protocol not in ('clean','update_gap','sensor_gap','train_mixed'):
+    if protocol not in ('clean','update_gap','sensor_gap','train_mixed','train_context'):
         raise ValueError('Unknown missing-input protocol')
     if not 0 <= gap < period or period<=0:
         raise ValueError('Gap must be shorter than its positive period')
@@ -29,9 +29,17 @@ def make_plan(identity, duration, protocol, seed, period=32., gap=8.):
             offset = rng.uniform(0,period-gap) if protocol=='train_mixed' else period-gap
             roles = [rng.randrange(2)] if protocol=='train_mixed' and rng.random()<.5 else [0,1]
             modes = rng.choice([['A'],['T'],['V'],['A','T','V']]) if protocol=='train_mixed' else ['A','T','V']
+            if protocol=='train_context':
+                kind='sensor_gap';roles=[0,1]
+                if rng.random()<.8:
+                    offset=rng.uniform(0,period-gap)
+                    modes=rng.choice([['A','T','V'],['A','T'],['A','V'],['T','V']])
+                else:
+                    offset=0.;modes=[rng.choice(['A','T','V'])]
             if kind=='update_gap':modes=['A','T','V']
             if edge+offset>=duration or gap==0:continue
-            intervals.append(dict(start=edge+offset,end=min(duration,edge+offset+gap),
+            width=period if protocol=='train_context' and len(modes)==1 else gap
+            intervals.append(dict(start=edge+offset,end=min(duration,edge+offset+width),
                                   roles=roles,modes=modes,kind=kind))
     plan=dict(revision=REVISION,identity=identity,protocol=protocol,seed=seed,
               period=period,gap=gap,intervals=intervals)

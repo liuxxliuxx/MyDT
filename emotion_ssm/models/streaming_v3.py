@@ -70,6 +70,7 @@ class StreamStateV3:
     words: dict = field(default_factory=dict)
     event_ids: frozenset = field(default_factory=frozenset)
     audio_history: dict = field(default_factory=dict)
+    boundary_for_loss: object = None
 
     def detach(self):
         return map_tensors(self, lambda value: value.detach())
@@ -82,7 +83,8 @@ class StreamingAvatarV3(nn.Module):
     variants = ("none", "affect", "self", "dyadic")
 
     def __init__(self, generator, observer, state_model, features=None, variant="dyadic",
-                 fps=25, history_seconds=3, max_text_words=256, speech_rms_threshold=1e-4):
+                 fps=25, history_seconds=3, max_text_words=256, speech_rms_threshold=1e-4,
+                 condition_config=None):
         super().__init__()
         if variant not in self.variants:
             raise ValueError(f"Unknown conditioning variant: {variant}")
@@ -95,6 +97,12 @@ class StreamingAvatarV3(nn.Module):
         self.max_text_words = int(max_text_words)
         self.speech_rms_threshold = float(speech_rms_threshold)
         self.generator_checkpointing = False
+        self.condition_router = None
+        if condition_config is not None:
+            from emotion_ssm.models.condition_router import ConditionRouter
+            self.condition_router = ConditionRouter(state_model.context_dim, state_model.context_layout(), condition_config)
+            if self.condition_router.mode == 'actual_semantic' and variant not in ('self','dyadic'):
+                raise ValueError('Actual state semantics require self or dyadic state formation')
         expected = getattr(state_model, "context_dim", None)
         actual = getattr(generator, "context_dim", expected)
         if expected is not None and actual != expected:
@@ -173,6 +181,11 @@ class StreamingAvatarV3(nn.Module):
             seconds=float(getattr(self.features,"source",{}).get("audio_history_seconds",AUDIO_HISTORY_SECONDS))
             local=merge_audio_history(previous,local,seconds)
             cached=collate_role_features([local],waveform.device)
+        if packet.get('continuous_timeline',False) and not bool(cached.get('audio_history_complete',False)):
+            local={key:value[0] for key,value in cached.items() if torch.is_tensor(value)}
+            previous=state.audio_history.get(str(state.roles[role_index]))
+            local=merge_audio_history(previous,local,AUDIO_HISTORY_SECONDS)
+            cached={**cached,**{key:value[None] for key,value in local.items()}}
         values = dict(cached)
         available = values.pop("available_at", values.get("now", packet["time"]))
         if float(available) > float(packet["time"]) + 1e-7:
@@ -292,7 +305,8 @@ class StreamingAvatarV3(nn.Module):
         output.context_available = mask[:, 2]
         return output, values
 
-    def forward(self, packet, state=None):
+    def forward(self, packet, state=None, *, condition_override=None, diagnostic=False, observe_only=False,
+                return_generator_inputs=False):
         session_id, roles = str(packet["session_id"]), tuple(packet["roles"])
         if state is None:
             state = self.initial_state(session_id, roles, packet.get("start_time", 0.))
@@ -313,10 +327,23 @@ class StreamingAvatarV3(nn.Module):
                                                enable_partner=self.variant == "dyadic")
             emotion = updated.posterior if hasattr(updated, "posterior") else updated
         context = self.state_model.context(emotion, pair, variant=self.variant)
-        if context.ndim == 2:
-            frame_context = context[:, None].expand(-1, count, -1)
-        elif context.ndim == 3 and context.shape[1] == count:
-            frame_context = context
+        film_enabled = self.variant != "none"
+        if self.condition_router is not None:
+            semantic = None
+            if self.condition_router.mode == "actual_semantic":
+                from emotion_ssm.models.condition_router import semantic_code
+                from torch.nn import functional as F
+                semantic = semantic_code(self.observer.decode_affect(F.normalize(emotion.z[:, 0].float(), dim=-1)),
+                                         self.condition_router.heads)
+            routed_context, film_enabled = self.condition_router(context, semantic, condition_override, diagnostic)
+        else:
+            if condition_override is not None:
+                raise ValueError("Ordinary deployment cannot accept target condition overrides")
+            routed_context = context
+        if routed_context.ndim == 2:
+            frame_context = routed_context[:, None].expand(-1, count, -1)
+        elif routed_context.ndim == 3 and routed_context.shape[1] == count:
+            frame_context = routed_context
         else:
             raise ValueError("State context must be [B,D] or time-aligned [B,new_frames,D]")
         item = {"target_audio": packet["target_audio"], "partner_audio": packet["partner_audio"],
@@ -325,13 +352,15 @@ class StreamingAvatarV3(nn.Module):
         joined = {key: torch.cat([part[key] for part in pieces], dim=1) for key in item}
         arguments = (normalize_audio(joined["target_audio"]), normalize_audio(joined["partner_audio"]),
                      joined["partner_blendshape"], joined["context"])
-        if self.generator_checkpointing and self.training and torch.is_grad_enabled():
+        if observe_only:
+            generated = None
+        elif self.generator_checkpointing and self.training and torch.is_grad_enabled():
             from torch.utils.checkpoint import checkpoint
-            generated = checkpoint(self.generator, *arguments, self.variant != "none", use_reentrant=False,
+            generated = checkpoint(self.generator, *arguments, film_enabled, use_reentrant=False,
                                    preserve_rng_state=True, context_fn=checkpoint_rng_contexts)[:, -count:]
         else:
-            generated = self.generator(*arguments, self.variant != "none")[:, -count:]
-        if generated.shape != (1, count, 56):
+            generated = self.generator(*arguments, film_enabled)[:, -count:]
+        if generated is not None and generated.shape != (1, count, 56):
             raise ValueError("Generator must return the aligned new FLAME frames")
         keep_frames = min(self.history_frames, joined["partner_blendshape"].shape[1])
         history = []
@@ -350,7 +379,10 @@ class StreamingAvatarV3(nn.Module):
                        "observation_inputs": (first_values, second_values),
                        "target_modalities": first_values["modality_mask"], "partner_modalities": second_values["modality_mask"],
                        "target_fresh": first.fresh_observation, "partner_fresh": second.fresh_observation,
-                       "context": context, "timestamp": now, "state_affect": self.state_model.affect(emotion)}
+                       "context": context, "generator_context": routed_context, "film_enabled": film_enabled,
+                       "timestamp": now, "state_affect": self.state_model.affect(emotion)}
+        if return_generator_inputs:
+            diagnostics['generator_inputs']=arguments
         return generated, next_state, diagnostics
 
 
